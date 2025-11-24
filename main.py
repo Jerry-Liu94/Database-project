@@ -171,100 +171,102 @@ def require_permission(resource: str, action: str):
         return current_user
     return permission_checker
 
-# [重點] 使用 response_model=List[schemas.AssetOut] 來豐富資料
+# [新增] 上傳新版本 API (對應 FR-4.2) 使用 response_model=List[schemas.AssetOut] 來豐富資料
 @app.post("/assets/", response_model=schemas.AssetOut)
 def create_asset(
-    file: UploadFile = File(...),        # 接收檔案
-    # user_id: int = Form(...),            # 模擬：因為還沒做登入，先手動填上傳者ID
-    current_user: models.User = Depends(require_permission("asset", "upload")), # <-- 加上這行！自動抓登入者
+    file: UploadFile = File(...),
+    current_user: models.User = Depends(require_permission("asset", "upload")),
     db: Session = Depends(get_db)
 ):
-    # 1. [模擬 NoSQL] 處理檔案儲存
+    # 1. 準備目錄與檔名
     upload_dir = "uploads"
     if not os.path.exists(upload_dir):
         os.makedirs(upload_dir)
     
-    # 產生唯一的檔名 (避免檔名重複覆蓋)
     timestamp = datetime.now().strftime("%Y%m%d%H%M%S")
     file_location = f"{upload_dir}/{timestamp}_{file.filename}"
     
-    # 寫入硬碟
+    # 2. 寫入原始檔案
     with open(file_location, "wb") as buffer:
         shutil.copyfileobj(file.file, buffer)
         
-    # 取得檔案大小 (給 Metadata 用)
     file_size = os.path.getsize(file_location)
-    
-    # =========== [新增] 自動解析圖片解析度 ===========
-    resolution = "Unknown" # 預設值
-    
-    # 判斷是否為圖片 (根據 content_type)
+
+    # 3. [合併處理] 圖片解析與縮圖製作 (只開一次檔)
+    resolution = "Unknown"
+    thumb_location = f"{os.path.splitext(file_location)[0]}_thumb.jpg"
+
     if file.content_type and file.content_type.startswith("image/"):
         try:
             with Image.open(file_location) as img:
-                width, height = img.size
-                resolution = f"{width}x{height}" # 格式: 1920x1080
-        except Exception:
-            print("圖片解析失敗，維持 Unknown")
-    # ===============================================
+                # A. 讀取解析度 (FR-2.3)
+                resolution = f"{img.size[0]}x{img.size[1]}"
+                
+                # B. 製作縮圖 (FR-2.4)
+                img.thumbnail((300, 300))
+                
+                # C. 存縮圖 (轉 RGB 避免錯誤)
+                if img.mode in ("RGBA", "P"):
+                    img = img.convert("RGB")
+                img.save(thumb_location, "JPEG")
+                
+        except Exception as e:
+            print(f"圖片處理失敗: {e}")
+            pass
 
-    # 2. [SQL 資料庫操作] 開始寫入
+    # 4. [SQL 資料庫操作]
     try:
-        # 步驟 A: 建立 Asset (latest_version_id 先留空)
-        # 對應文件 [cite: 85]：latest_version_id 稍後加入
+        # A. 建立 Asset
         new_asset = models.Asset(
             filename=file.filename,
             file_type=file.content_type,
-            uploaded_by_user_id=current_user.user_id,  # <--- 改成 current_user.user_id
+            uploaded_by_user_id=current_user.user_id,
             latest_version_id=None 
         )
         db.add(new_asset)
-        db.flush()  # 重要！先暫存到資料庫，這樣 new_asset.asset_id 才會有值
+        db.flush()
 
-        # 步驟 B: 建立 Version
-        # 對應文件 [cite: 93-97]：version 需要 asset_id, storage_path
+        # B. 建立 Version
         new_version = models.Version(
-            asset_id=new_asset.asset_id,  # 拿到剛剛產生的 ID
+            asset_id=new_asset.asset_id,
             version_number=1,
-            storage_path=file_location    # 這裡存剛剛寫入硬碟的路徑
+            storage_path=file_location
         )
         db.add(new_version)
-        db.flush()  # 再次暫存，取得 new_version.version_id
+        db.flush()
 
-        # 步驟 C: 建立 Metadata (基本資料)
-        # 對應文件 [cite: 107-109]
+        # C. 建立 Metadata (使用剛剛一次算好的 resolution)
         new_metadata = models.Metadata(
             asset_id=new_asset.asset_id,
             filesize=file_size,
-            resolution=resolution,      # 圖片解析需要額外 library，先填 Unknown
+            resolution=resolution,
             encoding_format=file.content_type.split("/")[-1] if file.content_type else "bin"
         )
         db.add(new_metadata)
 
-        # 步驟 D: 回頭更新 Asset 的 latest_version_id
+        # D. 更新 Asset 循環外鍵
         new_asset.latest_version_id = new_version.version_id
         
-        # =========== [新增] 步驟 E: 寫入稽核日誌 (Audit Log) ===========
+        # E. 寫入稽核日誌
         new_log = models.AuditLog(
             user_id=current_user.user_id,
             asset_id=new_asset.asset_id,
-            action_type="UPLOAD",  # 記錄動作類型
-            # action_timestamp 會由資料庫自動填入當前時間
+            action_type="UPLOAD",
         )
         db.add(new_log)
-        # ============================================================
         
-        # 最後確認並送出
+        # 提交交易
         db.commit()
         db.refresh(new_asset)
         return new_asset
 
     except Exception as e:
-        # 如果中間出錯 (例如硬碟滿了)，撤銷所有資料庫變更
         db.rollback()
-        # 也要記得把剛剛存的檔案刪掉，避免變成垃圾檔案
+        # 清理垃圾檔案 (原圖 & 縮圖)
         if os.path.exists(file_location):
             os.remove(file_location)
+        if os.path.exists(thumb_location):
+            os.remove(thumb_location)
         raise HTTPException(status_code=500, detail=f"上傳失敗: {str(e)}")
     
 @app.get("/assets/{asset_id}/download")
@@ -340,6 +342,8 @@ def read_assets(
     # 因為 SQLAlchemy 物件是可變的，我們直接掛一個屬性上去，Pydantic 就會讀到了
     for asset in assets:
         asset.download_url = f"http://127.0.0.1:8000/assets/{asset.asset_id}/download"
+        # [新增] 縮圖連結
+        asset.thumbnail_url = f"http://127.0.0.1:8000/assets/{asset.asset_id}/thumbnail"
         
     return assets
 
@@ -768,3 +772,26 @@ def read_asset_tags(
 @app.get("/tags", response_model=List[schemas.TagOut])
 def read_all_tags(db: Session = Depends(get_db)):
     return db.query(models.Tag).all()
+
+# [新增] API: 取得縮圖 (FR-2.4)
+@app.get("/assets/{asset_id}/thumbnail")
+def get_asset_thumbnail(asset_id: int, db: Session = Depends(get_db)):
+    # 1. 找資產
+    asset = db.query(models.Asset).filter(models.Asset.asset_id == asset_id).first()
+    if not asset or not asset.latest_version:
+         raise HTTPException(status_code=404, detail="檔案不存在")
+    
+    version = asset.latest_version
+    original_path = version.storage_path
+    
+    # 2. 推算縮圖路徑
+    # 邏輯跟上傳時一樣: 原路徑_thumb.jpg
+    thumb_path = f"{os.path.splitext(original_path)[0]}_thumb.jpg"
+    
+    # 3. 檢查縮圖是否存在
+    if os.path.exists(thumb_path):
+        return FileResponse(thumb_path, media_type="image/jpeg")
+    else:
+        # 如果沒有縮圖 (例如非圖片檔，或舊檔案)，就回傳原圖，或回傳一個預設圖
+        # 這裡我們先簡單回傳原圖
+        return FileResponse(original_path, media_type=asset.file_type)

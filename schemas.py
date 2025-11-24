@@ -27,7 +27,10 @@ class AssetOut(BaseModel):
     filename: str
     file_type: Optional[str] = None
     latest_version_id: Optional[int] = None
-
+    
+    download_url: Optional[str] = None
+    thumbnail_url: Optional[str] = None
+    
     # [魔法發生處] 這裡的變數名稱必須跟 models.py 裡的 relationship 名稱一樣
     latest_version: Optional[VersionOut] = None
     uploader: Optional[UserOut] = None
@@ -107,17 +110,3 @@ class TagOut(BaseModel):
     class Config:
         from_attributes = True
         
-class AssetOut(BaseModel):
-    asset_id: int
-    filename: str
-    file_type: Optional[str] = None
-    latest_version_id: Optional[int] = None
-    
-    # [新增] 這一行
-    download_url: Optional[str] = None
-
-    latest_version: Optional[VersionOut] = None
-    uploader: Optional[UserOut] = None
-
-    class Config:
-        from_attributes = True
