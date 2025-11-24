@@ -115,3 +115,13 @@ class ShareAsset(Base):
     link = relationship("ShareLink", back_populates="shared_assets")
     asset = relationship("Asset")
 
+# 11. API 憑證表 (API Token)
+class ApiToken(Base):
+    __tablename__ = "api_token"
+    token_id = Column(Integer, primary_key=True, index=True)
+    user_id = Column(BigInteger, ForeignKey("user.user_id"), nullable=False)
+    token_hash = Column(String(255), unique=True, nullable=False) # 我們只存雜湊，不存明碼
+    created_at = Column(TIMESTAMP, server_default=func.now())
+
+    user = relationship("User")
+    

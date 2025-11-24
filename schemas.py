@@ -60,3 +60,9 @@ class ShareLinkOut(BaseModel):
     expires_at: datetime
     permission_type: str
     full_url: str  # 我們會幫忙組合成完整的 http://... 網址方便複製
+    
+# [新增] 建立 API Token 的回傳 (包含明碼 Token，只顯示一次)
+class ApiTokenOut(BaseModel):
+    token_id: int
+    raw_token: str  # 這是給使用者複製的明碼 (例如 sk_abc123...)
+    created_at: datetime
