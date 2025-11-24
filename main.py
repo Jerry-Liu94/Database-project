@@ -844,3 +844,97 @@ def export_audit_logs(
         media_type="text/csv",
         headers={"Content-Disposition": f"attachment; filename={filename}"}
     )
+    
+# [新增] API: 批次上傳 (FR-2.2)
+# 允許一次上傳多個檔案，並回傳成功建立的資產列表
+@app.post("/assets/batch", response_model=List[schemas.AssetOut])
+def create_batch_assets(
+    files: List[UploadFile] = File(...), # 注意這裡變成 List 了
+    current_user: models.User = Depends(require_permission("asset", "upload")),
+    db: Session = Depends(get_db)
+):
+    success_assets = []
+    upload_dir = "uploads"
+    if not os.path.exists(upload_dir):
+        os.makedirs(upload_dir)
+
+    for file in files:
+        try:
+            # 1. 準備檔名
+            timestamp = datetime.now().strftime("%Y%m%d%H%M%S")
+            # 為了避免檔名衝突，加個隨機亂數或是利用 index，這裡簡單用 timestamp
+            # 實務上可能需要更精細的命名，但在這裡只要不重複就好
+            safe_filename = f"{timestamp}_{secrets.token_hex(4)}_{file.filename}" 
+            file_location = f"{upload_dir}/{safe_filename}"
+            
+            # 2. 寫入硬碟
+            with open(file_location, "wb") as buffer:
+                shutil.copyfileobj(file.file, buffer)
+            file_size = os.path.getsize(file_location)
+
+            # 3. 處理縮圖與解析度 (複製之前的邏輯)
+            resolution = "Unknown"
+            thumb_location = f"{os.path.splitext(file_location)[0]}_thumb.jpg"
+            if file.content_type and file.content_type.startswith("image/"):
+                try:
+                    with Image.open(file_location) as img:
+                        resolution = f"{img.size[0]}x{img.size[1]}"
+                        img.thumbnail((300, 300))
+                        if img.mode in ("RGBA", "P"):
+                            img = img.convert("RGB")
+                        img.save(thumb_location, "JPEG")
+                except Exception:
+                    pass
+
+            # 4. 寫入資料庫 (Asset -> Version -> Metadata)
+            new_asset = models.Asset(
+                filename=file.filename,
+                file_type=file.content_type,
+                uploaded_by_user_id=current_user.user_id,
+                latest_version_id=None
+            )
+            db.add(new_asset)
+            db.flush()
+
+            new_version = models.Version(
+                asset_id=new_asset.asset_id,
+                version_number=1,
+                storage_path=file_location
+            )
+            db.add(new_version)
+            db.flush()
+
+            new_metadata = models.Metadata(
+                asset_id=new_asset.asset_id,
+                filesize=file_size,
+                resolution=resolution,
+                encoding_format=file.content_type.split("/")[-1] if file.content_type else "bin"
+            )
+            db.add(new_metadata)
+
+            new_asset.latest_version_id = new_version.version_id
+            
+            # 5. 寫入日誌 (Batch Upload)
+            new_log = models.AuditLog(
+                user_id=current_user.user_id,
+                asset_id=new_asset.asset_id,
+                action_type="BATCH_UPLOAD"
+            )
+            db.add(new_log)
+            
+            db.commit()
+            db.refresh(new_asset)
+            
+            # 補上連結屬性以便 Schema 讀取
+            new_asset.download_url = f"http://127.0.0.1:8000/assets/{new_asset.asset_id}/download"
+            new_asset.thumbnail_url = f"http://127.0.0.1:8000/assets/{new_asset.asset_id}/thumbnail"
+            
+            success_assets.append(new_asset)
+
+        except Exception as e:
+            # 批次上傳中，如果單一檔案失敗，我們先印出錯誤，讓其他檔案繼續傳
+            print(f"File {file.filename} failed: {e}")
+            db.rollback()
+            continue
+
+    return success_assets
