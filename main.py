@@ -263,3 +263,83 @@ def create_user(user: schemas.UserCreate, db: Session = Depends(get_db)):
     db.commit()
     db.refresh(new_user)
     return new_user
+
+# main.py (加在最下面)
+
+# [新增] 上傳新版本 API (對應 FR-4.2 資產版本控管)
+@app.post("/assets/{asset_id}/versions", response_model=schemas.AssetOut)
+def create_asset_version(
+    asset_id: int,
+    file: UploadFile = File(...),
+    # 權限檢查: 必須要有 "upload" 權限才能更新版本
+    current_user: models.User = Depends(require_permission("asset", "upload")),
+    db: Session = Depends(get_db)
+):
+    # 1. 檢查資產是否存在
+    asset = db.query(models.Asset).filter(models.Asset.asset_id == asset_id).first()
+    if not asset:
+        raise HTTPException(status_code=404, detail="找不到該資產")
+
+    # 2. 處理檔案儲存 (模擬 NoSQL/S3)
+    upload_dir = "uploads"
+    # 為了不覆蓋舊檔，我們在檔名加上時間戳記
+    timestamp = datetime.now().strftime("%Y%m%d%H%M%S")
+    file_location = f"{upload_dir}/{timestamp}_vNew_{file.filename}"
+    
+    with open(file_location, "wb") as buffer:
+        shutil.copyfileobj(file.file, buffer)
+    
+    # 取得新檔案大小
+    file_size = os.path.getsize(file_location)
+    
+    # (選擇性) 解析新圖片解析度 (複製之前的 Pillow 邏輯)
+    resolution = "Unknown"
+    if file.content_type and file.content_type.startswith("image/"):
+        try:
+            with Image.open(file_location) as img:
+                resolution = f"{img.size[0]}x{img.size[1]}"
+        except Exception:
+            pass
+
+    try:
+        # 3. 計算新版號 (找出目前最新版號 + 1)
+        # 如果 latest_version 是 None (理論上不該發生)，就從 0 開始
+        current_version_num = asset.latest_version.version_number if asset.latest_version else 0
+        new_version_num = current_version_num + 1
+
+        # 4. 建立新 Version 記錄
+        new_version = models.Version(
+            asset_id=asset.asset_id,
+            version_number=new_version_num,
+            storage_path=file_location
+        )
+        db.add(new_version)
+        db.flush() # 先執行以取得 new_version.version_id
+
+        # 5. [關鍵] 更新 Asset 的 latest_version_id 指向新版本
+        asset.latest_version_id = new_version.version_id
+        
+        # 6. 更新 Metadata (因為 Metadata 是跟著 Asset 的最新狀態)
+        if asset.metadata_info:
+             asset.metadata_info.filesize = file_size
+             asset.metadata_info.resolution = resolution
+             asset.metadata_info.encoding_format = file.content_type.split("/")[-1] if file.content_type else "bin"
+        
+        # 7. 寫入稽核日誌 (Audit Log)
+        new_log = models.AuditLog(
+            user_id=current_user.user_id,
+            asset_id=asset.asset_id,
+            action_type=f"UPDATE_VERSION_v{new_version_num}" # 記錄變成了 v2, v3...
+        )
+        db.add(new_log)
+
+        db.commit()
+        db.refresh(asset)
+        return asset
+
+    except Exception as e:
+        db.rollback()
+        # 出錯時記得刪除剛剛存的實體檔案，避免變成垃圾
+        if os.path.exists(file_location):
+            os.remove(file_location)
+        raise HTTPException(status_code=500, detail=f"版本更新失敗: {str(e)}")
