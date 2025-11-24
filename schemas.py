@@ -123,3 +123,10 @@ class CategoryOut(BaseModel):
 
     class Config:
         from_attributes = True
+        
+# schemas.py (加在最下面)
+
+# [新增] 影像處理的請求格式
+class ImageProcessRequest(BaseModel):
+    operation: str  # 例如: "grayscale", "rotate", "resize", "blur"
+    params: Optional[dict] = {} # 額外參數，例如 {"angle": 90} 或 {"width": 800}

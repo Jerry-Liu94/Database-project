@@ -11,7 +11,7 @@ import os          # <--- 處理路徑
 from datetime import datetime, timedelta  # <--- 記得加上逗號和 timedelta
 from jose import JWTError, jwt
 import security # 匯入寫的 security.py
-from PIL import Image  # <--- 新增這個，用來處理圖片
+from PIL import Image, ImageFilter  # <--- 新增這個，用來處理圖片
 import uuid  # <--- 用來產生亂碼 Token
 import secrets # <--- 用來產生安全亂碼
 import zipfile
@@ -1084,3 +1084,118 @@ def get_mfa_qr_image(
 
     # 5. 回傳圖片流
     return StreamingResponse(buf, media_type="image/png")
+
+# [新增] API: 影像編輯 (FR-5.3) -> 自動產生新版本
+@app.post("/assets/{asset_id}/process", response_model=schemas.AssetOut)
+def process_image_asset(
+    asset_id: int,
+    request: schemas.ImageProcessRequest,
+    current_user: models.User = Depends(require_permission("asset", "upload")), # 需要上傳權限
+    db: Session = Depends(get_db)
+):
+    # 1. 找資產與最新版本
+    asset = db.query(models.Asset).filter(models.Asset.asset_id == asset_id).first()
+    if not asset or not asset.latest_version:
+        raise HTTPException(status_code=404, detail="資產不存在或無檔案")
+
+    # 確保是圖片
+    if not asset.file_type or not asset.file_type.startswith("image/"):
+        raise HTTPException(status_code=400, detail="此功能僅支援圖片")
+
+    # 2. 準備新檔案路徑
+    original_path = asset.latest_version.storage_path
+    if not os.path.exists(original_path):
+        raise HTTPException(status_code=404, detail="原始檔案遺失")
+
+    upload_dir = "uploads"
+    timestamp = datetime.now().strftime("%Y%m%d%H%M%S")
+    # 檔名加上操作後綴，例如 _grayscale.jpg
+    new_filename = f"{timestamp}_{request.operation}_{asset.filename}"
+    new_file_path = f"{upload_dir}/{new_filename}"
+
+    # 3. 開始影像處理 (使用 Pillow)
+    try:
+        with Image.open(original_path) as img:
+            processed_img = img.copy() # 複製一份，不要改到原圖
+
+            # --- 編輯邏輯區 ---
+            if request.operation == "grayscale":
+                # 轉黑白 (L mode)
+                processed_img = processed_img.convert("L")
+            
+            elif request.operation == "rotate":
+                # 旋轉 (預設 90 度)
+                angle = request.params.get("angle", 90)
+                processed_img = processed_img.rotate(-angle, expand=True)
+            
+            elif request.operation == "resize":
+                # 縮放 (需要 width, height)
+                w = request.params.get("width")
+                h = request.params.get("height")
+                if w and h:
+                    processed_img = processed_img.resize((int(w), int(h)))
+            
+            elif request.operation == "blur":
+                # 模糊
+                processed_img = processed_img.filter(ImageFilter.BLUR)
+            
+            else:
+                raise HTTPException(status_code=400, detail="不支援的操作")
+            
+            # 存檔
+            # 如果轉成了黑白(L)或RGBA，存JPG可能會報錯，統一轉RGB
+            if processed_img.mode != "RGB":
+                processed_img = processed_img.convert("RGB")
+            processed_img.save(new_file_path, "JPEG") # 統一存成 JPG 簡化處理
+            
+            # 取得新解析度
+            new_resolution = f"{processed_img.size[0]}x{processed_img.size[1]}"
+            new_filesize = os.path.getsize(new_file_path)
+
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"影像處理失敗: {str(e)}")
+
+    # 4. 寫入資料庫 (建立新 Version)
+    try:
+        # 計算新版號
+        current_version_num = asset.latest_version.version_number
+        new_version_num = current_version_num + 1
+
+        new_version = models.Version(
+            asset_id=asset.asset_id,
+            version_number=new_version_num,
+            storage_path=new_file_path
+        )
+        db.add(new_version)
+        db.flush()
+
+        # 更新 Asset 指標
+        asset.latest_version_id = new_version.version_id
+        
+        # 更新 Metadata
+        if asset.metadata_info:
+             asset.metadata_info.filesize = new_filesize
+             asset.metadata_info.resolution = new_resolution
+        
+        # 寫入稽核
+        new_log = models.AuditLog(
+            user_id=current_user.user_id,
+            asset_id=asset.asset_id,
+            action_type=f"EDIT_IMAGE_{request.operation.upper()}"
+        )
+        db.add(new_log)
+
+        db.commit()
+        db.refresh(asset)
+        
+        # 補上連結屬性
+        asset.download_url = f"http://127.0.0.1:8000/assets/{asset.asset_id}/download"
+        asset.thumbnail_url = f"http://127.0.0.1:8000/assets/{asset.asset_id}/thumbnail"
+        
+        return asset
+
+    except Exception as e:
+        db.rollback()
+        if os.path.exists(new_file_path):
+            os.remove(new_file_path)
+        raise HTTPException(status_code=500, detail=f"資料庫寫入失敗: {str(e)}")
