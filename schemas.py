@@ -75,3 +75,21 @@ class ExportJobOut(BaseModel):
     created_at: datetime
     # 下載連結 (完成後才有)
     download_url: Optional[str] = None
+    
+# [新增] 建立留言的輸入格式
+class CommentCreate(BaseModel):
+    content: str
+    target_info: Optional[str] = None # 選填 (例如: "01:30" 或 "rect:10,10,50,50")
+
+# [新增] 顯示留言的輸出格式
+class CommentOut(BaseModel):
+    comment_id: int
+    user_id: int
+    content: str
+    target_info: Optional[str] = None
+    
+    # 為了顯示方便，我們通常會想知道是誰留的言 (Email)
+    user_email: Optional[str] = None 
+
+    class Config:
+        from_attributes = True

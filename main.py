@@ -646,3 +646,60 @@ def download_export_file(
         media_type="application/zip",
         content_disposition_type="attachment"
     )
+    
+# [新增] API 1: 新增留言 (FR-4.1)
+@app.post("/assets/{asset_id}/comments", response_model=schemas.CommentOut)
+def create_comment(
+    asset_id: int,
+    comment_data: schemas.CommentCreate,
+    current_user: models.User = Depends(get_current_user), # 需要登入
+    db: Session = Depends(get_db)
+):
+    # 1. 確認資產存在
+    asset = db.query(models.Asset).filter(models.Asset.asset_id == asset_id).first()
+    if not asset:
+        raise HTTPException(status_code=404, detail="找不到該資產")
+
+    # 2. 建立留言
+    new_comment = models.Comment(
+        asset_id=asset.asset_id,
+        user_id=current_user.user_id,
+        content=comment_data.content,
+        target_info=comment_data.target_info
+    )
+    db.add(new_comment)
+    db.commit()
+    db.refresh(new_comment)
+
+    # 3. 回傳資料 (手動補上 user_email 方便前端顯示)
+    return schemas.CommentOut(
+        comment_id=new_comment.comment_id,
+        user_id=new_comment.user_id,
+        content=new_comment.content,
+        target_info=new_comment.target_info,
+        user_email=current_user.email
+    )
+
+# [新增] API 2: 讀取留言列表 (FR-4.1)
+@app.get("/assets/{asset_id}/comments", response_model=List[schemas.CommentOut])
+def read_comments(
+    asset_id: int,
+    db: Session = Depends(get_db)
+):
+    # 1. 查詢該資產的所有留言
+    comments = db.query(models.Comment).filter(models.Comment.asset_id == asset_id).all()
+    
+    # 2. 轉換格式 (補上 user_email)
+    results = []
+    for c in comments:
+        # 透過 relationship 取得 email
+        email = c.user.email if c.user else "Unknown"
+        results.append(schemas.CommentOut(
+            comment_id=c.comment_id,
+            user_id=c.user_id,
+            content=c.content,
+            target_info=c.target_info,
+            user_email=email
+        ))
+        
+    return results
