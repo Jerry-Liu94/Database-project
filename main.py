@@ -316,25 +316,31 @@ def login_for_access_token(form_data: OAuth2PasswordRequestForm = Depends(), db:
 
 # [修改] 搜尋資產 API (對應 FR-3.1)
 # 支援網址參數: ?filename=xxx&file_type=yyy
+# [修改] 搜尋資產 API (支援 檔名、類型、標籤)
 @app.get("/assets/", response_model=List[schemas.AssetOut])
 def read_assets(
-    filename: Optional[str] = None,   # 搜尋關鍵字
-    file_type: Optional[str] = None,  # 篩選檔案類型
+    filename: Optional[str] = None,
+    file_type: Optional[str] = None,
+    tag: Optional[str] = None,
     db: Session = Depends(get_db)
 ):
-    # 1. 建立基礎查詢 (SELECT * FROM asset)
     query = db.query(models.Asset)
     
-    # 2. 如果有給檔名，就用模糊搜尋 (SQL: LIKE %name%)
+    # 搜尋邏輯 (保持不變)
     if filename:
         query = query.filter(models.Asset.filename.like(f"%{filename}%"))
-        
-    # 3. 如果有給類型，就精確搜尋 (SQL: WHERE file_type = '...')
     if file_type:
         query = query.filter(models.Asset.file_type == file_type)
+    if tag:
+        query = query.join(models.AssetTag).join(models.Tag).filter(models.Tag.tag_name == tag)
         
-    # 4. 執行查詢並回傳
     assets = query.all()
+
+    # [新增] 幫每個資產加上下載連結
+    # 因為 SQLAlchemy 物件是可變的，我們直接掛一個屬性上去，Pydantic 就會讀到了
+    for asset in assets:
+        asset.download_url = f"http://127.0.0.1:8000/assets/{asset.asset_id}/download"
+        
     return assets
 
 # [新增] 註冊新帳號 API (對應 FR-1.1)
@@ -703,3 +709,62 @@ def read_comments(
         ))
         
     return results
+
+# [新增] API 1: 幫資產貼標籤 (FR-3.3)
+@app.post("/assets/{asset_id}/tags", response_model=schemas.TagOut)
+def add_tag_to_asset(
+    asset_id: int,
+    tag_data: schemas.TagCreate,
+    current_user: models.User = Depends(require_permission("asset", "upload")), # 假設要有上傳權限才能改標籤
+    db: Session = Depends(get_db)
+):
+    # 1. 確認資產存在
+    asset = db.query(models.Asset).filter(models.Asset.asset_id == asset_id).first()
+    if not asset:
+        raise HTTPException(status_code=404, detail="找不到該資產")
+
+    # 2. 檢查標籤是否存在 (Find or Create)
+    # 我們先用標籤名去查，如果有就用舊的，沒有就建新的
+    tag = db.query(models.Tag).filter(models.Tag.tag_name == tag_data.tag_name).first()
+    
+    if not tag:
+        # 標籤不存在，建立新標籤
+        tag = models.Tag(tag_name=tag_data.tag_name, is_ai_suggested=False)
+        db.add(tag)
+        db.flush() # 取得 tag_id
+    
+    # 3. 建立關聯 (Asset - Tag)
+    # 先檢查是否已經貼過這個標籤了，避免重複錯誤
+    existing_link = db.query(models.AssetTag).filter(
+        models.AssetTag.asset_id == asset_id,
+        models.AssetTag.tag_id == tag.tag_id
+    ).first()
+
+    if not existing_link:
+        new_asset_tag = models.AssetTag(asset_id=asset_id, tag_id=tag.tag_id)
+        db.add(new_asset_tag)
+        db.commit()
+    
+    return tag
+
+# [新增] API 2: 查詢某資產的所有標籤
+@app.get("/assets/{asset_id}/tags", response_model=List[schemas.TagOut])
+def read_asset_tags(
+    asset_id: int,
+    db: Session = Depends(get_db)
+):
+    # 1. 確認資產存在
+    asset = db.query(models.Asset).filter(models.Asset.asset_id == asset_id).first()
+    if not asset:
+        raise HTTPException(status_code=404, detail="找不到該資產")
+
+    # 2. 查詢關聯的標籤
+    # 這裡使用 SQLAlchemy 的 join 查詢：AssetTag -> Tag
+    tags = db.query(models.Tag).join(models.AssetTag).filter(models.AssetTag.asset_id == asset_id).all()
+    
+    return tags
+
+# [新增] API 3: 列出系統所有標籤 (方便前端做自動補全)
+@app.get("/tags", response_model=List[schemas.TagOut])
+def read_all_tags(db: Session = Depends(get_db)):
+    return db.query(models.Tag).all()

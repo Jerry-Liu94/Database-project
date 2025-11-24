@@ -93,3 +93,31 @@ class CommentOut(BaseModel):
 
     class Config:
         from_attributes = True
+        
+# [新增] 標籤的輸入 (貼標籤時只要給名字)
+class TagCreate(BaseModel):
+    tag_name: str
+
+# [新增] 標籤的輸出 (顯示詳細資訊)
+class TagOut(BaseModel):
+    tag_id: int
+    tag_name: str
+    is_ai_suggested: bool
+
+    class Config:
+        from_attributes = True
+        
+class AssetOut(BaseModel):
+    asset_id: int
+    filename: str
+    file_type: Optional[str] = None
+    latest_version_id: Optional[int] = None
+    
+    # [新增] 這一行
+    download_url: Optional[str] = None
+
+    latest_version: Optional[VersionOut] = None
+    uploader: Optional[UserOut] = None
+
+    class Config:
+        from_attributes = True
