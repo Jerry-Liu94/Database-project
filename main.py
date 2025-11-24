@@ -937,4 +937,73 @@ def create_batch_assets(
             db.rollback()
             continue
 
-    return success_assets
+# [新增] API: 建立新分類 (FR-3.2)
+@app.post("/categories/", response_model=schemas.CategoryOut)
+def create_category(
+    category_data: schemas.CategoryCreate,
+    current_user: models.User = Depends(require_permission("asset", "upload")),
+    db: Session = Depends(get_db)
+):
+    # [修正點] 處理 parent_category_id
+    # 如果前端傳來 0 (有些前端預設值是0)，我們把它轉成 None，代表這是頂層分類
+    parent_id = category_data.parent_category_id
+    if parent_id == 0:
+        parent_id = None
+
+    # 1. 檢查父分類是否存在 (如果有填且不為0)
+    if parent_id:
+        parent = db.query(models.Category).filter(models.Category.category_id == parent_id).first()
+        if not parent:
+            raise HTTPException(status_code=404, detail="指定的父分類不存在")
+
+    # 2. 建立分類
+    new_category = models.Category(
+        category_name=category_data.category_name,
+        parent_category_id=parent_id  # <--- 使用處理過的變數
+    )
+    db.add(new_category)
+    db.commit()
+    db.refresh(new_category)
+    return new_category
+
+# [新增] API: 取得所有分類列表
+@app.get("/categories/", response_model=List[schemas.CategoryOut])
+def read_categories(db: Session = Depends(get_db)):
+    return db.query(models.Category).all()
+
+# [新增] API: 將資產加入分類 (多對多關聯)
+@app.post("/assets/{asset_id}/categories", response_model=schemas.CategoryOut)
+def add_asset_to_category(
+    asset_id: int,
+    category_id: int, # 透過 Query Parameter 傳入: ?category_id=1
+    current_user: models.User = Depends(require_permission("asset", "upload")),
+    db: Session = Depends(get_db)
+):
+    # 1. 檢查資產與分類是否存在
+    asset = db.query(models.Asset).filter(models.Asset.asset_id == asset_id).first()
+    category = db.query(models.Category).filter(models.Category.category_id == category_id).first()
+    
+    if not asset or not category:
+        raise HTTPException(status_code=404, detail="資產或分類不存在")
+
+    # 2. 檢查是否已經加入過
+    exists = db.query(models.AssetCategory).filter(
+        models.AssetCategory.asset_id == asset_id,
+        models.AssetCategory.category_id == category_id
+    ).first()
+    
+    if not exists:
+        link = models.AssetCategory(asset_id=asset_id, category_id=category_id)
+        db.add(link)
+        db.commit()
+    
+    return category
+
+# [新增] API: 查看某資產屬於哪些分類
+@app.get("/assets/{asset_id}/categories", response_model=List[schemas.CategoryOut])
+def read_asset_categories(asset_id: int, db: Session = Depends(get_db)):
+    # 透過 Join 查詢 AssetCategory -> Category
+    categories = db.query(models.Category).join(models.AssetCategory).filter(
+        models.AssetCategory.asset_id == asset_id
+    ).all()
+    return categories

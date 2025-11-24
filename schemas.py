@@ -110,3 +110,16 @@ class TagOut(BaseModel):
     class Config:
         from_attributes = True
         
+# [新增] 建立分類的輸入
+class CategoryCreate(BaseModel):
+    category_name: str
+    parent_category_id: Optional[int] = None # 如果不填，代表是頂層分類
+
+# [新增] 分類的輸出
+class CategoryOut(BaseModel):
+    category_id: int
+    category_name: str
+    parent_category_id: Optional[int] = None
+
+    class Config:
+        from_attributes = True
