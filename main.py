@@ -1,4 +1,4 @@
-from fastapi import FastAPI, Depends, HTTPException, File, UploadFile, Form, Security
+from fastapi import FastAPI, Depends, HTTPException, File, UploadFile, Security, BackgroundTasks
 from fastapi.security import OAuth2PasswordBearer, OAuth2PasswordRequestForm, APIKeyHeader
 from fastapi.responses import FileResponse
 from sqlalchemy.orm import Session
@@ -14,7 +14,64 @@ import security # 匯入寫的 security.py
 from PIL import Image  # <--- 新增這個，用來處理圖片
 import uuid  # <--- 用來產生亂碼 Token
 import secrets # <--- 用來產生安全亂碼
+import zipfile
+import json
 
+# [新增] 後台任務：執行打包
+def process_export_job(job_id: int, db: Session):
+    # 1. 重新查詢 Job (因為是在背景執行，要確保連線最新)
+    job = db.query(models.ExportJob).filter(models.ExportJob.job_id == job_id).first()
+    if not job:
+        return
+
+    try:
+        # 更新狀態: Running
+        job.status = "running"
+        db.commit()
+
+        # 2. 準備壓縮檔路徑
+        export_dir = "exports"
+        if not os.path.exists(export_dir):
+            os.makedirs(export_dir)
+        
+        zip_filename = f"export_{job_id}_{datetime.now().strftime('%Y%m%d%H%M%S')}.zip"
+        zip_filepath = f"{export_dir}/{zip_filename}"
+
+        # 3. 找出該使用者的所有資產 (這裡簡化為匯出該使用者全部上傳的)
+        assets = db.query(models.Asset).filter(models.Asset.uploaded_by_user_id == job.user_id).all()
+        
+        manifest_data = [] # 用來產生 JSON 清單 [cite: 256]
+
+        # 4. 開始壓縮
+        with zipfile.ZipFile(zip_filepath, 'w', zipfile.ZIP_DEFLATED) as zipf:
+            for asset in assets:
+                # 只匯出有最新版本的
+                if asset.latest_version and os.path.exists(asset.latest_version.storage_path):
+                    # 把實體檔案加入 ZIP
+                    # arcname 是在 zip 裡面的檔名，我們用 "ID_檔名" 避免重複
+                    file_name_in_zip = f"{asset.asset_id}_{asset.filename}"
+                    zipf.write(asset.latest_version.storage_path, arcname=file_name_in_zip)
+                    
+                    # 加入清單資料
+                    manifest_data.append({
+                        "asset_id": asset.asset_id,
+                        "filename": asset.filename,
+                        "file_type": asset.file_type,
+                        "original_path": file_name_in_zip
+                    })
+
+            # 5. 加入 manifest.json (需求要求的清單)
+            zipf.writestr("manifest.json", json.dumps(manifest_data, ensure_ascii=False, indent=2))
+
+        # 6. 更新狀態: Completed
+        job.status = "completed"
+        job.file_path = zip_filepath
+        db.commit()
+
+    except Exception as e:
+        print(f"Export failed: {e}")
+        job.status = "failed"
+        db.commit()
 
 # 定義 API Token 應該放在 Header 的哪個欄位 (例如 X-API-TOKEN)
 api_key_header = APIKeyHeader(name="X-API-TOKEN", auto_error=False)
@@ -517,3 +574,75 @@ def revoke_api_token(
     db.delete(token_record)
     db.commit()
     return {"message": "Token 已撤銷"}
+
+# [新增] API 1: 觸發匯出任務 (POST) FR-7.2
+@app.post("/export/", response_model=schemas.ExportJobOut)
+def create_export_job(
+    background_tasks: BackgroundTasks, # FastAPI 的魔法參數
+    current_user: models.User = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    # 1. 建立任務紀錄 (Pending)
+    new_job = models.ExportJob(
+        user_id=current_user.user_id,
+        status="pending"
+    )
+    db.add(new_job)
+    db.commit()
+    db.refresh(new_job)
+
+    # 2. 丟給後台去跑 (不會卡住使用者的瀏覽器)
+    background_tasks.add_task(process_export_job, new_job.job_id, db)
+
+    return {
+        "job_id": new_job.job_id,
+        "status": new_job.status,
+        "created_at": new_job.created_at,
+        "download_url": None
+    }
+
+# [新增] API 2: 查詢任務狀態與下載連結 (GET)
+@app.get("/export/{job_id}", response_model=schemas.ExportJobOut)
+def get_export_job(
+    job_id: int,
+    current_user: models.User = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    job = db.query(models.ExportJob).filter(
+        models.ExportJob.job_id == job_id,
+        models.ExportJob.user_id == current_user.user_id
+    ).first()
+
+    if not job:
+        raise HTTPException(status_code=404, detail="任務不存在")
+
+    download_url = None
+    if job.status == "completed":
+        # 產生下載連結
+        download_url = f"http://127.0.0.1:8000/export/{job_id}/download"
+
+    return {
+        "job_id": job.job_id,
+        "status": job.status,
+        "created_at": job.created_at,
+        "download_url": download_url
+    }
+
+# [新增] API 3: 下載打包好的檔案 (GET)
+@app.get("/export/{job_id}/download")
+def download_export_file(
+    job_id: int,
+    db: Session = Depends(get_db)
+):
+    # 這裡為了方便測試，暫時不檢查權限 (或你可以加上 token 驗證)
+    job = db.query(models.ExportJob).filter(models.ExportJob.job_id == job_id).first()
+    
+    if not job or job.status != "completed" or not job.file_path or not os.path.exists(job.file_path):
+        raise HTTPException(status_code=404, detail="檔案未準備好或已遺失")
+
+    return FileResponse(
+        path=job.file_path,
+        filename=os.path.basename(job.file_path),
+        media_type="application/zip",
+        content_disposition_type="attachment"
+    )

@@ -125,3 +125,15 @@ class ApiToken(Base):
 
     user = relationship("User")
     
+# models.py (加在最下面)
+
+# 12. 匯出任務表 (Export Job)
+class ExportJob(Base):
+    __tablename__ = "export_job"
+    job_id = Column(Integer, primary_key=True, index=True)
+    user_id = Column(BigInteger, ForeignKey("user.user_id"), nullable=False)
+    status = Column(String(50), nullable=False) # pending, running, completed, failed
+    file_path = Column(String(1024), nullable=True) # 壓縮檔的路徑
+    created_at = Column(TIMESTAMP, server_default=func.now())
+
+    user = relationship("User")

@@ -66,3 +66,12 @@ class ApiTokenOut(BaseModel):
     token_id: int
     raw_token: str  # 這是給使用者複製的明碼 (例如 sk_abc123...)
     created_at: datetime
+    
+
+# [新增] 匯出任務的狀態回傳
+class ExportJobOut(BaseModel):
+    job_id: int
+    status: str
+    created_at: datetime
+    # 下載連結 (完成後才有)
+    download_url: Optional[str] = None
