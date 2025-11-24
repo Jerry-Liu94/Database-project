@@ -3,6 +3,7 @@ from sqlalchemy import Column, Integer, String, Boolean, ForeignKey, BigInteger,
 from sqlalchemy.orm import relationship
 from sqlalchemy.sql import func
 from database import Base
+from sqlalchemy.orm import relationship, backref
 
 # 1. 新增: 權限表 (Permission)
 class Permission(Base):
@@ -137,3 +138,44 @@ class ExportJob(Base):
     created_at = Column(TIMESTAMP, server_default=func.now())
 
     user = relationship("User")
+    
+# 13. 分類表 (Category) [cite: 119]
+class Category(Base):
+    __tablename__ = "category"
+    category_id = Column(Integer, primary_key=True, index=True)
+    category_name = Column(String(100), nullable=False)
+    parent_category_id = Column(Integer, ForeignKey("category.category_id"), nullable=True)
+
+    # 自我關聯 (父分類/子分類)
+    children = relationship("Category", backref=backref('parent', remote_side=[category_id]))
+
+# 14. 資產分類關聯表 (Asset_Category) [cite: 129]
+class AssetCategory(Base):
+    __tablename__ = "asset_category"
+    asset_id = Column(BigInteger, ForeignKey("asset.asset_id"), primary_key=True)
+    category_id = Column(Integer, ForeignKey("category.category_id"), primary_key=True)
+
+# 15. 標籤表 (Tag) [cite: 141]
+class Tag(Base):
+    __tablename__ = "tag"
+    tag_id = Column(Integer, primary_key=True, index=True)
+    tag_name = Column(String(50), unique=True, nullable=False)
+    is_ai_suggested = Column(Boolean, default=False)
+
+# 16. 資產標籤關聯表 (Asset_Tag) [cite: 147]
+class AssetTag(Base):
+    __tablename__ = "asset_tag"
+    asset_id = Column(BigInteger, ForeignKey("asset.asset_id"), primary_key=True)
+    tag_id = Column(Integer, ForeignKey("tag.tag_id"), primary_key=True)
+
+# 17. 註解/留言表 (Comment) [cite: 159]
+class Comment(Base):
+    __tablename__ = "comment"
+    comment_id = Column(BigInteger, primary_key=True, index=True)
+    asset_id = Column(BigInteger, ForeignKey("asset.asset_id"), nullable=False)
+    user_id = Column(BigInteger, ForeignKey("user.user_id"), nullable=False)
+    content = Column(Text, nullable=False)
+    target_info = Column(String(255), nullable=True) # 用於標記影片時間軸或圖片區域
+
+    user = relationship("User")
+    asset = relationship("Asset")
