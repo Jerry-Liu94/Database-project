@@ -1,6 +1,6 @@
 from fastapi import FastAPI, Depends, HTTPException, File, UploadFile, Security, BackgroundTasks
 from fastapi.security import OAuth2PasswordBearer, OAuth2PasswordRequestForm, APIKeyHeader
-from fastapi.responses import FileResponse
+from fastapi.responses import FileResponse, StreamingResponse
 from sqlalchemy.orm import Session
 from typing import List, Optional
 from database import get_db
@@ -16,6 +16,8 @@ import uuid  # <--- 用來產生亂碼 Token
 import secrets # <--- 用來產生安全亂碼
 import zipfile
 import json
+import csv
+import io
 
 # [新增] 後台任務：執行打包
 def process_export_job(job_id: int, db: Session):
@@ -795,3 +797,50 @@ def get_asset_thumbnail(asset_id: int, db: Session = Depends(get_db)):
         # 如果沒有縮圖 (例如非圖片檔，或舊檔案)，就回傳原圖，或回傳一個預設圖
         # 這裡我們先簡單回傳原圖
         return FileResponse(original_path, media_type=asset.file_type)
+    
+# [新增] API: 匯出稽核日誌為 CSV (FR-6.2)
+@app.get("/admin/audit-logs/export")
+def export_audit_logs(
+    current_user: models.User = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    # 1. 權限檢查 (只有 Role ID = 1 的 Admin 能匯出)
+    # 注意: 這裡假設 1 是 Admin，實務上最好查 Role 表
+    if current_user.role_id != 1:
+        raise HTTPException(status_code=403, detail="權限不足: 僅限管理員使用")
+
+    # 2. 查詢最近 180 天的日誌 (FR-6.2 需求) [cite: 256]
+    limit_date = datetime.utcnow() - timedelta(days=180)
+    logs = db.query(models.AuditLog).filter(
+        models.AuditLog.action_timestamp >= limit_date
+    ).order_by(models.AuditLog.action_timestamp.desc()).all()
+
+    # 3. 建立 CSV 緩衝區 (在記憶體中寫入，不存硬碟)
+    output = io.StringIO()
+    writer = csv.writer(output)
+    
+    # 寫入表頭 (Header)
+    writer.writerow(["Log ID", "User ID", "Asset ID", "Action", "Timestamp", "Is Tampered"])
+    
+    # 寫入資料列 (Rows)
+    for log in logs:
+        writer.writerow([
+            log.log_id,
+            log.user_id,
+            log.asset_id,
+            log.action_type,
+            log.action_timestamp.strftime("%Y-%m-%d %H:%M:%S"),
+            log.is_tampered
+        ])
+    
+    # 將游標移回開頭，準備讀取
+    output.seek(0)
+    
+    # 4. 回傳串流回應 (瀏覽器會把它當成檔案下載)
+    filename = f"audit_logs_{datetime.now().strftime('%Y%m%d')}.csv"
+    
+    return StreamingResponse(
+        io.BytesIO(output.getvalue().encode("utf-8-sig")), # utf-8-sig 可讓 Excel 正確顯示中文
+        media_type="text/csv",
+        headers={"Content-Disposition": f"attachment; filename={filename}"}
+    )
