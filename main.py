@@ -12,6 +12,8 @@ from datetime import datetime, timedelta  # <--- 記得加上逗號和 timedelta
 from jose import JWTError, jwt
 import security # 匯入寫的 security.py
 from PIL import Image  # <--- 新增這個，用來處理圖片
+import uuid  # <--- 用來產生亂碼 Token
+
 
 app = FastAPI(title="RedAnt DAM System API")
 
@@ -343,3 +345,89 @@ def create_asset_version(
         if os.path.exists(file_location):
             os.remove(file_location)
         raise HTTPException(status_code=500, detail=f"版本更新失敗: {str(e)}")
+    
+    # [新增] API 1: 產生分享連結 (FR-5.2)
+@app.post("/assets/{asset_id}/share", response_model=schemas.ShareLinkOut)
+def create_share_link(
+    asset_id: int,
+    link_data: schemas.ShareLinkCreate,
+    current_user: models.User = Depends(require_permission("asset", "view")), # 只要有 view 權限就能分享
+    db: Session = Depends(get_db)
+):
+    # 1. 確認資產存在
+    asset = db.query(models.Asset).filter(models.Asset.asset_id == asset_id).first()
+    if not asset:
+        raise HTTPException(status_code=404, detail="找不到該資產")
+
+    # 2. 產生亂碼 Token (使用 UUID)
+    token = str(uuid.uuid4())
+
+    # 3. 計算過期時間
+    expires_at = datetime.utcnow() + timedelta(minutes=link_data.expires_in_minutes)
+
+    # 4. 寫入 ShareLink 表
+    new_link = models.ShareLink(
+        token=token,
+        created_by_user_id=current_user.user_id,
+        expires_at=expires_at,
+        permission_type=link_data.permission_type
+    )
+    db.add(new_link)
+    db.flush() # 取得 link_id
+
+    # 5. 寫入 ShareAsset 關聯表
+    new_share_asset = models.ShareAsset(
+        link_id=new_link.link_id,
+        asset_id=asset.asset_id
+    )
+    db.add(new_share_asset)
+    
+    db.commit()
+
+    # 6. 回傳結果 (組裝成完整網址)
+    return {
+        "token": token,
+        "expires_at": expires_at,
+        "permission_type": new_link.permission_type,
+        "full_url": f"http://127.0.0.1:8000/share/{token}"
+    }
+
+# [新增] API 2: 公開存取分享連結 (不需要登入!)
+@app.get("/share/{token}")
+def access_share_link(token: str, db: Session = Depends(get_db)):
+    # 1. 找連結
+    share_link = db.query(models.ShareLink).filter(models.ShareLink.token == token).first()
+    
+    if not share_link:
+        raise HTTPException(status_code=404, detail="連結無效或不存在")
+
+    # 2. 檢查過期
+    if share_link.expires_at < datetime.utcnow():
+        raise HTTPException(status_code=410, detail="此連結已過期")
+
+    # 3. 找出對應的資產 (假設一個連結只對應一個資產)
+    # 雖然 DB 設計是多對多，但為了簡化，我們先抓第一筆
+    share_asset_record = db.query(models.ShareAsset).filter(models.ShareAsset.link_id == share_link.link_id).first()
+    
+    if not share_asset_record:
+        raise HTTPException(status_code=404, detail="連結未關聯任何資產")
+        
+    asset = share_asset_record.asset
+    
+    # 4. 確保資產有實體檔案
+    if not asset.latest_version:
+         raise HTTPException(status_code=404, detail="檔案遺失")
+         
+    version = asset.latest_version
+    
+    # 5. 根據權限決定行為
+    # 如果是 'downloadable' -> attachment (下載)
+    # 如果是 'readonly' -> inline (預覽)
+    disposition = "attachment" if share_link.permission_type == "downloadable" else "inline"
+
+    return FileResponse(
+        path=version.storage_path,
+        filename=asset.filename,
+        media_type=asset.file_type,
+        content_disposition_type=disposition
+    )

@@ -48,3 +48,15 @@ class TokenData(BaseModel):
 class UserCreate(BaseModel):
     email: str
     password: str
+    
+# [新增] 建立分享連結的請求格式
+class ShareLinkCreate(BaseModel):
+    expires_in_minutes: int = 60       # 預設 60 分鐘後過期
+    permission_type: str = "readonly"  # readonly 或 downloadable
+
+# [新增] 回傳給前端的連結資訊
+class ShareLinkOut(BaseModel):
+    token: str
+    expires_at: datetime
+    permission_type: str
+    full_url: str  # 我們會幫忙組合成完整的 http://... 網址方便複製

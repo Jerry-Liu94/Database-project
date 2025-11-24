@@ -91,3 +91,27 @@ class AuditLog(Base):
     action_type = Column(String(100), nullable=False) # 例如: "UPLOAD", "DOWNLOAD", "DELETE"
     action_timestamp = Column(TIMESTAMP, server_default=func.now())
     is_tampered = Column(Boolean, default=False)
+    
+# models.py (加在最下面)
+
+# 9. 分享連結主表 (Share Link)
+class ShareLink(Base):
+    __tablename__ = "share_link"
+    link_id = Column(BigInteger, primary_key=True, index=True)
+    token = Column(String(100), unique=True, nullable=False, index=True)
+    created_by_user_id = Column(BigInteger, ForeignKey("user.user_id"), nullable=False)
+    expires_at = Column(TIMESTAMP, nullable=True)
+    permission_type = Column(String(50), nullable=False) # 'readonly' 或 'downloadable'
+
+    # 關聯
+    shared_assets = relationship("ShareAsset", back_populates="link")
+
+# 10. 分享連結與資產關聯表 (Share Asset - Many to Many)
+class ShareAsset(Base):
+    __tablename__ = "share_asset"
+    link_id = Column(BigInteger, ForeignKey("share_link.link_id"), primary_key=True)
+    asset_id = Column(BigInteger, ForeignKey("asset.asset_id"), primary_key=True)
+
+    link = relationship("ShareLink", back_populates="shared_assets")
+    asset = relationship("Asset")
+
