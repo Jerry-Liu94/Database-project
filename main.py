@@ -20,6 +20,10 @@ import csv
 import io
 import pyotp # <--- 用來處理 Google Authenticator
 import qrcode
+import smtplib
+from email.mime.text import MIMEText
+from email.header import Header
+import hashlib # <--- 用來做 SHA-256 雜湊
 
 # [新增] 後台任務：執行打包
 def process_export_job(job_id: int, db: Session):
@@ -1199,3 +1203,111 @@ def process_image_asset(
         if os.path.exists(new_file_path):
             os.remove(new_file_path)
         raise HTTPException(status_code=500, detail=f"資料庫寫入失敗: {str(e)}")
+    
+# [修改] 寄信工具函式
+def send_reset_email(to_email: str, reset_link: str):
+    subject = "【RedAnt】密碼重設請求"
+    body = f"""
+    您好，
+    
+    我們收到了您的密碼重設請求。請點擊下方連結重設您的密碼：
+    
+    {reset_link}
+    
+    此連結將在 30 分鐘後失效。如果您沒有要求重設密碼，請忽略此信。
+    """
+    
+    msg = MIMEText(body, 'plain', 'utf-8')
+    msg['Subject'] = Header(subject, 'utf-8')
+    # 使用你的網域作為寄件人 (看起來更專業)
+    msg['From'] = "no-reply@indiechild.xyz" 
+    msg['To'] = to_email
+
+    try:
+        # 連線到本機 Postfix
+        smtp = smtplib.SMTP('localhost', 25)
+        smtp.send_message(msg)
+        smtp.quit()
+        print(f"信件已發送至 {to_email}")
+    except Exception as e:
+        print(f"寄信失敗: {e}")
+        
+# [修改] API 1: 請求重設密碼 (正規 SHA-256 雜湊版)
+@app.post("/auth/password-reset/request")
+def request_password_reset(
+    request: schemas.PasswordResetRequest,
+    db: Session = Depends(get_db)
+):
+    # 1. 檢查 Email
+    user = db.query(models.User).filter(models.User.email == request.email).first()
+    if not user:
+        return {"message": "如果此 Email 存在，我們將發送重設信件"}
+
+    # 2. 產生原始 Token (給使用者用的)
+    raw_token = secrets.token_urlsafe(32)
+    
+    # 3. [正規做法] 計算 SHA-256 雜湊 (存資料庫用的)
+    # 這樣資料庫管理員也看不到真實 Token
+    token_hash = hashlib.sha256(raw_token.encode()).hexdigest()
+
+    expires_at = datetime.utcnow() + timedelta(minutes=30)
+
+    # 4. 存入資料庫 (存雜湊值)
+    reset_token = models.PasswordResetToken(
+        user_id=user.user_id,
+        token_hash=token_hash, # <--- 存雜湊
+        expires_at=expires_at
+    )
+    db.add(reset_token)
+    db.commit()
+
+    # 5. 寄信 (寄原始 Token)
+    # 這裡使用你的網域 IP 或域名
+    # 注意：這通常是前端頁面的網址，這裡我們假設前端也是這個 IP
+    reset_link = f"http://indiechild.xyz:8000/reset-password?token={raw_token}"
+    
+    # 呼叫寄信函式
+    send_reset_email(user.email, reset_link)
+
+    return {"message": "重設信件已發送"}
+
+# [修改] API 2: 執行密碼重設 (驗證雜湊)
+@app.post("/auth/password-reset/confirm")
+def confirm_password_reset(
+    data: schemas.PasswordResetConfirm,
+    db: Session = Depends(get_db)
+):
+    # 1. [正規做法] 將使用者傳來的 Token 進行同樣的雜湊
+    input_hash = hashlib.sha256(data.token.encode()).hexdigest()
+
+    # 2. 用雜湊值去資料庫查詢
+    token_record = db.query(models.PasswordResetToken).filter(
+        models.PasswordResetToken.token_hash == input_hash
+    ).first()
+
+    if not token_record:
+        raise HTTPException(status_code=400, detail="無效的 Token")
+        
+    if token_record.expires_at < datetime.utcnow():
+        raise HTTPException(status_code=400, detail="Token 已過期")
+
+    # 3. 找到使用者並更新密碼
+    user = db.query(models.User).filter(models.User.user_id == token_record.user_id).first()
+    if not user:
+        raise HTTPException(status_code=404, detail="使用者不存在")
+        
+    # 密碼加密 (這部分維持 bcrypt 不變)
+    user.password_hash = security.get_password_hash(data.new_password)
+    
+    # 4. 刪除 Token (一次性使用)
+    db.delete(token_record)
+    
+    # 5. 寫入稽核
+    new_log = models.AuditLog(
+        user_id=user.user_id,
+        action_type="PASSWORD_RESET"
+    )
+    db.add(new_log)
+    
+    db.commit()
+    return {"message": "密碼重設成功，請使用新密碼登入"}

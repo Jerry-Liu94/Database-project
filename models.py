@@ -179,3 +179,14 @@ class Comment(Base):
 
     user = relationship("User")
     asset = relationship("Asset")
+    
+# 18. 密碼重設 Token 表 (Password Reset Token) 
+class PasswordResetToken(Base):
+    __tablename__ = "password_reset_token"
+    token_id = Column(Integer, primary_key=True, index=True)
+    user_id = Column(BigInteger, ForeignKey("user.user_id"), nullable=False)
+    token_hash = Column(String(255), unique=True, nullable=False)
+    expires_at = Column(TIMESTAMP, nullable=False)
+
+    user = relationship("User")
+    

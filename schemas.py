@@ -130,3 +130,12 @@ class CategoryOut(BaseModel):
 class ImageProcessRequest(BaseModel):
     operation: str  # 例如: "grayscale", "rotate", "resize", "blur"
     params: Optional[dict] = {} # 額外參數，例如 {"angle": 90} 或 {"width": 800}
+    
+# [新增] 請求重設密碼 (輸入 Email)
+class PasswordResetRequest(BaseModel):
+    email: str
+
+# [新增] 執行重設密碼 (輸入 Token + 新密碼)
+class PasswordResetConfirm(BaseModel):
+    token: str
+    new_password: str
