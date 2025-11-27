@@ -18,3 +18,5 @@ source venv\bin\activate
 離開
 
 deactivate
+
+網站:http://127.0.0.1:8000/docs
