@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Dashboard Scrollable</title>
+    <title>Dashboard Unified Gray</title>
     <style>
         /* 引入系統字體 */
         * {
@@ -11,6 +11,7 @@
             padding: 0;
             box-sizing: border-box;
             font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", "Segoe UI", Roboto, "Helvetica Neue", Arial, "Microsoft JhengHei", sans-serif;
+            -webkit-tap-highlight-color: transparent;
         }
 
         body {
@@ -21,7 +22,7 @@
             background-color: #000;
         }
 
-        /* --- Header --- */
+        /* --- Header (保持不變) --- */
         header {
             background-color: #000; 
             height: 100px; 
@@ -81,16 +82,18 @@
         .main-container {
             display: flex;
             flex: 1;
-            height: calc(100vh - 72px);
+            height: calc(100vh - 100px);
         }
 
         /* --- Sidebar --- */
         aside {
             width: 260px;
+            /* 這是您指定的基礎灰色 */
             background-color: rgba(193, 193, 193, 1);
             display: flex;
             flex-direction: column;
             flex-shrink: 0;
+            /* 這是您指定的線條灰色，將會統一使用這個顏色 */
             border-right: 1px solid rgba(142, 142, 142, 1);
             overflow-y: auto;
         }
@@ -98,8 +101,9 @@
         .menu-item {
             padding: 16px 24px;
             font-size: 1.1rem;
-            color: #444;
+            color: #444; /* 統一文字深灰 */
             cursor: pointer;
+            /* 統一邊框顏色 */
             border-bottom: 1px solid rgba(142, 142, 142, 1);
             display: flex;
             justify-content: space-between;
@@ -121,27 +125,26 @@
             transition: transform 0.3s ease;
         }
 
-        /* 下拉選單 */
         .submenu-container {
             max-height: 0;
             overflow: hidden;
             transition: max-height 0.4s ease-out;
-            background-color: rgba(180, 180, 180, 1);
+            background-color: rgba(180, 180, 180, 1); /* 保持這個稍深的層次感 */
         }
 
         .submenu-item {
             padding: 12px 24px 12px 40px;
             font-size: 1rem;
-            color: #555;
+            color: #555; /* 統一文字顏色 */
             cursor: pointer;
-            border-bottom: 1px solid rgba(160, 160, 160, 1);
+            /* 修改：原本是 rgba(160...)，現在統一改為 142 */
+            border-bottom: 1px solid rgba(142, 142, 142, 1);
             transition: background-color 0.2s;
         }
 
         .submenu-item:hover { background-color: rgba(255, 255, 255, 0.3); color: #000; }
         .menu-item.active .chevron-icon-img { transform: rotate(180deg); }
 
-        /* 標籤區域 */
         .tags-section { padding: 20px 24px; }
         .tags-title { color: #666; font-size: 1.1rem; margin-bottom: 16px; font-weight: 600; }
         .tags-container { display: flex; flex-wrap: wrap; gap: 10px; }
@@ -152,7 +155,8 @@
             border-radius: 20px;
             font-size: 0.85rem;
             color: #333;
-            border: 1px solid #ccc;
+            /* 修改：原本是 #ccc，現在統一改為 142 */
+            border: 1px solid rgba(142, 142, 142, 1);
             cursor: pointer;
             font-weight: 500;
             box-shadow: 0 2px 4px rgba(0,0,0,0.1);
@@ -161,13 +165,13 @@
         .tag-pill:hover { transform: translateY(-1px); box-shadow: 0 4px 6px rgba(0,0,0,0.15); }
         .tag-pill:active { transform: translateY(1px); box-shadow: 0 1px 2px rgba(0,0,0,0.1); }
 
-        /* --- Main Content --- */
+        /* --- Main Content (保持不變) --- */
         main {
             flex: 1;
             background-color: rgba(7, 35, 125, 1);
             padding: 30px 40px;
-            overflow-y: auto; /* 整個右側內容區的垂直捲動 */
-            overflow-x: hidden; /* 防止整個頁面橫向捲動 */
+            overflow-y: auto;
+            overflow-x: hidden;
         }
 
         .section-header {
@@ -178,7 +182,6 @@
             letter-spacing: 1px;
         }
 
-        /* --- 橫向捲動區塊設定 (重點修改) --- */
         .content-row {
             background-color: rgba(255, 255, 255, 0.25); 
             border-radius: 12px;
@@ -186,41 +189,18 @@
             margin-bottom: 30px;
             display: flex;
             align-items: center;
-            height: 220px; /* 稍微加高一點以容納捲軸 */
-            
-            /* 開啟橫向捲動 */
+            height: 220px; 
             overflow-x: auto; 
             overflow-y: hidden;
-            
-            /* 設定卡片間距 */
             gap: 20px;
-            
-            /* 讓捲動順暢 */
             scroll-behavior: smooth;
         }
 
-        /* 自定義捲軸樣式 (Chrome/Safari/Edge) */
-        .content-row::-webkit-scrollbar {
-            height: 8px; /* 橫向捲軸的高度 */
-        }
-        
-        .content-row::-webkit-scrollbar-track {
-            background: rgba(0, 0, 0, 0.1); /* 捲軸軌道顏色 */
-            border-radius: 10px;
-            margin: 0 10px;
-        }
+        .content-row::-webkit-scrollbar { height: 8px; }
+        .content-row::-webkit-scrollbar-track { background: rgba(0, 0, 0, 0.1); border-radius: 10px; margin: 0 10px; }
+        .content-row::-webkit-scrollbar-thumb { background-color: rgba(255, 255, 255, 0.4); border-radius: 10px; border: 1px solid rgba(255,255,255,0.1); }
+        .content-row::-webkit-scrollbar-thumb:hover { background-color: rgba(255, 255, 255, 0.7); }
 
-        .content-row::-webkit-scrollbar-thumb {
-            background-color: rgba(255, 255, 255, 0.4); /* 捲軸本體顏色 */
-            border-radius: 10px;
-            border: 1px solid rgba(255,255,255,0.1);
-        }
-
-        .content-row::-webkit-scrollbar-thumb:hover {
-            background-color: rgba(255, 255, 255, 0.7);
-        }
-
-        /* 卡片樣式 */
         .card {
             background-color: #fff;
             width: 150px;
@@ -232,31 +212,120 @@
             flex-direction: column;
             justify-content: space-between;
             box-shadow: 0 4px 10px rgba(0,0,0,0.15);
-            
-            /* 重點：防止卡片被壓縮 */
             flex-shrink: 0; 
-            
             transition: transform 0.2s;
             cursor: pointer;
         }
+        .card:hover { transform: scale(1.03); }
+        .card-title { color: #777; font-size: 1.1rem; font-weight: 600; text-align: center; margin-top: 35px; }
+        .card-version { color: #999; align-self: flex-end; font-weight: 700; font-size: 1.2rem; }
 
-        .card:hover {
-            transform: scale(1.03);
+        /* ========================================= */
+        /* --- 彈跳視窗 (Modal) --- */
+        /* ========================================= */
+        
+        .modal-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0, 0, 0, 0.4);
+            backdrop-filter: blur(5px);
+            z-index: 1000;
+            display: none; 
+            justify-content: center;
+            align-items: center;
+            animation: fadeInOverlay 0.3s ease-out;
         }
 
-        .card-title {
-            color: #777;
+        .modal-box {
+            background-color: #fff;
+            width: 700px;
+            height: 500px;
+            border-radius: 20px;
+            padding: 30px;
+            display: flex;
+            flex-direction: column;
+            box-shadow: 0 20px 50px rgba(0,0,0,0.3);
+            animation: modalPop 0.4s cubic-bezier(0.16, 1, 0.3, 1);
+        }
+
+        @keyframes modalPop {
+            0% { opacity: 0; transform: scale(0.9) translateY(20px); }
+            100% { opacity: 1; transform: scale(1) translateY(0); }
+        }
+
+        @keyframes fadeInOverlay {
+            from { opacity: 0; }
+            to { opacity: 1; }
+        }
+
+        .drop-zone {
+            flex: 1;
+            /* 修改：原本是 #ECECEC，現在調整為稍微溫暖一點的淺灰，與側邊欄更協調 */
+            background-color: rgba(235, 235, 235, 1); 
+            /* 修改：原本是 #A0A0A0，現在統一改為 142 */
+            border: 3px dashed rgba(142, 142, 142, 1);
+            border-radius: 16px;
+            margin-bottom: 30px;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+        }
+
+        .folder-icon {
+            width: 70px;
+            height: 70px;
+            object-fit: contain;
+            opacity: 0.6;
+            margin-bottom: 15px;
+        }
+
+        .drop-text {
+            font-size: 1.2rem;
+            font-weight: 600;
+            /* 修改：原本是 #888，現在改深一點以配合整體 */
+            color: #666;
+            letter-spacing: 1px;
+        }
+
+        .modal-buttons {
+            display: flex;
+            justify-content: center;
+            gap: 40px;
+        }
+
+        .btn-modal {
+            padding: 12px 60px;
+            border-radius: 12px;
+            border: none;
             font-size: 1.1rem;
             font-weight: 600;
-            text-align: center;
-            margin-top: 35px; 
+            cursor: pointer;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+            transition: all 0.2s cubic-bezier(0.25, 0.8, 0.25, 1);
         }
 
-        .card-version {
-            color: #999;
-            align-self: flex-end;
-            font-weight: 700;
-            font-size: 1.2rem;
+        .btn-modal:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 15px rgba(0,0,0,0.15);
+        }
+
+        .btn-modal:active {
+            transform: scale(0.96) translateY(0);
+            box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+        }
+
+        .btn-upload {
+            background-color: #D2E3FC; 
+            color: #333;
+        }
+
+        .btn-cancel {
+            background-color: #F9E8BD;
+            color: #333;
         }
 
     </style>
@@ -276,7 +345,7 @@
         </div>
 
         <div class="header-icons">
-            <img src="./image/add_white.png" alt="Add" class="icon-btn-img">
+            <img src="./image/add_white.png" alt="Add" class="icon-btn-img" id="add-btn">
             <img src="./image/reminder_white.png" alt="Notification" class="icon-btn-img">
             <img src="./image/person_white.png" alt="User" class="icon-btn-img">
         </div>
@@ -312,140 +381,85 @@
         <main>
             <div class="section-header">#白襪體育生</div>
             <div class="content-row">
-                <div class="card">
-                    <div class="card-title">弗力熊熊</div>
-                    <div class="card-version">v.2</div>
-                </div>
-                <div class="card">
-                    <div class="card-title">新卡片 A</div>
-                    <div class="card-version">v.1</div>
-                </div>
-                <div class="card">
-                    <div class="card-title">新卡片 B</div>
-                    <div class="card-version">v.3</div>
-                </div>
-                <div class="card">
-                    <div class="card-title">新卡片 C</div>
-                    <div class="card-version">v.1</div>
-                </div>
-                <div class="card">
-                    <div class="card-title">新卡片 D</div>
-                    <div class="card-version">v.5</div>
-                </div>
-                <div class="card">
-                    <div class="card-title">新卡片 E</div>
-                    <div class="card-version">v.2</div>
-                </div>
-                <div class="card">
-                    <div class="card-title">新卡片 E</div>
-                    <div class="card-version">v.2</div>
-                </div>
-                <div class="card">
-                    <div class="card-title">新卡片 E</div>
-                    <div class="card-version">v.2</div>
-                </div>
-                <div class="card">
-                    <div class="card-title">新卡片 E</div>
-                    <div class="card-version">v.2</div>
-                </div>
+                <div class="card"><div class="card-title">弗力熊熊</div><div class="card-version">v.2</div></div>
+                <div class="card"><div class="card-title">新卡片 A</div><div class="card-version">v.1</div></div>
+                <div class="card"><div class="card-title">新卡片 B</div><div class="card-version">v.3</div></div>
+                <div class="card"><div class="card-title">新卡片 C</div><div class="card-version">v.1</div></div>
+                <div class="card"><div class="card-title">新卡片 D</div><div class="card-version">v.5</div></div>
+                <div class="card"><div class="card-title">新卡片 E</div><div class="card-version">v.2</div></div>
+                <div class="card"><div class="card-title">新卡片 E</div><div class="card-version">v.2</div></div>
             </div>
 
             <div class="section-header">#痘痘那個</div>
             <div class="content-row">
-                <div class="card">
-                    <div class="card-title">鬼話紅蟻</div>
-                    <div class="card-version">v.1</div>
-                </div>
-                <div class="card">
-                    <div class="card-title">測試資料</div>
-                    <div class="card-version">v.2</div>
-                </div>
-                <div class="card">
-                    <div class="card-title">測試資料</div>
-                    <div class="card-version">v.2</div>
-                </div>
-                <div class="card">
-                    <div class="card-title">測試資料</div>
-                    <div class="card-version">v.2</div>
-                </div>
-                <div class="card">
-                    <div class="card-title">測試資料</div>
-                    <div class="card-version">v.2</div>
-                </div>
-                <div class="card">
-                    <div class="card-title">測試資料</div>
-                    <div class="card-version">v.2</div>
-                </div>
-                <div class="card">
-                    <div class="card-title">測試資料</div>
-                    <div class="card-version">v.2</div>
-                </div>
-                <div class="card">
-                    <div class="card-title">測試資料</div>
-                    <div class="card-version">v.2</div>
-                </div>
-                <div class="card">
-                    <div class="card-title">測試資料</div>
-                    <div class="card-version">v.2</div>
-                </div>
+                <div class="card"><div class="card-title">鬼話紅蟻</div><div class="card-version">v.1</div></div>
+                <div class="card"><div class="card-title">測試資料</div><div class="card-version">v.2</div></div>
+                <div class="card"><div class="card-title">測試資料</div><div class="card-version">v.2</div></div>
+                <div class="card"><div class="card-title">測試資料</div><div class="card-version">v.2</div></div>
+                <div class="card"><div class="card-title">測試資料</div><div class="card-version">v.2</div></div>
+                <div class="card"><div class="card-title">測試資料</div><div class="card-version">v.2</div></div>
+                <div class="card"><div class="card-title">測試資料</div><div class="card-version">v.2</div></div>
             </div>
 
-            <div class="section-header">#痘痘那個</div>
+            <div class="section-header">#測試資料</div>
             <div class="content-row">
-                <div class="card">
-                    <div class="card-title">鬼話紅蟻</div>
-                    <div class="card-version">v.1</div>
-                </div>
-                <div class="card">
-                    <div class="card-title">測試資料</div>
-                    <div class="card-version">v.2</div>
-                </div>
-                <div class="card">
-                    <div class="card-title">測試資料</div>
-                    <div class="card-version">v.2</div>
-                </div>
-                <div class="card">
-                    <div class="card-title">測試資料</div>
-                    <div class="card-version">v.2</div>
-                </div>
-                <div class="card">
-                    <div class="card-title">測試資料</div>
-                    <div class="card-version">v.2</div>
-                </div>
-                <div class="card">
-                    <div class="card-title">測試資料</div>
-                    <div class="card-version">v.2</div>
-                </div>
-                <div class="card">
-                    <div class="card-title">測試資料</div>
-                    <div class="card-version">v.2</div>
-                </div>
-                <div class="card">
-                    <div class="card-title">測試資料</div>
-                    <div class="card-version">v.2</div>
-                </div>
-                <div class="card">
-                    <div class="card-title">測試資料</div>
-                    <div class="card-version">v.2</div>
-                </div>
+                <div class="card"><div class="card-title">鬼話紅蟻</div><div class="card-version">v.1</div></div>
+                <div class="card"><div class="card-title">測試資料</div><div class="card-version">v.2</div></div>
+                <div class="card"><div class="card-title">測試資料</div><div class="card-version">v.2</div></div>
+                <div class="card"><div class="card-title">測試資料</div><div class="card-version">v.2</div></div>
+                <div class="card"><div class="card-title">測試資料</div><div class="card-version">v.2</div></div>
+                <div class="card"><div class="card-title">測試資料</div><div class="card-version">v.2</div></div>
+                <div class="card"><div class="card-title">測試資料</div><div class="card-version">v.2</div></div>
             </div>
         </main>
     </div>
 
+    <div class="modal-overlay" id="upload-modal">
+        <div class="modal-box">
+            <div class="drop-zone">
+                <img src="./image/folder_icon.png" alt="Folder" class="folder-icon">
+                <div class="drop-text">拖曳檔案至此</div>
+            </div>
+            
+            <div class="modal-buttons">
+                <button class="btn-modal btn-upload">上傳</button>
+                <button class="btn-modal btn-cancel" id="close-modal-btn">取消</button>
+            </div>
+        </div>
+    </div>
+
     <script>
+        // --- Sidebar Logic ---
         function toggleCategory() {
             const submenu = document.getElementById('category-submenu');
             const chevron = document.getElementById('category-chevron');
             const menuItem = chevron.parentElement;
-
             menuItem.classList.toggle('active');
-
             if (submenu.style.maxHeight) {
                 submenu.style.maxHeight = null;
             } else {
                 submenu.style.maxHeight = submenu.scrollHeight + "px";
             }
         }
+
+        // --- Modal Logic ---
+        const addBtn = document.getElementById('add-btn');
+        const modal = document.getElementById('upload-modal');
+        const closeBtn = document.getElementById('close-modal-btn');
+
+        addBtn.addEventListener('click', function() {
+            modal.style.display = 'flex';
+        });
+
+        closeBtn.addEventListener('click', function() {
+            modal.style.display = 'none';
+        });
+
+        modal.addEventListener('click', function(e) {
+            if (e.target === modal) {
+                modal.style.display = 'none';
+            }
+        });
     </script>
 
 </body>
