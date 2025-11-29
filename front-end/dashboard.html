@@ -1,0 +1,452 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dashboard Scrollable</title>
+    <style>
+        /* 引入系統字體 */
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", "Segoe UI", Roboto, "Helvetica Neue", Arial, "Microsoft JhengHei", sans-serif;
+        }
+
+        body {
+            height: 100vh;
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+            background-color: #000;
+        }
+
+        /* --- Header --- */
+        header {
+            background-color: #000; 
+            height: 72px; 
+            display: flex;
+            align-items: center;
+            padding: 0 24px;
+            justify-content: space-between;
+            color: white;
+            flex-shrink: 0;
+        }
+
+        .logo-area { display: flex; align-items: center; }
+        .logo-img { height: 50px; width: auto; object-fit: contain; cursor: pointer; }
+
+        .search-area {
+            flex-grow: 1;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            margin: 0 20px;
+        }
+
+        .search-container {
+            position: relative;
+            display: flex;
+            align-items: center;
+            width: 100%;
+            max-width: 520px;
+        }
+
+        .search-input {
+            width: 100%;
+            padding: 12px 20px;
+            padding-right: 50px; 
+            border-radius: 12px;
+            border: none;
+            outline: none;
+            font-size: 1rem;
+            height: 44px;
+            background-color: #fff;
+            color: #333;
+        }
+
+        .search-icon-img {
+            position: absolute;
+            right: -40px; 
+            width: 20px;
+            height: 20px;
+            cursor: pointer;
+            object-fit: contain; 
+        }
+
+        .header-icons { display: flex; gap: 24px; align-items: center; }
+        .icon-btn-img { width: 24px; height: 24px; cursor: pointer; object-fit: contain; display: block; }
+
+        /* --- Main Layout --- */
+        .main-container {
+            display: flex;
+            flex: 1;
+            height: calc(100vh - 72px);
+        }
+
+        /* --- Sidebar --- */
+        aside {
+            width: 260px;
+            background-color: rgba(193, 193, 193, 1);
+            display: flex;
+            flex-direction: column;
+            flex-shrink: 0;
+            border-right: 1px solid rgba(142, 142, 142, 1);
+            overflow-y: auto;
+        }
+
+        .menu-item {
+            padding: 16px 24px;
+            font-size: 1.1rem;
+            color: #444;
+            cursor: pointer;
+            border-bottom: 1px solid rgba(142, 142, 142, 1);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            font-weight: 600;
+            letter-spacing: 1px;
+            transition: background-color 0.2s;
+        }
+
+        .menu-item:first-child { border-top: 1px solid rgba(142, 142, 142, 1); }
+        .menu-item:hover { background-color: rgba(255, 255, 255, 0.4); color: #000; }
+        .menu-item:active { background-color: rgba(255, 255, 255, 0.6); }
+
+        .chevron-icon-img {
+            width: 14px;
+            height: 14px;
+            object-fit: contain;
+            opacity: 0.6;
+            transition: transform 0.3s ease;
+        }
+
+        /* 下拉選單 */
+        .submenu-container {
+            max-height: 0;
+            overflow: hidden;
+            transition: max-height 0.4s ease-out;
+            background-color: rgba(180, 180, 180, 1);
+        }
+
+        .submenu-item {
+            padding: 12px 24px 12px 40px;
+            font-size: 1rem;
+            color: #555;
+            cursor: pointer;
+            border-bottom: 1px solid rgba(160, 160, 160, 1);
+            transition: background-color 0.2s;
+        }
+
+        .submenu-item:hover { background-color: rgba(255, 255, 255, 0.3); color: #000; }
+        .menu-item.active .chevron-icon-img { transform: rotate(180deg); }
+
+        /* 標籤區域 */
+        .tags-section { padding: 20px 24px; }
+        .tags-title { color: #666; font-size: 1.1rem; margin-bottom: 16px; font-weight: 600; }
+        .tags-container { display: flex; flex-wrap: wrap; gap: 10px; }
+        
+        .tag-pill {
+            background-color: #fff;
+            padding: 6px 16px;
+            border-radius: 20px;
+            font-size: 0.85rem;
+            color: #333;
+            border: 1px solid #ccc;
+            cursor: pointer;
+            font-weight: 500;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            transition: transform 0.1s, box-shadow 0.1s;
+        }
+        .tag-pill:hover { transform: translateY(-1px); box-shadow: 0 4px 6px rgba(0,0,0,0.15); }
+        .tag-pill:active { transform: translateY(1px); box-shadow: 0 1px 2px rgba(0,0,0,0.1); }
+
+        /* --- Main Content --- */
+        main {
+            flex: 1;
+            background-color: rgba(7, 35, 125, 1);
+            padding: 30px 40px;
+            overflow-y: auto; /* 整個右側內容區的垂直捲動 */
+            overflow-x: hidden; /* 防止整個頁面橫向捲動 */
+        }
+
+        .section-header {
+            color: #fff;
+            font-size: 1.25rem;
+            margin-bottom: 12px;
+            font-weight: 700;
+            letter-spacing: 1px;
+        }
+
+        /* --- 橫向捲動區塊設定 (重點修改) --- */
+        .content-row {
+            background-color: rgba(255, 255, 255, 0.25); 
+            border-radius: 12px;
+            padding: 20px;
+            margin-bottom: 30px;
+            display: flex;
+            align-items: center;
+            height: 220px; /* 稍微加高一點以容納捲軸 */
+            
+            /* 開啟橫向捲動 */
+            overflow-x: auto; 
+            overflow-y: hidden;
+            
+            /* 設定卡片間距 */
+            gap: 20px;
+            
+            /* 讓捲動順暢 */
+            scroll-behavior: smooth;
+        }
+
+        /* 自定義捲軸樣式 (Chrome/Safari/Edge) */
+        .content-row::-webkit-scrollbar {
+            height: 8px; /* 橫向捲軸的高度 */
+        }
+        
+        .content-row::-webkit-scrollbar-track {
+            background: rgba(0, 0, 0, 0.1); /* 捲軸軌道顏色 */
+            border-radius: 10px;
+            margin: 0 10px;
+        }
+
+        .content-row::-webkit-scrollbar-thumb {
+            background-color: rgba(255, 255, 255, 0.4); /* 捲軸本體顏色 */
+            border-radius: 10px;
+            border: 1px solid rgba(255,255,255,0.1);
+        }
+
+        .content-row::-webkit-scrollbar-thumb:hover {
+            background-color: rgba(255, 255, 255, 0.7);
+        }
+
+        /* 卡片樣式 */
+        .card {
+            background-color: #fff;
+            width: 150px;
+            height: 150px;
+            border-radius: 16px;
+            padding: 16px;
+            position: relative;
+            display: flex;
+            flex-direction: column;
+            justify-content: space-between;
+            box-shadow: 0 4px 10px rgba(0,0,0,0.15);
+            
+            /* 重點：防止卡片被壓縮 */
+            flex-shrink: 0; 
+            
+            transition: transform 0.2s;
+            cursor: pointer;
+        }
+
+        .card:hover {
+            transform: scale(1.03);
+        }
+
+        .card-title {
+            color: #777;
+            font-size: 1.1rem;
+            font-weight: 600;
+            text-align: center;
+            margin-top: 35px; 
+        }
+
+        .card-version {
+            color: #999;
+            align-self: flex-end;
+            font-weight: 700;
+            font-size: 1.2rem;
+        }
+
+    </style>
+</head>
+<body>
+
+    <header>
+        <div class="logo-area">
+            <img src="./image/logo.png" alt="Logo" class="logo-img">
+        </div>
+        
+        <div class="search-area">
+            <div class="search-container">
+                <input type="text" class="search-input" placeholder="請輸入搜尋項目">
+                <img src="./image/search_white.png" alt="Search" class="search-icon-img">
+            </div>
+        </div>
+
+        <div class="header-icons">
+            <img src="./image/add_white.png" alt="Add" class="icon-btn-img">
+            <img src="./image/reminder_white.png" alt="Notification" class="icon-btn-img">
+            <img src="./image/person_white.png" alt="User" class="icon-btn-img">
+        </div>
+    </header>
+
+    <div class="main-container">
+        <aside>
+            <div class="menu-item">所有資產</div>
+            <div class="menu-item">我的收藏</div>
+            <div class="menu-item" onclick="toggleCategory()">
+                類別
+                <img src="./image/down_gray.png" alt="Down" class="chevron-icon-img" id="category-chevron">
+            </div>
+            <div class="submenu-container" id="category-submenu">
+                <div class="submenu-item">插圖素材</div>
+                <div class="submenu-item">3D 模型</div>
+                <div class="submenu-item">介面設計</div>
+                <div class="submenu-item">攝影作品</div>
+            </div>
+
+            <div class="tags-section">
+                <div class="tags-title">標籤</div>
+                <div class="tags-container">
+                    <span class="tag-pill">#白襪體育生</span>
+                    <span class="tag-pill">#痘痘那個</span>
+                    <span class="tag-pill">#排球少年</span>
+                    <span class="tag-pill">#填寫標籤</span>
+                    <span class="tag-pill">#填寫標籤</span>
+                </div>
+            </div>
+        </aside>
+
+        <main>
+            <div class="section-header">#白襪體育生</div>
+            <div class="content-row">
+                <div class="card">
+                    <div class="card-title">弗力熊熊</div>
+                    <div class="card-version">v.2</div>
+                </div>
+                <div class="card">
+                    <div class="card-title">新卡片 A</div>
+                    <div class="card-version">v.1</div>
+                </div>
+                <div class="card">
+                    <div class="card-title">新卡片 B</div>
+                    <div class="card-version">v.3</div>
+                </div>
+                <div class="card">
+                    <div class="card-title">新卡片 C</div>
+                    <div class="card-version">v.1</div>
+                </div>
+                <div class="card">
+                    <div class="card-title">新卡片 D</div>
+                    <div class="card-version">v.5</div>
+                </div>
+                <div class="card">
+                    <div class="card-title">新卡片 E</div>
+                    <div class="card-version">v.2</div>
+                </div>
+                <div class="card">
+                    <div class="card-title">新卡片 E</div>
+                    <div class="card-version">v.2</div>
+                </div>
+                <div class="card">
+                    <div class="card-title">新卡片 E</div>
+                    <div class="card-version">v.2</div>
+                </div>
+                <div class="card">
+                    <div class="card-title">新卡片 E</div>
+                    <div class="card-version">v.2</div>
+                </div>
+            </div>
+
+            <div class="section-header">#痘痘那個</div>
+            <div class="content-row">
+                <div class="card">
+                    <div class="card-title">鬼話紅蟻</div>
+                    <div class="card-version">v.1</div>
+                </div>
+                <div class="card">
+                    <div class="card-title">測試資料</div>
+                    <div class="card-version">v.2</div>
+                </div>
+                <div class="card">
+                    <div class="card-title">測試資料</div>
+                    <div class="card-version">v.2</div>
+                </div>
+                <div class="card">
+                    <div class="card-title">測試資料</div>
+                    <div class="card-version">v.2</div>
+                </div>
+                <div class="card">
+                    <div class="card-title">測試資料</div>
+                    <div class="card-version">v.2</div>
+                </div>
+                <div class="card">
+                    <div class="card-title">測試資料</div>
+                    <div class="card-version">v.2</div>
+                </div>
+                <div class="card">
+                    <div class="card-title">測試資料</div>
+                    <div class="card-version">v.2</div>
+                </div>
+                <div class="card">
+                    <div class="card-title">測試資料</div>
+                    <div class="card-version">v.2</div>
+                </div>
+                <div class="card">
+                    <div class="card-title">測試資料</div>
+                    <div class="card-version">v.2</div>
+                </div>
+            </div>
+
+            <div class="section-header">#測試資料</div>
+            <div class="content-row">
+                <div class="card">
+                    <div class="card-title">鬼話紅蟻</div>
+                    <div class="card-version">v.1</div>
+                </div>
+                <div class="card">
+                    <div class="card-title">測試資料</div>
+                    <div class="card-version">v.2</div>
+                </div>
+                <div class="card">
+                    <div class="card-title">測試資料</div>
+                    <div class="card-version">v.2</div>
+                </div>
+                <div class="card">
+                    <div class="card-title">測試資料</div>
+                    <div class="card-version">v.2</div>
+                </div>
+                <div class="card">
+                    <div class="card-title">測試資料</div>
+                    <div class="card-version">v.2</div>
+                </div>
+                <div class="card">
+                    <div class="card-title">測試資料</div>
+                    <div class="card-version">v.2</div>
+                </div>
+                <div class="card">
+                    <div class="card-title">測試資料</div>
+                    <div class="card-version">v.2</div>
+                </div>
+                <div class="card">
+                    <div class="card-title">測試資料</div>
+                    <div class="card-version">v.2</div>
+                </div>
+                <div class="card">
+                    <div class="card-title">測試資料</div>
+                    <div class="card-version">v.2</div>
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <script>
+        function toggleCategory() {
+            const submenu = document.getElementById('category-submenu');
+            const chevron = document.getElementById('category-chevron');
+            const menuItem = chevron.parentElement;
+
+            menuItem.classList.toggle('active');
+
+            if (submenu.style.maxHeight) {
+                submenu.style.maxHeight = null;
+            } else {
+                submenu.style.maxHeight = submenu.scrollHeight + "px";
+            }
+        }
+    </script>
+
+</body>
+</html>
