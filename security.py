@@ -9,6 +9,10 @@ SECRET_KEY = os.environ.get("JWT_SECRET_KEY", "secret_key_for_redant_project_dem
 ALGORITHM = "HS256"
 ACCESS_TOKEN_EXPIRE_MINUTES = int(os.environ.get("ACCESS_TOKEN_EXPIRE_MINUTES", "30"))
 
+# 安全性提醒：正式環境請務必設定環境變數
+if not os.environ.get("JWT_SECRET_KEY"):
+    print("⚠️ 警告: JWT_SECRET_KEY 未設定，使用預設值。正式環境請設定環境變數！")
+
 # 2. 設定密碼雜湊工具 (使用 bcrypt)
 pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 

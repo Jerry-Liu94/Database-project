@@ -8,6 +8,7 @@ import models
 import schemas
 import shutil      # <--- 處理檔案複製
 import os          # <--- 處理路徑
+import tempfile    # <--- 用來建立臨時檔案
 from datetime import datetime, timedelta  # <--- 記得加上逗號和 timedelta
 from jose import JWTError, jwt
 import security # 匯入寫的 security.py
@@ -38,6 +39,10 @@ MINIO_ENDPOINT = os.environ.get("MINIO_ENDPOINT", "127.0.0.1:9000")
 MINIO_ACCESS_KEY = os.environ.get("MINIO_ACCESS_KEY", "admin")
 MINIO_SECRET_KEY = os.environ.get("MINIO_SECRET_KEY", "password123")
 MINIO_BUCKET_NAME = os.environ.get("MINIO_BUCKET_NAME", "redant-assets")
+
+# 安全性提醒：正式環境請務必設定環境變數
+if not os.environ.get("MINIO_SECRET_KEY"):
+    print("⚠️ 警告: MINIO_SECRET_KEY 未設定，使用預設值。正式環境請設定環境變數！")
 
 # 初始化 Client
 minio_client = Minio(
@@ -80,7 +85,6 @@ def generate_ai_tags(asset_id: int, object_name: str, file_content_bytes: bytes)
         print(f"🤖 AI 開始分析圖片: {object_name}")
         
         # 將圖片資料寫入臨時檔案供 AI 分析使用
-        import tempfile
         with tempfile.NamedTemporaryFile(delete=False, suffix=".jpg") as tmp_file:
             tmp_file.write(file_content_bytes)
             temp_path = tmp_file.name

@@ -9,6 +9,10 @@ SQLALCHEMY_DATABASE_URL = os.environ.get(
     "mysql+pymysql://root:!Qazwsxedc7162@123.195.209.250:33060/redant"
 )
 
+# 安全性提醒：正式環境請務必設定環境變數
+if not os.environ.get("DATABASE_URL"):
+    print("⚠️ 警告: DATABASE_URL 未設定，使用預設值。正式環境請設定環境變數！")
+
 # 建立引擎
 engine = create_engine(SQLALCHEMY_DATABASE_URL)
 
