@@ -1,6 +1,7 @@
 ﻿from fastapi import FastAPI, Depends, HTTPException, File, UploadFile, Security, BackgroundTasks
 from fastapi.security import OAuth2PasswordBearer, OAuth2PasswordRequestForm, APIKeyHeader
 from fastapi.responses import FileResponse, StreamingResponse
+from fastapi.middleware.cors import CORSMiddleware
 from sqlalchemy.orm import Session
 from typing import List, Optional
 from database import get_db, SessionLocal
@@ -29,17 +30,22 @@ from deep_translator import GoogleTranslator
 from fastapi.responses import HTMLResponse
 from minio import Minio # <--- 新增
 from minio.error import S3Error
+import logging
 
-# 1. 各種 import 放在最上面
-from fastapi import FastAPI, Depends
-from fastapi.middleware.cors import CORSMiddleware # <--- 記得 import 這個
+APP_BASE_URL = os.getenv("DOMAIN_HOST", "http://localhost:8000")
 
-# ... (中間可能還有其他函式或變數) ...
+#  設定日誌系統
+logging.basicConfig(
+    level=logging.INFO, # 設定只顯示 INFO 等級以上的訊息
+    format="%(asctime)s [%(levelname)s] %(name)s: %(message)s", # 格式：時間 [等級] 模組: 訊息
+    datefmt="%Y-%m-%d %H:%M:%S"
+)
+logger = logging.getLogger("RedAnt") # 取個帥氣的名字
 
-# 2. 初始化 app (這行一定要在 add_middleware 之前！)
+#  初始化 app (這行一定要在 add_middleware 之前！)
 app = FastAPI(title="RedAnt DAM System API")
 
-# 3. 設定 CORS (這段要放在 app = FastAPI(...) 之後)
+#  設定 CORS (這段要放在 app = FastAPI(...) 之後)
 origins = [
     # 1. 本地開發用 (前端工程師通常用這幾個 Port)
     "http://localhost",
@@ -62,7 +68,6 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# 4. 之後才是你的 @app.get("/") ... 等等路由
 @app.get("/")
 def read_root():
     return {"message": "RedAnt 系統連線成功！"}
@@ -91,12 +96,12 @@ oauth2_scheme = OAuth2PasswordBearer(tokenUrl="token")
 
 # ---  AI 模型初始化 ---
 # 第一次啟動時會自動下載模型 (約 100MB)，請耐心等待
-print("正在載入 AI 模型 (Microsoft ResNet-50)...")
+logger.info("正在載入 AI 模型 (Microsoft ResNet-50)...")
 # 使用 image-classification 任務
 ai_classifier = pipeline("image-classification", model="microsoft/resnet-50")
 
 
-print("AI 模型載入完成！")
+logger.info("AI 模型載入完成！")
 
 def cleanup_files(paths):
     """刪除路徑清單，忽略 None 並在失敗時記錄但不拋出（使用 print 以免新增 logging import）。"""
@@ -108,7 +113,7 @@ def cleanup_files(paths):
                 os.remove(p)
         except Exception as e:
             # 這裡用 print 以避免新增 logging import；在實作上你可以改成 logger.exception
-            print(f"failed to remove file {p}: {e}")
+            logger.error(f"failed to remove file {p}: {e}")
 
 # [修正版] AI 自動標籤 (支援 MinIO 自動下載)
 def generate_ai_tags(asset_id: int, file_path: str):
@@ -117,14 +122,14 @@ def generate_ai_tags(asset_id: int, file_path: str):
     temp_file = None # 用來標記暫存檔
 
     try:
-        print(f"🤖 AI 開始分析圖片: {file_path}")
+        logger.info(f"🤖 AI 開始分析圖片: {file_path}")
         
         # [關鍵修正] 判斷圖片位置
         # 如果 file_path 只是檔名 (例如 "2025...jpg") 且本機找不到，代表它在 MinIO 裡
         target_image = file_path
         
         if not os.path.exists(target_image):
-            print("   📥 正在從 MinIO 下載暫存檔給 AI 分析...")
+            logger.info("   📥 正在從 MinIO 下載暫存檔給 AI 分析...")
             try:
                 # 從 MinIO 下載到暫存檔
                 data = minio_client.get_object(MINIO_BUCKET_NAME, file_path)
@@ -134,7 +139,7 @@ def generate_ai_tags(asset_id: int, file_path: str):
                         f.write(d)
                 target_image = temp_file # 讓 AI 改讀這個暫存檔
             except Exception as e:
-                print(f"   ❌ 無法從 MinIO 讀取檔案 (AI 跳過): {e}")
+                logger.info(f"   ❌ 無法從 MinIO 讀取檔案 (AI 跳過): {e}")
                 return # 讀不到圖就放棄，不影響主程式
 
         # 1. 執行辨識 (使用 target_image)
@@ -149,11 +154,11 @@ def generate_ai_tags(asset_id: int, file_path: str):
             try:
                 translated_text = GoogleTranslator(source='auto', target='zh-TW').translate(raw_label_en)
             except Exception as e:
-                print(f"翻譯失敗: {e}")
+                logger.info(f"翻譯失敗: {e}")
                 translated_text = raw_label_en
 
             final_tag_name = translated_text
-            print(f"   🔍 辨識: {raw_label_en} -> 翻譯: {final_tag_name} ({res['score']:.2f})")
+            logger.info(f"   🔍 辨識: {raw_label_en} -> 翻譯: {final_tag_name} ({res['score']:.2f})")
             
             # 2. 檢查標籤是否存在 (Find or Create)
             tag = db.query(models.Tag).filter(models.Tag.tag_name == final_tag_name).first()
@@ -171,13 +176,13 @@ def generate_ai_tags(asset_id: int, file_path: str):
             if not existing_link:
                 new_link = models.AssetTag(asset_id=asset_id, tag_id=tag.tag_id)
                 db.add(new_link)
-                print(f"   ✅ 加入標籤: {final_tag_name}")
+                logger.info(f"   ✅ 加入標籤: {final_tag_name}")
 
         db.commit()
-        print(f"🤖 AI 分析完成: Asset {asset_id}")
+        logger.info(f"🤖 AI 分析完成: Asset {asset_id}")
 
     except Exception as e:
-        print(f"❌ AI 分析失敗: {e}")
+        logger.info(f"❌ AI 分析失敗: {e}")
     finally:
         # [非常重要] 刪除暫存檔，避免垃圾堆積
         if temp_file and os.path.exists(temp_file):
@@ -239,13 +244,9 @@ def process_export_job(job_id: int, db: Session):
         db.commit()
 
     except Exception as e:
-        print(f"Export failed: {e}")
+        logger.info(f"Export failed: {e}")
         job.status = "failed"
         db.commit()
-
-@app.get("/")
-def read_root():
-    return {"message": "RedAnt 系統連線成功！"}
 
 # 使用 response_model=List[schemas.UserOut] 來過濾密碼
 @app.get("/users/", response_model=List[schemas.UserOut])
@@ -397,7 +398,7 @@ def create_asset(
                         content_type="image/jpeg"
                     )
             except Exception as e:
-                print(f"⚠️ 圖片處理失敗 (可能是非標準格式): {e}")
+                logger.info(f"⚠️ 圖片處理失敗 (可能是非標準格式): {e}")
 
         # 5. [關鍵修正] 使用 fput_object 上傳實體檔案 (效率更高)
         minio_client.fput_object(
@@ -457,7 +458,7 @@ def create_asset(
 
     except Exception as e:
         db.rollback()
-        print(f"❌ 上傳失敗: {e}")
+        logger.error(f"❌ 上傳失敗: {e}", exc_info=True)
         raise HTTPException(status_code=500, detail=f"伺服器錯誤: {str(e)}")
     
     finally:
@@ -579,10 +580,10 @@ def delete_asset(
             thumb_path = f"{os.path.splitext(v.storage_path)[0]}_thumb.jpg"
             minio_client.remove_object(MINIO_BUCKET_NAME, thumb_path)
             
-            print(f"🗑️ 已從 MinIO 刪除: {v.storage_path}")
+            logger.info(f"🗑️ 已從 MinIO 刪除: {v.storage_path}")
         except Exception as e:
             # 刪除檔案失敗不應阻擋資料庫刪除，印出錯誤即可
-            print(f"⚠️ MinIO 刪除失敗 (可能檔案已不存在): {e}")
+            logger.info(f"⚠️ MinIO 刪除失敗 (可能檔案已不存在): {e}")
 
     # 4. 刪除資料庫紀錄
     try:
@@ -1190,7 +1191,7 @@ def create_batch_assets(
 
         except Exception as e:
             # 批次上傳中，如果單一檔案失敗，我們先印出錯誤，讓其他檔案繼續傳
-            print(f"File {file.filename} failed: {e}")
+            logger.error(f"File {file.filename} failed: {e}", exc_info=True)
             db.rollback()
             continue
 
@@ -1482,9 +1483,9 @@ def send_reset_email(to_email: str, reset_link: str):
         smtp = smtplib.SMTP(smtp_host, smtp_port)
         smtp.send_message(msg)
         smtp.quit()
-        print(f"信件已發送至 {to_email}")
+        logger.info(f"信件已發送至 {to_email}")
     except Exception as e:
-        print(f"寄信失敗: {e}")
+        logger.error(f"寄信失敗: {e}", exc_info=True)
         
 # [修改] API 1: 請求重設密碼 (正規 SHA-256 雜湊版)
 @app.post("/auth/password-reset/request")
