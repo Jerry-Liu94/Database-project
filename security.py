@@ -2,11 +2,12 @@ from datetime import datetime, timedelta
 from typing import Optional
 from jose import jwt, JWTError
 from passlib.context import CryptContext
+import os
 
-# 1. 設定參數 (實務上這些應該放在環境變數，作業先寫死)
-SECRET_KEY = "secret_key_for_redant_project_demo" # 請隨意修改亂碼
+# 1. 設定參數 (從環境變數讀取，提高安全性)
+SECRET_KEY = os.environ.get("JWT_SECRET_KEY", "secret_key_for_redant_project_demo")
 ALGORITHM = "HS256"
-ACCESS_TOKEN_EXPIRE_MINUTES = 30
+ACCESS_TOKEN_EXPIRE_MINUTES = int(os.environ.get("ACCESS_TOKEN_EXPIRE_MINUTES", "30"))
 
 # 2. 設定密碼雜湊工具 (使用 bcrypt)
 pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")

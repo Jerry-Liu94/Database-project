@@ -31,12 +31,13 @@ from minio import Minio # <--- 新增
 from minio.error import S3Error
 
 # --- MinIO 設定 ---
+# 從環境變數讀取設定，提高安全性
 # 開發時連 localhost:9000 (透過 SSH 隧道)
 # 部署到 Ubuntu 後，這行通常不用改 (因為也是 localhost:9000) 或改成 minio 容器名
-MINIO_ENDPOINT = "127.0.0.1:9000"
-MINIO_ACCESS_KEY = "admin"
-MINIO_SECRET_KEY = "password123"
-MINIO_BUCKET_NAME = "redant-assets"
+MINIO_ENDPOINT = os.environ.get("MINIO_ENDPOINT", "127.0.0.1:9000")
+MINIO_ACCESS_KEY = os.environ.get("MINIO_ACCESS_KEY", "admin")
+MINIO_SECRET_KEY = os.environ.get("MINIO_SECRET_KEY", "password123")
+MINIO_BUCKET_NAME = os.environ.get("MINIO_BUCKET_NAME", "redant-assets")
 
 # 初始化 Client
 minio_client = Minio(
@@ -62,27 +63,30 @@ ai_classifier = pipeline("image-classification", model="microsoft/resnet-50")
 
 print("AI 模型載入完成！")
 
-def cleanup_files(paths):
-    """刪除路徑清單，忽略 None 並在失敗時記錄但不拋出（使用 print 以免新增 logging import）。"""
-    for p in paths or []:
-        if not p:
-            continue
-        try:
-            if os.path.exists(p):
-                os.remove(p)
-        except Exception as e:
-            # 這裡用 print 以避免新增 logging import；在實作上你可以改成 logger.exception
-            print(f"failed to remove file {p}: {e}")
-
 # --- [新增] AI 背景任務函式 ---
-def generate_ai_tags(asset_id: int, file_path: str):
+def generate_ai_tags(asset_id: int, object_name: str, file_content_bytes: bytes):
+    """
+    AI 背景任務：分析圖片並自動加上標籤
+    
+    Args:
+        asset_id: 資產 ID
+        object_name: MinIO 中的物件名稱 (用於日誌)
+        file_content_bytes: 圖片的二進位資料
+    """
     # 因為是背景任務，必須自己建立獨立的資料庫連線
     db = SessionLocal()
+    temp_path = None
     try:
-        print(f"🤖 AI 開始分析圖片: {file_path}")
+        print(f"🤖 AI 開始分析圖片: {object_name}")
+        
+        # 將圖片資料寫入臨時檔案供 AI 分析使用
+        import tempfile
+        with tempfile.NamedTemporaryFile(delete=False, suffix=".jpg") as tmp_file:
+            tmp_file.write(file_content_bytes)
+            temp_path = tmp_file.name
         
         # 1. 執行辨識 (取信心度最高的前 5 名)
-        results = ai_classifier(file_path, top_k=5)
+        results = ai_classifier(temp_path, top_k=5)
         # results 範例: [{'score': 0.9, 'label': 'tabby, tabby cat'}, ...]
 
         for res in results:
@@ -133,15 +137,23 @@ def generate_ai_tags(asset_id: int, file_path: str):
         print(f"❌ AI 分析失敗: {e}")
     finally:
         db.close() # 重要！一定要關閉連線
+        # 清理臨時檔案
+        if temp_path and os.path.exists(temp_path):
+            try:
+                os.remove(temp_path)
+            except Exception:
+                pass
 
 # [新增] 後台任務：執行打包
-def process_export_job(job_id: int, db: Session):
-    # 1. 重新查詢 Job (因為是在背景執行，要確保連線最新)
-    job = db.query(models.ExportJob).filter(models.ExportJob.job_id == job_id).first()
-    if not job:
-        return
-
+def process_export_job(job_id: int):
+    # 因為是背景任務，必須自己建立獨立的資料庫連線
+    db = SessionLocal()
     try:
+        # 1. 重新查詢 Job (因為是在背景執行，要確保連線最新)
+        job = db.query(models.ExportJob).filter(models.ExportJob.job_id == job_id).first()
+        if not job:
+            return
+
         # 更新狀態: Running
         job.status = "running"
         db.commit()
@@ -189,6 +201,8 @@ def process_export_job(job_id: int, db: Session):
         print(f"Export failed: {e}")
         job.status = "failed"
         db.commit()
+    finally:
+        db.close() # 重要！一定要關閉連線
 
 @app.get("/")
 def read_root():
@@ -400,9 +414,9 @@ def create_asset(
         db.refresh(new_asset)
         
         # =========== [新增] 觸發 AI 背景任務 ===========
-        # 只有圖片才跑 AI 分析 (傳入 MinIO 的 object_name)
+        # 只有圖片才跑 AI 分析 (傳入圖片二進位資料)
         if new_asset.file_type and new_asset.file_type.startswith("image/"):
-            background_tasks.add_task(generate_ai_tags, new_asset.asset_id, object_name)
+            background_tasks.add_task(generate_ai_tags, new_asset.asset_id, object_name, file_content)
         # ===============================================
 
         # 手動補上連結屬性 (讓 Schema 能抓到)
@@ -759,7 +773,7 @@ def create_export_job(
     db.refresh(new_job)
 
     # 2. 丟給後台去跑 (不會卡住使用者的瀏覽器)
-    background_tasks.add_task(process_export_job, new_job.job_id, db)
+    background_tasks.add_task(process_export_job, new_job.job_id)
 
     return {
         "job_id": new_job.job_id,
@@ -1091,6 +1105,8 @@ def create_batch_assets(
             print(f"File {file.filename} failed: {e}")
             db.rollback()
             continue
+    
+    return success_assets
 
 # [新增] API: 建立新分類 (FR-3.2)
 @app.post("/categories/", response_model=schemas.CategoryOut)
