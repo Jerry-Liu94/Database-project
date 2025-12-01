@@ -1,9 +1,8 @@
 # models.py
 from sqlalchemy import Column, Integer, String, Boolean, ForeignKey, BigInteger, TIMESTAMP, Text
-from sqlalchemy.orm import relationship
+from sqlalchemy.orm import relationship, backref
 from sqlalchemy.sql import func
 from database import Base
-from sqlalchemy.orm import relationship, backref
 
 # 1. 新增: 權限表 (Permission)
 class Permission(Base):

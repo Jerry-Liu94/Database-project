@@ -1,9 +1,17 @@
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker, declarative_base
+import os
 
-# [注意] 請將下方資訊改成你伺服器的實際帳密與 IP
+# [注意] 從環境變數讀取資料庫連線資訊，提高安全性
 # 格式: mysql+pymysql://帳號:密碼@IP位址:Port/資料庫名稱
-SQLALCHEMY_DATABASE_URL = "mysql+pymysql://root:!Qazwsxedc7162@123.195.209.250:33060/redant"
+SQLALCHEMY_DATABASE_URL = os.environ.get(
+    "DATABASE_URL", 
+    "mysql+pymysql://root:!Qazwsxedc7162@123.195.209.250:33060/redant"
+)
+
+# 安全性提醒：正式環境請務必設定環境變數
+if not os.environ.get("DATABASE_URL"):
+    print("⚠️ 警告: DATABASE_URL 未設定，使用預設值。正式環境請設定環境變數！")
 
 # 建立引擎
 engine = create_engine(SQLALCHEMY_DATABASE_URL)
