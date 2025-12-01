@@ -3,7 +3,7 @@ from fastapi.security import OAuth2PasswordBearer, OAuth2PasswordRequestForm, AP
 from fastapi.responses import FileResponse, StreamingResponse
 from sqlalchemy.orm import Session
 from typing import List, Optional
-from database import get_db
+from database import get_db, SessionLocal
 import models
 import schemas
 import shutil      # <--- 處理檔案複製
@@ -24,6 +24,84 @@ import smtplib
 from email.mime.text import MIMEText
 from email.header import Header
 import hashlib # <--- 用來做 SHA-256 雜湊
+from transformers import pipeline # <--- AI Tag
+from deep_translator import GoogleTranslator
+
+# 定義 API Token 應該放在 Header 的哪個欄位 (例如 X-API-TOKEN)
+api_key_header = APIKeyHeader(name="X-API-TOKEN", auto_error=False)
+app = FastAPI(title="RedAnt DAM System API")
+
+# 告訴 FastAPI，如果要驗證身分，請去呼叫 "/token" 這個 API
+oauth2_scheme = OAuth2PasswordBearer(tokenUrl="token")
+
+# ---  AI 模型初始化 ---
+# 第一次啟動時會自動下載模型 (約 100MB)，請耐心等待
+print("正在載入 AI 模型 (Microsoft ResNet-50)...")
+# 使用 image-classification 任務
+ai_classifier = pipeline("image-classification", model="microsoft/resnet-50")
+
+
+print("AI 模型載入完成！")
+
+# --- [新增] AI 背景任務函式 ---
+def generate_ai_tags(asset_id: int, file_path: str):
+    # 因為是背景任務，必須自己建立獨立的資料庫連線
+    db = SessionLocal()
+    try:
+        print(f"🤖 AI 開始分析圖片: {file_path}")
+        
+        # 1. 執行辨識 (取信心度最高的前 5 名)
+        results = ai_classifier(file_path, top_k=5)
+        # results 範例: [{'score': 0.9, 'label': 'tabby, tabby cat'}, ...]
+
+        for res in results:
+            # 過濾：信心度大於 50% 才採納 (你可以自己調整)
+            if res['score'] < 0.5:
+                continue
+            
+            # 1. 處理標籤名稱：通常模型給的是英文 (例如 "tabby, tabby cat")
+            # 我們取逗號前的第一個詞，並轉小寫
+            raw_label_en = res['label'].split(',')[0].strip().lower()
+            
+            # 2. [修改] 使用 Google 翻譯 (精準度高)
+            try:
+                # target='zh-TW' 會直接給你繁體中文
+                translated_text = GoogleTranslator(source='auto', target='zh-TW').translate(raw_label_en)
+            except Exception as e:
+                print(f"翻譯失敗: {e}")
+                translated_text = raw_label_en # 失敗就用原文
+
+            # 3. [刪除] OpenCC 繁簡轉換 (Google 已經給繁體了，所以這步不用了)
+            final_tag_name = translated_text
+
+            print(f"   🔍 辨識: {raw_label_en} -> 翻譯: {final_tag_name} ({res['score']:.2f})")
+            
+            # 2. 檢查標籤是否存在 (Find or Create)
+            tag = db.query(models.Tag).filter(models.Tag.tag_name == final_tag_name).first()
+            if not tag:
+                # 建立新標籤，標記為 AI 建議
+                tag = models.Tag(tag_name=final_tag_name, is_ai_suggested=True)
+                db.add(tag)
+                db.flush() # 取得 tag_id
+            
+            # 3. 建立關聯 (Asset - Tag)
+            existing_link = db.query(models.AssetTag).filter(
+                models.AssetTag.asset_id == asset_id,
+                models.AssetTag.tag_id == tag.tag_id
+            ).first()
+            
+            if not existing_link:
+                new_link = models.AssetTag(asset_id=asset_id, tag_id=tag.tag_id)
+                db.add(new_link)
+                print(f"   ✅ 加入標籤: {final_tag_name} ({res['score']:.2f})")
+
+        db.commit()
+        print(f"🤖 AI 分析與翻譯完成: Asset {asset_id}")
+
+    except Exception as e:
+        print(f"❌ AI 分析失敗: {e}")
+    finally:
+        db.close() # 重要！一定要關閉連線
 
 # [新增] 後台任務：執行打包
 def process_export_job(job_id: int, db: Session):
@@ -80,13 +158,6 @@ def process_export_job(job_id: int, db: Session):
         print(f"Export failed: {e}")
         job.status = "failed"
         db.commit()
-
-# 定義 API Token 應該放在 Header 的哪個欄位 (例如 X-API-TOKEN)
-api_key_header = APIKeyHeader(name="X-API-TOKEN", auto_error=False)
-app = FastAPI(title="RedAnt DAM System API")
-
-# 告訴 FastAPI，如果要驗證身分，請去呼叫 "/token" 這個 API
-oauth2_scheme = OAuth2PasswordBearer(tokenUrl="token")
 
 @app.get("/")
 def read_root():
@@ -182,6 +253,7 @@ def require_permission(resource: str, action: str):
 # [新增] 上傳新版本 API (對應 FR-4.2) 使用 response_model=List[schemas.AssetOut] 來豐富資料
 @app.post("/assets/", response_model=schemas.AssetOut)
 def create_asset(
+    background_tasks: BackgroundTasks,
     file: UploadFile = File(...),
     current_user: models.User = Depends(require_permission("asset", "upload")),
     db: Session = Depends(get_db)
@@ -266,6 +338,13 @@ def create_asset(
         # 提交交易
         db.commit()
         db.refresh(new_asset)
+        
+        # =========== [新增] 觸發 AI 背景任務 ===========
+        # 只有圖片才跑 AI 分析
+        if new_asset.file_type and new_asset.file_type.startswith("image/"):
+            # 這裡我們把 file_location (實體路徑) 和 asset_id 丟給背景去跑
+            background_tasks.add_task(generate_ai_tags, new_asset.asset_id, file_location)
+        # ===============================================
         return new_asset
 
     except Exception as e:

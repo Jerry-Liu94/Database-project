@@ -7,6 +7,12 @@ pip install -r requirements.txt
 匯出requirement
 pip freeze > requirements.txt
 
+建立虛擬環境
+
+py -m venv venv 
+
+python3 -m venv
+
 啟動
 
 venv\Scripts\activate
