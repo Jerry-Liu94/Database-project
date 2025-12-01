@@ -41,10 +41,17 @@ app = FastAPI(title="RedAnt DAM System API")
 
 # 3. 設定 CORS (這段要放在 app = FastAPI(...) 之後)
 origins = [
+    # 1. 本地開發用 (前端工程師通常用這幾個 Port)
     "http://localhost",
-    "http://localhost:3000",
+    "http://localhost:3000", # React/Next.js 預設
+    "http://localhost:8080", # Vue 預設
     "http://127.0.0.1:3000",
-    "*"
+    
+    # 2. 你的後端網域 (Swagger UI 會用到)
+    "https://redantdem.indiechild.xyz",
+    
+    # 3. [未來填空] 等前端部署上線後，記得回來把前端的網域加進來！
+    # "https://www.indiechild.xyz", 
 ]
 
 app.add_middleware(
