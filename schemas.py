@@ -16,6 +16,7 @@ class VersionOut(BaseModel):
 class UserOut(BaseModel):
     user_id: int
     email: str
+    user_name: str
     # 這裡不寫 password_hash，這樣回傳時就會自動過濾掉
 
     class Config:
@@ -51,6 +52,7 @@ class TokenData(BaseModel):
 class UserCreate(BaseModel):
     email: str
     password: str
+    user_name: str
     
 # [新增] 建立分享連結的請求格式
 class ShareLinkCreate(BaseModel):

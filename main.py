@@ -26,6 +26,7 @@ from email.header import Header
 import hashlib # <--- 用來做 SHA-256 雜湊
 from transformers import pipeline # <--- AI Tag
 from deep_translator import GoogleTranslator
+from fastapi.responses import HTMLResponse
 
 # 定義 API Token 應該放在 Header 的哪個欄位 (例如 X-API-TOKEN)
 api_key_header = APIKeyHeader(name="X-API-TOKEN", auto_error=False)
@@ -450,7 +451,8 @@ def create_user(user: schemas.UserCreate, db: Session = Depends(get_db)):
     new_user = models.User(
         email=user.email,
         password_hash=hashed_password,
-        role_id=3  # 預設 Viewer
+        role_id=3,  # 預設 Viewer
+        user_name=user.user_name
     )
     
     db.add(new_user)
@@ -1304,7 +1306,7 @@ def send_reset_email(to_email: str, reset_link: str):
 
     try:
         # 連線到本機 Postfix
-        smtp = smtplib.SMTP('localhost', 25)
+        smtp = smtplib.SMTP('127.0.0.1', 51987)
         smtp.send_message(msg)
         smtp.quit()
         print(f"信件已發送至 {to_email}")
@@ -1390,3 +1392,70 @@ def confirm_password_reset(
     
     db.commit()
     return {"message": "密碼重設成功，請使用新密碼登入"}
+
+# [新增] 密碼重設網頁 (GET /reset-password)
+@app.get("/reset-password", response_class=HTMLResponse)
+def reset_password_page(token: str):
+    html_content = f"""
+    <!DOCTYPE html>
+    <html>
+    <head>
+        <title>重設密碼</title>
+        <style>
+            body {{ font-family: Arial, sans-serif; display: flex; justify-content: center; align-items: center; height: 100vh; background-color: #f0f2f5; }}
+            .container {{ background: white; padding: 2rem; border-radius: 8px; box-shadow: 0 2px 10px rgba(0,0,0,0.1); width: 300px; }}
+            input {{ width: 100%; padding: 10px; margin: 10px 0; border: 1px solid #ccc; border-radius: 4px; }}
+            button {{ width: 100%; padding: 10px; background-color: #007bff; color: white; border: none; border-radius: 4px; cursor: pointer; }}
+            button:hover {{ background-color: #0056b3; }}
+            .message {{ margin-top: 10px; text-align: center; color: red; }}
+        </style>
+    </head>
+    <body>
+        <div class="container">
+            <h2>重設密碼</h2>
+            <input type="password" id="new_password" placeholder="請輸入新密碼" required>
+            <input type="password" id="confirm_password" placeholder="再次確認密碼" required>
+            <button onclick="submitReset()">確認重設</button>
+            <div id="message" class="message"></div>
+        </div>
+
+        <script>
+            async function submitReset() {{
+                const p1 = document.getElementById('new_password').value;
+                const p2 = document.getElementById('confirm_password').value;
+                const msg = document.getElementById('message');
+
+                if (p1 !== p2) {{
+                    msg.textContent = "兩次密碼不一致";
+                    return;
+                }}
+
+                try {{
+                    const response = await fetch('/auth/password-reset/confirm', {{
+                        method: 'POST',
+                        headers: {{ 'Content-Type': 'application/json' }},
+                        body: JSON.stringify({{
+                            token: "{token}",
+                            new_password: p1
+                        }})
+                    }});
+
+                    const data = await response.json();
+                    
+                    if (response.ok) {{
+                        msg.style.color = "green";
+                        msg.textContent = "密碼重設成功！您可以關閉此頁面並重新登入。";
+                        document.querySelector('button').disabled = true;
+                    }} else {{
+                        msg.style.color = "red";
+                        msg.textContent = data.detail || "重設失敗";
+                    }}
+                }} catch (error) {{
+                    msg.textContent = "連線錯誤";
+                }}
+            }}
+        </script>
+    </body>
+    </html>
+    """
+    return html_content

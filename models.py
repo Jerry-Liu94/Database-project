@@ -33,6 +33,8 @@ class Role(Base):
 class User(Base):
     __tablename__ = "user"
     user_id = Column(BigInteger, primary_key=True, index=True)
+    
+    user_name = Column(String(50), nullable=False)  
     email = Column(String(255), unique=True, nullable=False)
     password_hash = Column(String(255), nullable=False)
     mfa_secret = Column(String(255), nullable=True)
