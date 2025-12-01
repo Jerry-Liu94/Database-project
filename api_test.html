@@ -1,0 +1,152 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <title>RedAnt 後端串接測試</title>
+    <style>
+        body { font-family: sans-serif; padding: 20px; max-width: 800px; margin: 0 auto; }
+        .section { border: 1px solid #ccc; padding: 15px; margin-bottom: 20px; border-radius: 5px; }
+        .btn { cursor: pointer; padding: 5px 10px; background: #007bff; color: white; border: none; }
+        .btn:hover { background: #0056b3; }
+        pre { background: #f4f4f4; padding: 10px; overflow-x: auto; }
+        .status { font-weight: bold; color: green; }
+        .error { color: red; }
+    </style>
+</head>
+<body>
+
+    <h1>RedAnt API 串接測試面板</h1>
+
+    <div class="section">
+        <h3>1. 登入 (取得 Token)</h3>
+        <input type="text" id="email" placeholder="Email" value="admin@example.com">
+        <input type="password" id="password" placeholder="密碼" value="admin123">
+        <button class="btn" onclick="login()">登入</button>
+        <p>Token 狀態: <span id="tokenStatus" class="error">未取得</span></p>
+    </div>
+
+    <div class="section">
+        <h3>2. 取得使用者列表 (需驗證)</h3>
+        <button class="btn" onclick="getUsers()">讀取 User 列表</button>
+        <pre id="userResult">等待操作...</pre>
+    </div>
+
+    <div class="section">
+        <h3>3. 上傳檔案 (Multipart/form-data)</h3>
+        <input type="file" id="fileInput">
+        <button class="btn" onclick="uploadFile()">上傳</button>
+        <pre id="uploadResult">等待上傳...</pre>
+    </div>
+
+    <script>
+        const API_URL = "http://127.0.0.1:8000";
+        let currentToken = "";
+
+        // --- 核心邏輯 1: 登入 ---
+        async function login() {
+            const email = document.getElementById('email').value;
+            const password = document.getElementById('password').value;
+
+            // 注意：FastAPI 的 OAuth2PasswordRequestForm 預設要求使用 Form Data 格式
+            // 欄位名稱必須是 username 和 password (不能傳 email)
+            const formData = new URLSearchParams();
+            formData.append('username', email); 
+            formData.append('password', password);
+
+            try {
+                const response = await fetch(`${API_URL}/token`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/x-www-form-urlencoded'
+                    },
+                    body: formData
+                });
+
+                if (!response.ok) throw new Error("登入失敗");
+
+                const data = await response.json();
+                
+                // 儲存 Token
+                currentToken = data.access_token;
+                localStorage.setItem('redant_token', currentToken);
+                
+                document.getElementById('tokenStatus').innerText = "已取得 (準備好串接)";
+                document.getElementById('tokenStatus').className = "status";
+                alert("登入成功！Token 已儲存");
+
+            } catch (error) {
+                alert(error.message);
+                console.error(error);
+            }
+        }
+
+        // --- 核心邏輯 2: 帶 Token 的 GET 請求 ---
+        async function getUsers() {
+            if (!currentToken) {
+                alert("請先登入！");
+                return;
+            }
+
+            try {
+                const response = await fetch(`${API_URL}/users/`, {
+                    method: 'GET',
+                    headers: {
+                        // 關鍵：在 Header 加入 Authorization
+                        'Authorization': `Bearer ${currentToken}`
+                    }
+                });
+
+                const data = await response.json();
+                document.getElementById('userResult').innerText = JSON.stringify(data, null, 2);
+            } catch (error) {
+                document.getElementById('userResult').innerText = "錯誤: " + error.message;
+            }
+        }
+
+        // --- 核心邏輯 3: 上傳檔案 (FormData) ---
+        async function uploadFile() {
+            if (!currentToken) {
+                alert("請先登入！");
+                return;
+            }
+
+            const fileInput = document.getElementById('fileInput');
+            if (fileInput.files.length === 0) {
+                alert("請選擇檔案");
+                return;
+            }
+
+            const formData = new FormData();
+            // 對應 main.py 裡的 create_asset(file: UploadFile...)
+            formData.append("file", fileInput.files[0]);
+
+            try {
+                const response = await fetch(`${API_URL}/assets/`, {
+                    method: 'POST',
+                    headers: {
+                        'Authorization': `Bearer ${currentToken}`
+                        // 注意：fetch 使用 FormData 時，不要手動設定 Content-Type
+                        // 瀏覽器會自動設為 multipart/form-data 並加上 boundary
+                    },
+                    body: formData
+                });
+
+                const data = await response.json();
+                document.getElementById('uploadResult').innerText = JSON.stringify(data, null, 2);
+            } catch (error) {
+                document.getElementById('uploadResult').innerText = "上傳錯誤: " + error.message;
+            }
+        }
+
+        // 初始化：檢查是否已經有存過的 Token
+        window.onload = function() {
+            const savedToken = localStorage.getItem('redant_token');
+            if (savedToken) {
+                currentToken = savedToken;
+                document.getElementById('tokenStatus').innerText = "已讀取舊 Token";
+                document.getElementById('tokenStatus').className = "status";
+            }
+        }
+    </script>
+</body>
+</html>
