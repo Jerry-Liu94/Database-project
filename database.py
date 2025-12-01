@@ -1,9 +1,10 @@
+import os
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker, declarative_base
+from dotenv import load_dotenv
 
-# [注意] 請將下方資訊改成你伺服器的實際帳密與 IP
-# 格式: mysql+pymysql://帳號:密碼@IP位址:Port/資料庫名稱
-SQLALCHEMY_DATABASE_URL = "mysql+pymysql://root:!Qazwsxedc7162@123.195.209.250:33060/redant"
+load_dotenv()
+SQLALCHEMY_DATABASE_URL = os.getenv("DATABASE_URL")
 
 # 建立引擎
 engine = create_engine(SQLALCHEMY_DATABASE_URL)

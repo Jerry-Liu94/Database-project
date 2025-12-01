@@ -63,19 +63,18 @@ def read_root():
 # --- MinIO 設定 ---
 # 開發時連 localhost:9000 (透過 SSH 隧道)
 # 部署到 Ubuntu 後，這行通常不用改 (因為也是 localhost:9000) 或改成 minio 容器名
-MINIO_ENDPOINT = "127.0.0.1:9000"
-MINIO_ACCESS_KEY = "admin"
-MINIO_SECRET_KEY = "password123"
-MINIO_BUCKET_NAME = "redant-assets"
+MINIO_ENDPOINT = os.getenv("MINIO_ENDPOINT", "127.0.0.1:9000")
+MINIO_ACCESS_KEY = os.getenv("MINIO_ACCESS_KEY", "admin")
+MINIO_SECRET_KEY = os.getenv("MINIO_SECRET_KEY", "password123")
+MINIO_BUCKET_NAME = os.getenv("MINIO_BUCKET_NAME", "redant-assets")
 
 # 初始化 Client
 minio_client = Minio(
     MINIO_ENDPOINT,
     access_key=MINIO_ACCESS_KEY,
     secret_key=MINIO_SECRET_KEY,
-    secure=False # 自架通常沒 SSL，設 False
+    secure=False 
 )
-
 # 定義 API Token 應該放在 Header 的哪個欄位 (例如 X-API-TOKEN)
 api_key_header = APIKeyHeader(name="X-API-TOKEN", auto_error=False)
 
@@ -454,8 +453,8 @@ def create_asset(
 
         # 手動補上連結屬性 (讓 Schema 能抓到)
         # 注意：這裡使用外部網域 indiechild.xyz
-        new_asset.download_url = f"http://indiechild.xyz:8000/assets/{new_asset.asset_id}/download"
-        new_asset.thumbnail_url = f"http://indiechild.xyz:8000/assets/{new_asset.asset_id}/thumbnail"
+        new_asset.download_url = f"{APP_BASE_URL}/assets/{new_asset.asset_id}/download"
+        new_asset.thumbnail_url = f"{APP_BASE_URL}/assets/{new_asset.asset_id}/thumbnail"
 
         return new_asset
 
@@ -544,9 +543,8 @@ def read_assets(
     # [新增] 幫每個資產加上下載連結
     # 因為 SQLAlchemy 物件是可變的，我們直接掛一個屬性上去，Pydantic 就會讀到了
     for asset in assets:
-        asset.download_url = f"http://127.0.0.1:8000/assets/{asset.asset_id}/download"
-        # [新增] 縮圖連結
-        asset.thumbnail_url = f"http://127.0.0.1:8000/assets/{asset.asset_id}/thumbnail"
+        asset.download_url = f"{APP_BASE_URL}/assets/{asset.asset_id}/download"
+        asset.thumbnail_url = f"{APP_BASE_URL}/assets/{asset.asset_id}/thumbnail"
         
     return assets
 
@@ -1419,9 +1417,12 @@ def send_reset_email(to_email: str, reset_link: str):
     msg['From'] = "no-reply@indiechild.xyz" 
     msg['To'] = to_email
 
+    smtp_host = os.getenv("SMTP_HOST", "127.0.0.1")
+    smtp_port = int(os.getenv("SMTP_PORT", 25))
+    
     try:
         # 連線到本機 Postfix
-        smtp = smtplib.SMTP('127.0.0.1', 51987)
+        smtp = smtplib.SMTP(smtp_host, smtp_port)
         smtp.send_message(msg)
         smtp.quit()
         print(f"信件已發送至 {to_email}")
@@ -1460,7 +1461,7 @@ def request_password_reset(
     # 5. 寄信 (寄原始 Token)
     # 這裡使用你的網域 IP 或域名
     # 注意：這通常是前端頁面的網址，這裡我們假設前端也是這個 IP
-    reset_link = f"http://indiechild.xyz:8000/reset-password?token={raw_token}"
+    reset_link = f"{APP_BASE_URL}/reset-password?token={raw_token}"
     
     # 呼叫寄信函式
     send_reset_email(user.email, reset_link)
