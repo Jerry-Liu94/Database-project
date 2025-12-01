@@ -543,6 +543,61 @@ def read_assets(
         
     return assets
 
+# [新增] 刪除資產 API (同步刪除 DB 與 MinIO 檔案)
+@app.delete("/assets/{asset_id}")
+def delete_asset(
+    asset_id: int,
+    current_user: models.User = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    # 1. 找資產
+    asset = db.query(models.Asset).filter(models.Asset.asset_id == asset_id).first()
+    if not asset:
+        raise HTTPException(status_code=404, detail="找不到該資產")
+
+    # 2. 權限檢查 (只有 上傳者 或 管理員 可以刪除)
+    # 假設 Role ID 1 是 Admin (根據 init_db.py)
+    if asset.uploaded_by_user_id != current_user.user_id and current_user.role_id != 1:
+        raise HTTPException(status_code=403, detail="權限不足：您無法刪除此資產")
+
+    # 3. [關鍵] 清理 MinIO 上的實體檔案
+    # 先找出所有版本，把硬碟裡的檔案都刪了
+    versions = db.query(models.Version).filter(models.Version.asset_id == asset_id).all()
+    for v in versions:
+        try:
+            # 刪除原檔
+            minio_client.remove_object(MINIO_BUCKET_NAME, v.storage_path)
+            
+            # 刪除縮圖 (依據之前的命名規則推算)
+            thumb_path = f"{os.path.splitext(v.storage_path)[0]}_thumb.jpg"
+            minio_client.remove_object(MINIO_BUCKET_NAME, thumb_path)
+            
+            print(f"🗑️ 已從 MinIO 刪除: {v.storage_path}")
+        except Exception as e:
+            # 刪除檔案失敗不應阻擋資料庫刪除，印出錯誤即可
+            print(f"⚠️ MinIO 刪除失敗 (可能檔案已不存在): {e}")
+
+    # 4. 刪除資料庫紀錄
+    try:
+        # 寫入稽核日誌 (在刪除之前記一筆，不然 asset_id 會變成無效外鍵)
+        # 注意：因為 AuditLog.asset_id 是外鍵且設為 SET NULL，所以這裡記 ID 沒問題
+        new_log = models.AuditLog(
+            user_id=current_user.user_id,
+            asset_id=asset_id,
+            action_type="DELETE"
+        )
+        db.add(new_log)
+        
+        # 真正刪除 Asset (Cascade 會自動刪除 Version, Metadata 等)
+        db.delete(asset)
+        db.commit()
+        
+        return {"message": f"資產 {asset_id} 及其所有版本已成功刪除"}
+
+    except Exception as e:
+        db.rollback()
+        raise HTTPException(status_code=500, detail=f"資料庫刪除失敗: {str(e)}")
+
 # [新增] 註冊新帳號 API (對應 FR-1.1)
 @app.post("/users/", response_model=schemas.UserOut)
 def create_user(user: schemas.UserCreate, db: Session = Depends(get_db)):
