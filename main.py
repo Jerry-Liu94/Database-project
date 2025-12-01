@@ -27,6 +27,24 @@ import hashlib # <--- 用來做 SHA-256 雜湊
 from transformers import pipeline # <--- AI Tag
 from deep_translator import GoogleTranslator
 from fastapi.responses import HTMLResponse
+from minio import Minio # <--- 新增
+from minio.error import S3Error
+
+# --- MinIO 設定 ---
+# 開發時連 localhost:9000 (透過 SSH 隧道)
+# 部署到 Ubuntu 後，這行通常不用改 (因為也是 localhost:9000) 或改成 minio 容器名
+MINIO_ENDPOINT = "127.0.0.1:9000"
+MINIO_ACCESS_KEY = "admin"
+MINIO_SECRET_KEY = "password123"
+MINIO_BUCKET_NAME = "redant-assets"
+
+# 初始化 Client
+minio_client = Minio(
+    MINIO_ENDPOINT,
+    access_key=MINIO_ACCESS_KEY,
+    secret_key=MINIO_SECRET_KEY,
+    secure=False # 自架通常沒 SSL，設 False
+)
 
 # 定義 API Token 應該放在 Header 的哪個欄位 (例如 X-API-TOKEN)
 api_key_header = APIKeyHeader(name="X-API-TOKEN", auto_error=False)
@@ -43,6 +61,18 @@ ai_classifier = pipeline("image-classification", model="microsoft/resnet-50")
 
 
 print("AI 模型載入完成！")
+
+def cleanup_files(paths):
+    """刪除路徑清單，忽略 None 並在失敗時記錄但不拋出（使用 print 以免新增 logging import）。"""
+    for p in paths or []:
+        if not p:
+            continue
+        try:
+            if os.path.exists(p):
+                os.remove(p)
+        except Exception as e:
+            # 這裡用 print 以避免新增 logging import；在實作上你可以改成 logger.exception
+            print(f"failed to remove file {p}: {e}")
 
 # --- [新增] AI 背景任務函式 ---
 def generate_ai_tags(asset_id: int, file_path: str):
@@ -252,6 +282,10 @@ def require_permission(resource: str, action: str):
     return permission_checker
 
 # [新增] 上傳新版本 API (對應 FR-4.2) 使用 response_model=List[schemas.AssetOut] 來豐富資料
+
+# ==========================================
+# 1. 上傳資產 API (MinIO 版 + 圖片處理優化)
+# ==========================================
 @app.post("/assets/", response_model=schemas.AssetOut)
 def create_asset(
     background_tasks: BackgroundTasks,
@@ -259,43 +293,68 @@ def create_asset(
     current_user: models.User = Depends(require_permission("asset", "upload")),
     db: Session = Depends(get_db)
 ):
-    # 1. 準備目錄與檔名
-    upload_dir = "uploads"
-    if not os.path.exists(upload_dir):
-        os.makedirs(upload_dir)
-    
+    # 1. 準備 MinIO 物件名稱
     timestamp = datetime.now().strftime("%Y%m%d%H%M%S")
-    file_location = f"{upload_dir}/{timestamp}_{file.filename}"
+    object_name = f"{timestamp}_{file.filename}"
+    thumb_object_name = f"{os.path.splitext(object_name)[0]}_thumb.jpg"
     
-    # 2. 寫入原始檔案
-    with open(file_location, "wb") as buffer:
-        shutil.copyfileobj(file.file, buffer)
-        
-    file_size = os.path.getsize(file_location)
+    # 2. 將檔案讀入記憶體 (Bytes)，方便重複使用，不存本機硬碟
+    try:
+        file_content = file.file.read()
+        file_size = len(file_content)
+    except Exception as e:
+        raise HTTPException(status_code=400, detail=f"檔案讀取失敗: {e}")
 
-    # 3. [合併處理] 圖片解析與縮圖製作 (只開一次檔)
     resolution = "Unknown"
-    thumb_location = f"{os.path.splitext(file_location)[0]}_thumb.jpg"
 
+    # 3. [優化] 圖片處理：縮圖 & 解析度 (只處理一次)
     if file.content_type and file.content_type.startswith("image/"):
         try:
-            with Image.open(file_location) as img:
+            # 使用 BytesIO 將記憶體數據轉為檔案流給 Pillow 讀
+            with Image.open(io.BytesIO(file_content)) as img:
                 # A. 讀取解析度 (FR-2.3)
                 resolution = f"{img.size[0]}x{img.size[1]}"
                 
                 # B. 製作縮圖 (FR-2.4)
-                img.thumbnail((300, 300))
+                # 複製一份來做縮圖，避免影響原物件狀態
+                img_copy = img.copy()
+                img_copy.thumbnail((300, 300))
                 
-                # C. 存縮圖 (轉 RGB 避免錯誤)
-                if img.mode in ("RGBA", "P"):
-                    img = img.convert("RGB")
-                img.save(thumb_location, "JPEG")
+                # 轉 RGB (避免 PNG 透明背景轉 JPEG 報錯)
+                if img_copy.mode in ("RGBA", "P"):
+                    img_copy = img_copy.convert("RGB")
                 
+                # C. 將縮圖存入記憶體緩衝區
+                thumb_io = io.BytesIO()
+                img_copy.save(thumb_io, "JPEG")
+                thumb_io.seek(0) # 指標重置到開頭
+                thumb_size = thumb_io.getbuffer().nbytes
+                
+                # D. 上傳縮圖到 MinIO
+                minio_client.put_object(
+                    MINIO_BUCKET_NAME,
+                    thumb_object_name,
+                    thumb_io,
+                    thumb_size,
+                    content_type="image/jpeg"
+                )
         except Exception as e:
-            print(f"圖片處理失敗: {e}")
-            pass
+            print(f"圖片處理或縮圖上傳失敗 (非標準圖片或毀損): {e}")
+            # 失敗不阻擋主流程，繼續上傳原圖
 
-    # 4. [SQL 資料庫操作]
+    # 4. 上傳原始檔案到 MinIO
+    try:
+        minio_client.put_object(
+            MINIO_BUCKET_NAME,
+            object_name,
+            io.BytesIO(file_content), # 使用原始數據的 BytesIO
+            file_size,
+            content_type=file.content_type
+        )
+    except S3Error as e:
+        raise HTTPException(status_code=500, detail=f"MinIO 上傳失敗: {e}")
+
+    # 5. [SQL 資料庫操作] 寫入 metadata
     try:
         # A. 建立 Asset
         new_asset = models.Asset(
@@ -307,16 +366,16 @@ def create_asset(
         db.add(new_asset)
         db.flush()
 
-        # B. 建立 Version
+        # B. 建立 Version (storage_path 存 MinIO 的檔名)
         new_version = models.Version(
             asset_id=new_asset.asset_id,
             version_number=1,
-            storage_path=file_location
+            storage_path=object_name 
         )
         db.add(new_version)
         db.flush()
 
-        # C. 建立 Metadata (使用剛剛一次算好的 resolution)
+        # C. 建立 Metadata
         new_metadata = models.Metadata(
             asset_id=new_asset.asset_id,
             filesize=file_size,
@@ -341,25 +400,29 @@ def create_asset(
         db.refresh(new_asset)
         
         # =========== [新增] 觸發 AI 背景任務 ===========
-        # 只有圖片才跑 AI 分析
+        # 只有圖片才跑 AI 分析 (傳入 MinIO 的 object_name)
         if new_asset.file_type and new_asset.file_type.startswith("image/"):
-            # 這裡我們把 file_location (實體路徑) 和 asset_id 丟給背景去跑
-            background_tasks.add_task(generate_ai_tags, new_asset.asset_id, file_location)
+            background_tasks.add_task(generate_ai_tags, new_asset.asset_id, object_name)
         # ===============================================
+
+        # 手動補上連結屬性 (讓 Schema 能抓到)
+        # 注意：這裡使用外部網域 indiechild.xyz
+        new_asset.download_url = f"http://indiechild.xyz:8000/assets/{new_asset.asset_id}/download"
+        new_asset.thumbnail_url = f"http://indiechild.xyz:8000/assets/{new_asset.asset_id}/thumbnail"
+
         return new_asset
 
     except Exception as e:
         db.rollback()
-        # 清理垃圾檔案 (原圖 & 縮圖)
-        if os.path.exists(file_location):
-            os.remove(file_location)
-        if os.path.exists(thumb_location):
-            os.remove(thumb_location)
-        raise HTTPException(status_code=500, detail=f"上傳失敗: {str(e)}")
+        # (進階) 這裡可以加一段 minio_client.remove_object 來清理垃圾檔案
+        raise HTTPException(status_code=500, detail=f"資料庫錯誤: {str(e)}")
     
+# ==========================================
+# 2. 下載資產 API (MinIO 版)
+# ==========================================
 @app.get("/assets/{asset_id}/download")
 def download_asset(asset_id: int, db: Session = Depends(get_db)):
-    # 1. 查詢資產
+    # 1. 查詢資產與最新版本
     asset = db.query(models.Asset).filter(models.Asset.asset_id == asset_id).first()
     
     if not asset:
@@ -368,22 +431,27 @@ def download_asset(asset_id: int, db: Session = Depends(get_db)):
     if not asset.latest_version_id:
         raise HTTPException(status_code=404, detail="該資產沒有任何版本檔案")
 
-    # 2. 查詢該資產的最新版本資訊 (為了拿路徑)
-    # 雖然我們可以用 asset.latest_version 直接拿，但為了保險起見，我們從 Version 表查
     version = db.query(models.Version).filter(models.Version.version_id == asset.latest_version_id).first()
     
-    if not version or not os.path.exists(version.storage_path):
-        raise HTTPException(status_code=404, detail="實體檔案遺失 (可能已被刪除)")
+    if not version:
+        raise HTTPException(status_code=404, detail="版本紀錄遺失")
 
-    # 3. 回傳檔案 (讓瀏覽器可以下載或預覽)
-    return FileResponse(
-        path=version.storage_path, 
-        filename=asset.filename, # 下載時預設的檔名
-        media_type=asset.file_type, # 告訴瀏覽器這是圖片還是影片
-        content_disposition_type="inline"
-    )
+    # 2. 從 MinIO 讀取檔案流
+    try:
+        # get_object 回傳的是一個 stream，可以直接丟給 StreamingResponse
+        data = minio_client.get_object(MINIO_BUCKET_NAME, version.storage_path)
+        
+        # 3. 回傳串流 (不佔用伺服器記憶體)
+        return StreamingResponse(
+            data, 
+            media_type=asset.file_type or "application/octet-stream",
+            headers={"Content-Disposition": f"inline; filename={asset.filename}"}
+        )
+    except S3Error:
+        raise HTTPException(status_code=404, detail="MinIO 中找不到此檔案 (可能已被刪除)")
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"MinIO 讀取失敗: {e}")
     
-
 @app.post("/token", response_model=schemas.Token)
 def login_for_access_token(form_data: OAuth2PasswordRequestForm = Depends(), db: Session = Depends(get_db)):
     # 1. 找使用者
