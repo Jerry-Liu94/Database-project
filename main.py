@@ -1,4 +1,4 @@
-from fastapi import FastAPI, Depends, HTTPException, File, UploadFile, Security, BackgroundTasks
+﻿from fastapi import FastAPI, Depends, HTTPException, File, UploadFile, Security, BackgroundTasks
 from fastapi.security import OAuth2PasswordBearer, OAuth2PasswordRequestForm, APIKeyHeader
 from fastapi.responses import FileResponse, StreamingResponse
 from sqlalchemy.orm import Session
@@ -30,6 +30,36 @@ from fastapi.responses import HTMLResponse
 from minio import Minio # <--- 新增
 from minio.error import S3Error
 
+# 1. 各種 import 放在最上面
+from fastapi import FastAPI, Depends
+from fastapi.middleware.cors import CORSMiddleware # <--- 記得 import 這個
+
+# ... (中間可能還有其他函式或變數) ...
+
+# 2. 初始化 app (這行一定要在 add_middleware 之前！)
+app = FastAPI(title="RedAnt DAM System API")
+
+# 3. 設定 CORS (這段要放在 app = FastAPI(...) 之後)
+origins = [
+    "http://localhost",
+    "http://localhost:3000",
+    "http://127.0.0.1:3000",
+    "*"
+]
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=origins,
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
+
+# 4. 之後才是你的 @app.get("/") ... 等等路由
+@app.get("/")
+def read_root():
+    return {"message": "RedAnt 系統連線成功！"}
+
 # --- MinIO 設定 ---
 # 開發時連 localhost:9000 (透過 SSH 隧道)
 # 部署到 Ubuntu 後，這行通常不用改 (因為也是 localhost:9000) 或改成 minio 容器名
@@ -48,7 +78,7 @@ minio_client = Minio(
 
 # 定義 API Token 應該放在 Header 的哪個欄位 (例如 X-API-TOKEN)
 api_key_header = APIKeyHeader(name="X-API-TOKEN", auto_error=False)
-app = FastAPI(title="RedAnt DAM System API")
+
 
 # 告訴 FastAPI，如果要驗證身分，請去呼叫 "/token" 這個 API
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="token")
@@ -74,48 +104,59 @@ def cleanup_files(paths):
             # 這裡用 print 以避免新增 logging import；在實作上你可以改成 logger.exception
             print(f"failed to remove file {p}: {e}")
 
-# --- [新增] AI 背景任務函式 ---
+# [修正版] AI 自動標籤 (支援 MinIO 自動下載)
 def generate_ai_tags(asset_id: int, file_path: str):
     # 因為是背景任務，必須自己建立獨立的資料庫連線
     db = SessionLocal()
+    temp_file = None # 用來標記暫存檔
+
     try:
         print(f"🤖 AI 開始分析圖片: {file_path}")
         
-        # 1. 執行辨識 (取信心度最高的前 5 名)
-        results = ai_classifier(file_path, top_k=5)
-        # results 範例: [{'score': 0.9, 'label': 'tabby, tabby cat'}, ...]
+        # [關鍵修正] 判斷圖片位置
+        # 如果 file_path 只是檔名 (例如 "2025...jpg") 且本機找不到，代表它在 MinIO 裡
+        target_image = file_path
+        
+        if not os.path.exists(target_image):
+            print("   📥 正在從 MinIO 下載暫存檔給 AI 分析...")
+            try:
+                # 從 MinIO 下載到暫存檔
+                data = minio_client.get_object(MINIO_BUCKET_NAME, file_path)
+                temp_file = f"temp_{file_path}" # 暫存檔名
+                with open(temp_file, "wb") as f:
+                    for d in data.stream(32*1024):
+                        f.write(d)
+                target_image = temp_file # 讓 AI 改讀這個暫存檔
+            except Exception as e:
+                print(f"   ❌ 無法從 MinIO 讀取檔案 (AI 跳過): {e}")
+                return # 讀不到圖就放棄，不影響主程式
 
+        # 1. 執行辨識 (使用 target_image)
+        results = ai_classifier(target_image, top_k=5)
+        
         for res in results:
-            # 過濾：信心度大於 50% 才採納 (你可以自己調整)
             if res['score'] < 0.5:
                 continue
             
-            # 1. 處理標籤名稱：通常模型給的是英文 (例如 "tabby, tabby cat")
-            # 我們取逗號前的第一個詞，並轉小寫
             raw_label_en = res['label'].split(',')[0].strip().lower()
             
-            # 2. [修改] 使用 Google 翻譯 (精準度高)
             try:
-                # target='zh-TW' 會直接給你繁體中文
                 translated_text = GoogleTranslator(source='auto', target='zh-TW').translate(raw_label_en)
             except Exception as e:
                 print(f"翻譯失敗: {e}")
-                translated_text = raw_label_en # 失敗就用原文
+                translated_text = raw_label_en
 
-            # 3. [刪除] OpenCC 繁簡轉換 (Google 已經給繁體了，所以這步不用了)
             final_tag_name = translated_text
-
             print(f"   🔍 辨識: {raw_label_en} -> 翻譯: {final_tag_name} ({res['score']:.2f})")
             
             # 2. 檢查標籤是否存在 (Find or Create)
             tag = db.query(models.Tag).filter(models.Tag.tag_name == final_tag_name).first()
             if not tag:
-                # 建立新標籤，標記為 AI 建議
                 tag = models.Tag(tag_name=final_tag_name, is_ai_suggested=True)
                 db.add(tag)
-                db.flush() # 取得 tag_id
+                db.flush()
             
-            # 3. 建立關聯 (Asset - Tag)
+            # 3. 建立關聯
             existing_link = db.query(models.AssetTag).filter(
                 models.AssetTag.asset_id == asset_id,
                 models.AssetTag.tag_id == tag.tag_id
@@ -124,15 +165,21 @@ def generate_ai_tags(asset_id: int, file_path: str):
             if not existing_link:
                 new_link = models.AssetTag(asset_id=asset_id, tag_id=tag.tag_id)
                 db.add(new_link)
-                print(f"   ✅ 加入標籤: {final_tag_name} ({res['score']:.2f})")
+                print(f"   ✅ 加入標籤: {final_tag_name}")
 
         db.commit()
-        print(f"🤖 AI 分析與翻譯完成: Asset {asset_id}")
+        print(f"🤖 AI 分析完成: Asset {asset_id}")
 
     except Exception as e:
         print(f"❌ AI 分析失敗: {e}")
     finally:
-        db.close() # 重要！一定要關閉連線
+        # [非常重要] 刪除暫存檔，避免垃圾堆積
+        if temp_file and os.path.exists(temp_file):
+            try:
+                os.remove(temp_file)
+            except:
+                pass
+        db.close()
 
 # [新增] 後台任務：執行打包
 def process_export_job(job_id: int, db: Session):
