@@ -52,12 +52,13 @@ origins = [
     "http://localhost:3000", # React/Next.js 預設
     "http://localhost:8080", # Vue 預設
     "http://127.0.0.1:3000",
+    "http://127.0.0.1:5500",
     
     # 2. 你的後端網域 (Swagger UI 會用到)
     "https://redantdem.indiechild.xyz",
     
-    # 3. [未來填空] 等前端部署上線後，記得回來把前端的網域加進來！
-    # "https://www.indiechild.xyz", 
+    # 3. 前端網域
+    "https://www.indiechild.xyz", 
 ]
 
 app.add_middleware(
