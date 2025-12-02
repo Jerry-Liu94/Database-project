@@ -57,8 +57,8 @@ origins = [
     # 2. 你的後端網域 (Swagger UI 會用到)
     "https://redantdem.indiechild.xyz",
     
-    # 3. [未來填空] 等前端部署上線後，記得回來把前端的網域加進來！
-    # "https://www.indiechild.xyz", 
+    # 3. 前端網域
+    "https://www.indiechild.xyz", 
 ]
 
 app.add_middleware(
