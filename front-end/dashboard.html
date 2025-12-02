@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Dashboard Upload Final</title>
+    <title>Dashboard Multi-Upload</title>
     <style>
         /* 引入系統字體 */
         * {
@@ -239,7 +239,6 @@
             width: 700px;
             height: 500px;
             border-radius: 20px;
-            /* Padding 左右設定 30px，對應下方的對齊 */
             padding: 20px 30px 30px 30px; 
             display: flex;
             flex-direction: column;
@@ -262,7 +261,6 @@
         .close-modal-x {
             position: absolute;
             top: 15px;
-            /* 修改：設定 right: 30px，這會跟 modal-box 的 padding-right (30px) 以及 drop-zone 的邊緣對齊 */
             right: 30px; 
             font-size: 1.6rem;
             color: #333;
@@ -277,11 +275,8 @@
             background-color: rgba(235, 235, 235, 1); 
             border: 3px dashed rgba(142, 142, 142, 1);
             border-radius: 16px;
-            
-            /* 虛線框往下移，露出上方的 X 按鈕 */
             margin-top: 35px;
             margin-bottom: 25px;
-            
             display: flex;
             flex-direction: column;
             justify-content: center; 
@@ -299,6 +294,19 @@
             align-items: stretch; 
             padding-top: 0;
         }
+
+        /* 檔案列表容器：支援多檔案捲動 */
+        #file-list-container {
+            width: 100%; 
+            display: none;
+            overflow-y: auto; /* 超出高度時顯示捲軸 */
+            max-height: 330px; /* 限制最大高度，避免撐破視窗 */
+        }
+
+        /* 美化檔案列表的捲軸 */
+        #file-list-container::-webkit-scrollbar { width: 6px; }
+        #file-list-container::-webkit-scrollbar-thumb { background-color: rgba(0,0,0,0.2); border-radius: 10px; }
+        #file-list-container::-webkit-scrollbar-track { background: transparent; }
 
         .empty-state-content {
             display: flex;
@@ -324,7 +332,7 @@
             letter-spacing: 1px;
         }
 
-        /* --- 檔案列表項目 --- */
+        /* 檔案列表項目 */
         .file-list-item {
             display: flex;
             align-items: center;
@@ -337,6 +345,8 @@
         .file-info-left {
             display: flex;
             align-items: center;
+            /* 讓過長的檔名可以顯示 ... (選擇性) */
+            overflow: hidden; 
         }
 
         .check-icon {
@@ -345,20 +355,25 @@
             object-fit: contain;
             margin-right: 15px;
             opacity: 0.8;
+            flex-shrink: 0;
         }
 
         .file-name-text {
             font-size: 1.05rem; 
             font-weight: 600;   
-            color: #666;       
+            color: #666;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis; 
+            max-width: 350px; /* 限制檔名寬度，避免跑版 */
         }
 
-        /* AI TAG 樣式 */
         .ai-tag {
             color: #999;
             font-weight: 700;
             font-size: 0.9rem;
             letter-spacing: 0.5px;
+            white-space: nowrap;
         }
 
         /* 按鈕區 */
@@ -368,7 +383,6 @@
             gap: 40px;
         }
 
-        /* 成功訊息 */
         .success-message {
             display: none; 
             color: rgba(7, 35, 125, 1); 
@@ -471,7 +485,7 @@
         </main>
     </div>
 
-    <input type="file" id="file-input" style="display: none;">
+    <input type="file" id="file-input" style="display: none;" multiple>
 
     <div class="modal-overlay" id="upload-modal">
         <div class="modal-box">
@@ -482,7 +496,7 @@
                     <img src="./image/upload_gray.png" alt="Folder" class="folder-icon">
                     <div class="drop-text">拖曳檔案至此</div>
                 </div>
-                <div id="file-list-container" style="width: 100%; display: none;"></div>
+                <div id="file-list-container"></div>
             </div>
             
             <div class="modal-buttons" id="modal-buttons">
@@ -508,7 +522,7 @@
             }
         }
 
-        // --- Modal & File Logic ---
+        // --- Modal & Multi-File Logic ---
         const addBtn = document.getElementById('add-btn');
         const modal = document.getElementById('upload-modal');
         const closeX = document.getElementById('close-modal-x');
@@ -522,6 +536,7 @@
         const modalButtons = document.getElementById('modal-buttons');
         const successMsg = document.getElementById('success-msg');
 
+        // 開啟 Modal
         addBtn.addEventListener('click', () => {
             modal.style.display = 'flex';
             resetFileState();
@@ -532,47 +547,63 @@
         cancelBtn.addEventListener('click', closeModal);
         modal.addEventListener('click', (e) => { if(e.target === modal) closeModal(); });
 
+        // 選擇檔案 (支援多選)
         dropZone.addEventListener('click', () => {
             if(modalButtons.style.display !== 'none') fileInput.click();
         });
 
+        // 監聽檔案變化
         fileInput.addEventListener('change', (e) => {
-            if (e.target.files.length > 0) showFileState(e.target.files[0].name);
+            if (e.target.files.length > 0) {
+                // 將 FileList 轉為 Array 並傳入處理
+                handleFiles(Array.from(e.target.files));
+            }
         });
 
-        function showFileState(name) {
-            dropZone.classList.add('has-file');
-            emptyState.style.display = 'none';
-            fileListContainer.style.display = 'block';
-            
-            // 初始狀態顯示 checkmark_gray.png
-            fileListContainer.innerHTML = `
-                <div class="file-list-item" id="file-item-row">
-                    <div class="file-info-left">
-                        <img src="./image/checkmark_gray.png" class="check-icon" id="status-icon" alt="Check">
-                        <span class="file-name-text">${name}</span>
-                    </div>
-                </div>
-            `;
-        }
-
-        uploadBtn.addEventListener('click', () => {
-            const fileRow = document.getElementById('file-item-row');
-            if (!fileRow) return;
-
-            // 1. 在右側加入 AI TAG
-            const tagSpan = document.createElement('span');
-            tagSpan.className = 'ai-tag';
-            tagSpan.innerText = 'AI TAG[1]';
-            fileRow.appendChild(tagSpan);
-
-            // 2. 切換 Icon 為 checkmark_fill.png
-            const iconImg = document.getElementById('status-icon');
-            if(iconImg) {
-                iconImg.src = './image/checkmark_fill_gray.png';
+        // 處理並顯示多個檔案
+        function handleFiles(files) {
+            // 切換 UI 狀態
+            if (!dropZone.classList.contains('has-file')) {
+                dropZone.classList.add('has-file');
+                emptyState.style.display = 'none';
+                fileListContainer.style.display = 'block';
             }
 
-            // 3. 隱藏按鈕，顯示成功訊息
+            // 遍歷所有選取的檔案，逐一加入列表 (Append)
+            files.forEach(file => {
+                const item = document.createElement('div');
+                item.className = 'file-list-item';
+                // 每個項目都賦予一個類別以便之後選取
+                item.innerHTML = `
+                    <div class="file-info-left">
+                        <img src="./image/checkmark_gray.png" class="check-icon status-icon" alt="Check">
+                        <span class="file-name-text">${file.name}</span>
+                    </div>
+                    `;
+                fileListContainer.appendChild(item);
+            });
+        }
+
+        // 點擊「上傳」按鈕：批次更新所有檔案狀態
+        uploadBtn.addEventListener('click', () => {
+            const rows = document.querySelectorAll('.file-list-item');
+            if (rows.length === 0) return;
+
+            rows.forEach(row => {
+                // 1. 加入 AI TAG (如果還沒加過)
+                if (!row.querySelector('.ai-tag')) {
+                    const tagSpan = document.createElement('span');
+                    tagSpan.className = 'ai-tag';
+                    tagSpan.innerText = 'AI TAG[1]';
+                    row.appendChild(tagSpan);
+                }
+                
+                // 2. 切換 Icon 為實心打勾
+                const icon = row.querySelector('.status-icon');
+                if (icon) icon.src = './image/checkmark_fill_gray.png';
+            });
+
+            // 隱藏按鈕，顯示成功訊息
             modalButtons.style.display = 'none';
             successMsg.style.display = 'block';
         });
@@ -581,20 +612,21 @@
             dropZone.classList.remove('has-file');
             emptyState.style.display = 'flex';
             fileListContainer.style.display = 'none';
-            fileListContainer.innerHTML = '';
+            fileListContainer.innerHTML = ''; // 清空列表
             fileInput.value = '';
             
             modalButtons.style.display = 'flex';
             successMsg.style.display = 'none';
         }
 
+        // 拖曳功能
         dropZone.addEventListener('dragover', (e) => { e.preventDefault(); dropZone.style.borderColor = '#666'; });
         dropZone.addEventListener('dragleave', (e) => { e.preventDefault(); dropZone.style.borderColor = 'rgba(142, 142, 142, 1)'; });
         dropZone.addEventListener('drop', (e) => {
             e.preventDefault();
             dropZone.style.borderColor = 'rgba(142, 142, 142, 1)';
             if (e.dataTransfer.files.length > 0 && modalButtons.style.display !== 'none') {
-                showFileState(e.dataTransfer.files[0].name);
+                handleFiles(Array.from(e.dataTransfer.files));
             }
         });
 
