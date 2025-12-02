@@ -1,0 +1,376 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Asset Detail View Scrollable Versions</title>
+    <style>
+        /* 引入系統字體 */
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", "Segoe UI", Roboto, "Helvetica Neue", Arial, "Microsoft JhengHei", sans-serif;
+            -webkit-tap-highlight-color: transparent;
+        }
+
+        body {
+            height: 100vh;
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+            background-color: #000;
+        }
+
+        /* --- Header --- */
+        header { background-color: #000; height: 100px; display: flex; align-items: center; padding: 0 24px; justify-content: space-between; color: white; flex-shrink: 0; }
+        .logo-area { display: flex; align-items: center; }
+        .logo-img { height: 50px; width: auto; object-fit: contain; cursor: pointer; }
+        .search-area { flex-grow: 1; display: flex; justify-content: center; align-items: center; margin: 0 20px; }
+        .search-container { position: relative; display: flex; align-items: center; width: 100%; max-width: 520px; }
+        .search-input { width: 100%; padding: 12px 20px; padding-right: 50px; border-radius: 12px; border: none; outline: none; font-size: 1rem; height: 44px; background-color: #fff; color: #333; }
+        .search-icon-img { position: absolute; right: -40px; width: 20px; height: 20px; cursor: pointer; object-fit: contain; }
+        .header-icons { display: flex; gap: 24px; align-items: center; }
+        .icon-btn-img { width: 24px; height: 24px; cursor: pointer; object-fit: contain; display: block; }
+
+        /* --- Main Content --- */
+        .detail-container { flex: 1; background-color: rgba(7, 35, 125, 1); padding: 40px; display: flex; gap: 30px; justify-content: center; align-items: stretch; }
+
+        /* --- Preview Panel --- */
+        .preview-panel { flex: 1; background-color: #fff; border-radius: 20px; padding: 30px; display: flex; flex-direction: column; justify-content: center; align-items: center; box-shadow: 0 10px 30px rgba(0,0,0,0.2); position: relative; }
+        .preview-box { width: 90%; height: 80%; border: 8px solid #E0E0E0; border-radius: 8px; display: flex; justify-content: center; align-items: center; margin-bottom: 20px; }
+        .preview-text { color: #999; font-size: 1.5rem; font-weight: 600; letter-spacing: 1px; }
+        .preview-controls { display: flex; gap: 50px; margin-top: 10px; align-items: center; }
+        .nav-arrow { width: 18px; height: 18px; cursor: pointer; opacity: 0.6; transition: opacity 0.2s; }
+        .nav-arrow:hover { opacity: 1; }
+
+        /* --- Info Panel --- */
+        .info-panel { width: 400px; background-color: #fff; border-radius: 20px; padding: 40px 35px; display: flex; flex-direction: column; box-shadow: 0 10px 30px rgba(0,0,0,0.2); position: relative; overflow-y: hidden; /* 防止整體捲動 */ }
+        .list-icon { position: absolute; top: 35px; right: 35px; width: 22px; height: auto; object-fit: contain; cursor: pointer; opacity: 0.8; z-index: 20; }
+
+        /* Dropdown Menu */
+        .dropdown-menu { position: absolute; top: 65px; right: 35px; background-color: #D3D3D3; border-radius: 12px; padding: 0; overflow: hidden; width: 100px; box-shadow: 0 5px 15px rgba(0,0,0,0.2); display: none; z-index: 30; flex-direction: column; }
+        .dropdown-menu.show { display: flex; animation: fadeIn 0.2s ease; }
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(-5px); } to { opacity: 1; transform: translateY(0); } }
+        .menu-option { padding: 12px 0; text-align: center; color: #555; font-size: 1rem; font-weight: 600; cursor: pointer; transition: background-color 0.2s; border-bottom: 1px solid rgba(255,255,255,0.3); }
+        .menu-option:last-child { border-bottom: none; }
+        .menu-option:hover { background-color: #C0C0C0; color: #333; }
+
+        /* File Info */
+        .file-title { color: rgba(7, 35, 125, 1); font-size: 1.5rem; font-weight: 800; text-align: center; margin-bottom: 5px; margin-top: 10px; }
+        .file-id { color: #999; font-size: 1rem; text-align: center; margin-bottom: 35px; font-weight: 600; }
+        .info-row { display: flex; justify-content: space-between; padding: 14px 0; border-bottom: 1px solid #ddd; font-size: 1.1rem; }
+        .info-label { color: rgba(7, 35, 125, 1); font-weight: 700; }
+        .info-value { color: #666; font-weight: 500; }
+
+        /* --- Version Section (Modified for Scrolling) --- */
+        .version-section { 
+            margin-top: 40px; 
+            /* 讓這一塊佔據剩餘空間，確保佈局穩固 */
+            flex: 1; 
+            display: flex; 
+            flex-direction: column; 
+            min-height: 0; /* 讓 flex item 可以縮小 */
+        }
+        
+        .version-header { 
+            display: flex; align-items: center; gap: 10px; 
+            color: rgba(7, 35, 125, 1); font-size: 1.15rem; font-weight: 700; 
+            margin-bottom: 15px; flex-shrink: 0; /* 標題不縮小 */
+        }
+        
+        .plus-icon { width: 20px; height: 20px; cursor: pointer; transition: transform 0.2s; }
+        .plus-icon:hover { transform: scale(1.1); }
+
+        /* --- Scrollable Version List (NEW) --- */
+        .version-scroll-list {
+            overflow-y: auto; /* 開啟垂直捲動 */
+            max-height: 200px; /* 設定最大高度，避免過長 */
+            padding-right: 5px; /* 避免內容貼到捲軸 */
+            /* 自定義捲軸 */
+            scrollbar-width: thin;
+            scrollbar-color: rgba(0,0,0,0.2) transparent;
+        }
+
+        /* Webkit 捲軸美化 */
+        .version-scroll-list::-webkit-scrollbar { width: 4px; }
+        .version-scroll-list::-webkit-scrollbar-track { background: transparent; }
+        .version-scroll-list::-webkit-scrollbar-thumb { background-color: rgba(0,0,0,0.2); border-radius: 10px; }
+
+        .version-btn { 
+            display: flex; justify-content: space-between; padding: 14px 25px; 
+            border-radius: 30px; margin-bottom: 12px; cursor: pointer; 
+            font-weight: 600; font-size: 1rem; transition: background-color 0.2s; 
+        }
+        .version-btn.active { background-color: #8E8E8E; color: white; box-shadow: 0 3px 8px rgba(0,0,0,0.2); }
+        .version-btn.inactive { background-color: #D6D6D6; color: #666; }
+        .version-btn.inactive:hover { background-color: #C0C0C0; }
+
+        /* --- Modals Common --- */
+        .modal-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background-color: rgba(0, 0, 0, 0.4); backdrop-filter: blur(5px); z-index: 1000; display: none; justify-content: center; align-items: center; animation: fadeInOverlay 0.3s ease-out; }
+        @keyframes fadeInOverlay { from { opacity: 0; } to { opacity: 1; } }
+        @keyframes modalPop { 0% { opacity: 0; transform: scale(0.9) translateY(20px); } 100% { opacity: 1; transform: scale(1) translateY(0); } }
+        .modal-box-common { background-color: #fff; width: 600px; padding: 40px; border-radius: 20px; position: relative; box-shadow: 0 20px 50px rgba(0,0,0,0.3); display: flex; flex-direction: column; animation: modalPop 0.4s cubic-bezier(0.16, 1, 0.3, 1); }
+        .close-modal-x { position: absolute; top: 15px; right: 20px; font-size: 1.5rem; color: #333; cursor: pointer; z-index: 10; font-family: sans-serif; }
+        .edit-title { text-align: center; font-size: 1.5rem; font-weight: 800; color: rgba(7, 35, 125, 1); margin-bottom: 25px; margin-top: -5px; }
+        .modal-buttons { display: flex; justify-content: center; gap: 30px; margin-top: 20px; }
+        .btn-action { padding: 10px 50px; border-radius: 12px; border: none; font-size: 1.1rem; font-weight: 600; cursor: pointer; box-shadow: 0 4px 12px rgba(0,0,0,0.1); transition: all 0.2s; }
+        .btn-action:active { transform: scale(0.96); }
+        .btn-save { background-color: #D2E3FC; color: #333; }
+        .btn-cancel { background-color: #F9E8BD; color: #333; }
+
+        /* --- Specific Modals --- */
+        /* Share */
+        .share-link-row { display: flex; align-items: center; margin-bottom: 25px; margin-top: 10px; }
+        .url-box { flex-grow: 1; background-color: #D3D3D3; border-radius: 30px; padding: 12px 25px; font-size: 1.1rem; font-weight: 700; color: #333; text-decoration: underline; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+        .link-icon-img { width: 28px; height: 28px; object-fit: contain; margin-left: 20px; cursor: pointer; opacity: 0.8; }
+        .share-controls-row { display: flex; align-items: center; gap: 15px; }
+        .control-label { font-weight: 800; font-size: 1.1rem; color: #222; }
+        .control-pill { background-color: #D3D3D3; border: none; border-radius: 20px; padding: 8px 20px; font-size: 1rem; font-weight: 700; color: #333; cursor: pointer; outline: none; text-align: center; font-family: inherit; }
+        .permission-select { min-width: 140px; appearance: none; -webkit-appearance: none; background-image: url('./image/down_black.png'); background-repeat: no-repeat; background-position: right 15px center; background-size: 12px; padding-right: 35px; text-align-last: center; }
+        .date-input { min-width: 160px; padding: 7px 20px; color: #333; }
+        .date-input::-webkit-calendar-picker-indicator { cursor: pointer; opacity: 0.6; }
+        
+        /* Edit */
+        .form-group { display: flex; align-items: center; margin-bottom: 20px; }
+        .form-label { width: 80px; font-size: 1.1rem; font-weight: 700; color: #333; text-align: right; margin-right: 20px; }
+        .edit-input { flex-grow: 1; background-color: #D3D3D3; border: none; border-radius: 30px; padding: 10px 25px; font-size: 1rem; font-weight: 600; color: #333; outline: none; }
+        .edit-input:focus { background-color: #C0C0C0; }
+
+        /* Upload */
+        .drop-zone { flex: 1; background-color: rgba(235, 235, 235, 1); border: 3px dashed rgba(142, 142, 142, 1); border-radius: 16px; margin-bottom: 10px; min-height: 200px; display: flex; flex-direction: column; justify-content: center; align-items: center; cursor: pointer; position: relative; overflow: hidden; transition: border-color 0.2s; }
+        .drop-zone:hover { border-color: #666; }
+        .drop-zone.has-file { justify-content: flex-start; align-items: stretch; padding-top: 0; }
+        .empty-state-content { display: flex; flex-direction: column; align-items: center; justify-content: center; width: 100%; height: 100%; }
+        .folder-icon { width: 60px; height: 60px; object-fit: contain; opacity: 0.6; margin-bottom: 10px; }
+        .drop-text { font-size: 1.1rem; font-weight: 600; color: #666; letter-spacing: 1px; }
+        .file-list-item { display: flex; align-items: center; justify-content: space-between; padding: 15px 25px; width: 100%; border-bottom: 1px solid rgba(142, 142, 142, 1); }
+        .file-info-left { display: flex; align-items: center; overflow: hidden; }
+        .check-icon { width: 24px; height: 24px; object-fit: contain; margin-right: 15px; opacity: 0.8; flex-shrink: 0; }
+        .file-name-text { font-size: 1rem; font-weight: 600; color: #666; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 350px; }
+
+        .success-toast { position: absolute; bottom: 30px; left: 50%; transform: translateX(-50%); background-color: rgba(7, 35, 125, 0.9); color: white; padding: 10px 30px; border-radius: 30px; font-weight: 600; display: none; animation: fadeUp 0.3s ease-out; z-index: 2000; }
+        @keyframes fadeUp { from { opacity: 0; transform: translate(-50%, 20px); } to { opacity: 1; transform: translate(-50%, 0); } }
+
+    </style>
+</head>
+<body>
+
+    <header>
+        <div class="logo-area"><a href="dashboard.html"><img src="./image/logo.png" alt="Logo" class="logo-img"></a></div>
+        <div class="search-area"><div class="search-container"><input type="text" class="search-input" placeholder="請輸入搜尋項目"><img src="./image/search_white.png" alt="Search" class="search-icon-img"></div></div>
+        <div class="header-icons"><img src="./image/add_white.png" alt="Add" class="icon-btn-img"><img src="./image/reminder_white.png" alt="Notification" class="icon-btn-img"><img src="./image/person_white.png" alt="User" class="icon-btn-img"></div>
+    </header>
+
+    <div class="detail-container">
+        <div class="preview-panel">
+            <div class="preview-box"><div class="preview-text">文件預覽</div></div>
+            <div class="preview-controls"><img src="./image/left_gray.png" alt="Previous" class="nav-arrow"><img src="./image/right_gray.png" alt="Next" class="nav-arrow"></div>
+        </div>
+
+        <div class="info-panel">
+            <img src="./image/list_black.png" alt="Menu" class="list-icon" id="menu-trigger">
+            <div class="dropdown-menu" id="dropdown-menu">
+                <div class="menu-option">下載</div>
+                <div class="menu-option" id="share-option">分享</div>
+                <div class="menu-option" id="menu-edit-btn">編輯</div>
+            </div>
+
+            <div class="file-title" id="display-filename">檔名</div>
+            <div class="file-id" id="display-id">ID7856</div>
+
+            <div class="info-row"><span class="info-label">檔案大小</span><span class="info-value">176KB</span></div>
+            <div class="info-row"><span class="info-label">解析度</span><span class="info-value">1080</span></div>
+            <div class="info-row"><span class="info-label">上傳者</span><span class="info-value">CC</span></div>
+            <div class="info-row" style="border-bottom: none;"><span class="info-label">標籤區</span><span class="info-value" id="display-tags">#白襪體育生</span></div>
+
+            <div class="version-section">
+                <div class="version-header">
+                    版本歷史 
+                    <img src="./image/addfile_black.png" alt="Add Version" class="plus-icon" id="add-version-btn">
+                </div>
+                
+                <div class="version-scroll-list" id="version-scroll-list">
+                    <div class="version-btn active" onclick="selectVersion(this)">
+                        <span>2025.11.11</span><span>Version_1</span>
+                    </div>
+                    <div class="version-btn inactive" onclick="selectVersion(this)">
+                        <span>2025.11.26</span><span>Version_2</span>
+                    </div>
+                    <div class="version-btn inactive" onclick="selectVersion(this)"><span>2025.10.30</span><span>Version_Old</span></div>
+                    <div class="version-btn inactive" onclick="selectVersion(this)"><span>2025.10.15</span><span>Version_Old</span></div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="success-toast" id="success-toast">修改已儲存！</div>
+
+    <div class="modal-overlay" id="share-modal">
+        <div class="modal-box-common share-modal-box">
+            <span class="close-modal-x" id="close-share-x">&times;</span>
+            <div class="share-link-row">
+                <div class="url-box">https://esn.acne.dark.com</div>
+                <img src="./image/copy_gray.png" alt="Copy Link" class="link-icon-img">
+            </div>
+            <div class="share-controls-row">
+                <span class="control-label">權限</span>
+                <select class="control-pill permission-select"><option>僅供檢視</option><option>可編輯</option></select>
+                <span class="control-label" style="margin-left: 20px;">到期日</span>
+                <input type="date" class="control-pill date-input">
+            </div>
+        </div>
+    </div>
+
+    <div class="modal-overlay" id="edit-modal">
+        <div class="modal-box-common">
+            <span class="close-modal-x" id="close-edit-x">&times;</span>
+            <div class="edit-title">編輯資訊</div>
+            <div class="form-group"><label class="form-label">檔名</label><input type="text" class="edit-input" id="edit-filename-input"></div>
+            <div class="form-group"><label class="form-label">ID</label><input type="text" class="edit-input" id="edit-id-input"></div>
+            <div class="form-group"><label class="form-label">標籤</label><input type="text" class="edit-input" id="edit-tags-input"></div>
+            <div class="modal-buttons"><button class="btn-action btn-save" id="save-edit-btn">儲存</button><button class="btn-action btn-cancel" id="cancel-edit-btn">取消</button></div>
+        </div>
+    </div>
+
+    <div class="modal-overlay" id="version-modal">
+        <div class="modal-box-common">
+            <span class="close-modal-x" id="close-version-x">&times;</span>
+            <div class="edit-title">上傳新版本</div>
+            <div class="drop-zone" id="version-drop-zone">
+                <div class="empty-state-content" id="version-empty-state"><img src="./image/upload_gray.png" alt="Folder" class="folder-icon"><div class="drop-text">拖曳檔案至此</div></div>
+                <div id="version-file-list" style="width: 100%; display: none;"></div>
+            </div>
+            <div class="modal-buttons"><button class="btn-action btn-save" id="save-version-btn">上傳</button><button class="btn-action btn-cancel" id="cancel-version-btn">取消</button></div>
+        </div>
+    </div>
+    <input type="file" id="version-file-input" style="display: none;">
+
+    <script>
+        // Version Toggle
+        function selectVersion(clickedBtn) {
+            const allBtns = document.querySelectorAll('.version-btn');
+            allBtns.forEach(btn => {
+                btn.classList.remove('active');
+                btn.classList.add('inactive');
+            });
+            clickedBtn.classList.remove('inactive');
+            clickedBtn.classList.add('active');
+        }
+
+        // Global UI
+        const successToast = document.getElementById('success-toast');
+        function showToast(msg) { successToast.innerText = msg; successToast.style.display = 'block'; setTimeout(() => { successToast.style.display = 'none'; }, 2000); }
+
+        // Menu
+        const menuTrigger = document.getElementById('menu-trigger');
+        const dropdownMenu = document.getElementById('dropdown-menu');
+        menuTrigger.addEventListener('click', (e) => { e.stopPropagation(); dropdownMenu.classList.toggle('show'); });
+        document.addEventListener('click', (e) => { if (!dropdownMenu.contains(e.target) && e.target !== menuTrigger) dropdownMenu.classList.remove('show'); });
+
+        // Share
+        const shareOption = document.getElementById('share-option');
+        const shareModal = document.getElementById('share-modal');
+        const closeShareX = document.getElementById('close-share-x');
+        shareOption.addEventListener('click', () => { dropdownMenu.classList.remove('show'); shareModal.style.display = 'flex'; });
+        const closeShare = () => shareModal.style.display = 'none';
+        closeShareX.addEventListener('click', closeShare);
+        shareModal.addEventListener('click', (e) => { if (e.target === shareModal) closeShare(); });
+
+        // Edit
+        const editOption = document.getElementById('menu-edit-btn');
+        const editModal = document.getElementById('edit-modal');
+        const closeEditX = document.getElementById('close-edit-x');
+        const cancelEditBtn = document.getElementById('cancel-edit-btn');
+        const saveEditBtn = document.getElementById('save-edit-btn');
+        const displayFilename = document.getElementById('display-filename');
+        const displayId = document.getElementById('display-id');
+        const displayTags = document.getElementById('display-tags');
+        const inputFilename = document.getElementById('edit-filename-input');
+        const inputId = document.getElementById('edit-id-input');
+        const inputTags = document.getElementById('edit-tags-input');
+
+        editOption.addEventListener('click', () => {
+            dropdownMenu.classList.remove('show');
+            inputFilename.value = displayFilename.innerText;
+            inputId.value = displayId.innerText;
+            inputTags.value = displayTags.innerText;
+            editModal.style.display = 'flex';
+        });
+        const closeEdit = () => editModal.style.display = 'none';
+        closeEditX.addEventListener('click', closeEdit);
+        cancelEditBtn.addEventListener('click', closeEdit);
+        editModal.addEventListener('click', (e) => { if (e.target === editModal) closeEdit(); });
+        saveEditBtn.addEventListener('click', () => {
+            displayFilename.innerText = inputFilename.value;
+            displayId.innerText = inputId.value;
+            displayTags.innerText = inputTags.value;
+            closeEdit();
+            showToast('修改已儲存！');
+        });
+
+        // Upload Version
+        const addVersionBtn = document.getElementById('add-version-btn');
+        const versionModal = document.getElementById('version-modal');
+        const closeVersionX = document.getElementById('close-version-x');
+        const cancelVersionBtn = document.getElementById('cancel-version-btn');
+        const saveVersionBtn = document.getElementById('save-version-btn');
+        const vDropZone = document.getElementById('version-drop-zone');
+        const vFileInput = document.getElementById('version-file-input');
+        const vEmptyState = document.getElementById('version-empty-state');
+        const vFileList = document.getElementById('version-file-list');
+        const versionScrollList = document.getElementById('version-scroll-list'); // Changed Target
+
+        addVersionBtn.addEventListener('click', () => { resetVersionModal(); versionModal.style.display = 'flex'; });
+        const closeVersion = () => versionModal.style.display = 'none';
+        closeVersionX.addEventListener('click', closeVersion);
+        cancelVersionBtn.addEventListener('click', closeVersion);
+        versionModal.addEventListener('click', (e) => { if (e.target === versionModal) closeVersion(); });
+
+        vDropZone.addEventListener('click', () => vFileInput.click());
+        vFileInput.addEventListener('change', (e) => { if (e.target.files.length > 0) showVersionFile(e.target.files[0].name); });
+
+        function showVersionFile(name) {
+            vDropZone.classList.add('has-file');
+            vEmptyState.style.display = 'none';
+            vFileList.style.display = 'block';
+            vFileList.innerHTML = `<div class="file-list-item"><div class="file-info-left"><img src="./image/checkmark_gray.png" class="check-icon" alt="Check"><span class="file-name-text">${name}</span></div></div>`;
+        }
+
+        function resetVersionModal() {
+            vDropZone.classList.remove('has-file');
+            vEmptyState.style.display = 'flex';
+            vFileList.style.display = 'none';
+            vFileList.innerHTML = '';
+            vFileInput.value = '';
+        }
+
+        saveVersionBtn.addEventListener('click', () => {
+            if (!vDropZone.classList.contains('has-file')) return;
+
+            const today = new Date();
+            const dateStr = today.getFullYear() + '.' + (today.getMonth()+1).toString().padStart(2, '0') + '.' + today.getDate().toString().padStart(2, '0');
+            const count = document.querySelectorAll('.version-btn').length + 1;
+            const newVerName = "Version_" + count;
+
+            const newBtn = document.createElement('div');
+            newBtn.className = 'version-btn inactive';
+            newBtn.onclick = function() { selectVersion(this); };
+            newBtn.innerHTML = `<span>${dateStr}</span><span>${newVerName}</span>`;
+
+            // 修改：插入到 scroll list 的最上方
+            versionScrollList.insertBefore(newBtn, versionScrollList.firstChild);
+
+            closeVersion();
+            showToast('新版本上傳成功！');
+            selectVersion(newBtn);
+        });
+
+        vDropZone.addEventListener('dragover', (e) => { e.preventDefault(); vDropZone.style.borderColor = '#666'; });
+        vDropZone.addEventListener('dragleave', (e) => { e.preventDefault(); vDropZone.style.borderColor = 'rgba(142, 142, 142, 1)'; });
+        vDropZone.addEventListener('drop', (e) => { e.preventDefault(); vDropZone.style.borderColor = 'rgba(142, 142, 142, 1)'; if (e.dataTransfer.files.length > 0) showVersionFile(e.dataTransfer.files[0].name); });
+
+    </script>
+
+</body>
+</html>

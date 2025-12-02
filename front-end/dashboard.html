@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Dashboard Multi-Upload</title>
+    <title>Dashboard Linked</title>
     <style>
         /* 引入系統字體 */
         * {
@@ -196,6 +196,7 @@
         .content-row::-webkit-scrollbar-thumb { background-color: rgba(255, 255, 255, 0.4); border-radius: 10px; border: 1px solid rgba(255,255,255,0.1); }
         .content-row::-webkit-scrollbar-thumb:hover { background-color: rgba(255, 255, 255, 0.7); }
 
+        /* 修改：Card 樣式調整，支援連結屬性 */
         .card {
             background-color: #fff;
             width: 150px;
@@ -210,6 +211,7 @@
             flex-shrink: 0; 
             transition: transform 0.2s;
             cursor: pointer;
+            text-decoration: none; /* 移除連結下底線 */
         }
         .card:hover { transform: scale(1.03); }
         .card-title { color: #777; font-size: 1.1rem; font-weight: 600; text-align: center; margin-top: 35px; }
@@ -257,7 +259,6 @@
             to { opacity: 1; }
         }
 
-        /* 關閉按鈕 X */
         .close-modal-x {
             position: absolute;
             top: 15px;
@@ -269,7 +270,6 @@
             font-family: sans-serif;
         }
 
-        /* 拖曳區樣式 */
         .drop-zone {
             flex: 1;
             background-color: rgba(235, 235, 235, 1); 
@@ -295,15 +295,13 @@
             padding-top: 0;
         }
 
-        /* 檔案列表容器：支援多檔案捲動 */
         #file-list-container {
             width: 100%; 
             display: none;
-            overflow-y: auto; /* 超出高度時顯示捲軸 */
-            max-height: 330px; /* 限制最大高度，避免撐破視窗 */
+            overflow-y: auto; 
+            max-height: 330px; 
         }
 
-        /* 美化檔案列表的捲軸 */
         #file-list-container::-webkit-scrollbar { width: 6px; }
         #file-list-container::-webkit-scrollbar-thumb { background-color: rgba(0,0,0,0.2); border-radius: 10px; }
         #file-list-container::-webkit-scrollbar-track { background: transparent; }
@@ -332,7 +330,6 @@
             letter-spacing: 1px;
         }
 
-        /* 檔案列表項目 */
         .file-list-item {
             display: flex;
             align-items: center;
@@ -345,7 +342,6 @@
         .file-info-left {
             display: flex;
             align-items: center;
-            /* 讓過長的檔名可以顯示 ... (選擇性) */
             overflow: hidden; 
         }
 
@@ -365,7 +361,7 @@
             white-space: nowrap;
             overflow: hidden;
             text-overflow: ellipsis; 
-            max-width: 350px; /* 限制檔名寬度，避免跑版 */
+            max-width: 350px; 
         }
 
         .ai-tag {
@@ -376,7 +372,6 @@
             white-space: nowrap;
         }
 
-        /* 按鈕區 */
         .modal-buttons {
             display: flex;
             justify-content: center;
@@ -463,24 +458,24 @@
         <main>
             <div class="section-header">#白襪體育生</div>
             <div class="content-row">
-                <div class="card"><div class="card-title">弗力熊熊</div><div class="card-version">v.2</div></div>
-                <div class="card"><div class="card-title">新卡片 A</div><div class="card-version">v.1</div></div>
-                <div class="card"><div class="card-title">新卡片 B</div><div class="card-version">v.3</div></div>
-                <div class="card"><div class="card-title">新卡片 C</div><div class="card-version">v.1</div></div>
-                <div class="card"><div class="card-title">新卡片 D</div><div class="card-version">v.5</div></div>
-                <div class="card"><div class="card-title">新卡片 E</div><div class="card-version">v.2</div></div>
-                <div class="card"><div class="card-title">新卡片 E</div><div class="card-version">v.2</div></div>
+                <a href="asset_detail.html" class="card"><div class="card-title">弗力熊熊</div><div class="card-version">v.2</div></a>
+                <a href="asset_detail.html" class="card"><div class="card-title">新卡片 A</div><div class="card-version">v.1</div></a>
+                <a href="asset_detail.html" class="card"><div class="card-title">新卡片 B</div><div class="card-version">v.3</div></a>
+                <a href="asset_detail.html" class="card"><div class="card-title">新卡片 C</div><div class="card-version">v.1</div></a>
+                <a href="asset_detail.html" class="card"><div class="card-title">新卡片 D</div><div class="card-version">v.5</div></a>
+                <a href="asset_detail.html" class="card"><div class="card-title">新卡片 E</div><div class="card-version">v.2</div></a>
+                <a href="asset_detail.html" class="card"><div class="card-title">新卡片 E</div><div class="card-version">v.2</div></a>
             </div>
 
             <div class="section-header">#痘痘那個</div>
             <div class="content-row">
-                <div class="card"><div class="card-title">鬼話紅蟻</div><div class="card-version">v.1</div></div>
-                <div class="card"><div class="card-title">測試資料</div><div class="card-version">v.2</div></div>
-                <div class="card"><div class="card-title">測試資料</div><div class="card-version">v.2</div></div>
-                <div class="card"><div class="card-title">測試資料</div><div class="card-version">v.2</div></div>
-                <div class="card"><div class="card-title">測試資料</div><div class="card-version">v.2</div></div>
-                <div class="card"><div class="card-title">測試資料</div><div class="card-version">v.2</div></div>
-                <div class="card"><div class="card-title">測試資料</div><div class="card-version">v.2</div></div>
+                <a href="asset_detail.html" class="card"><div class="card-title">鬼話紅蟻</div><div class="card-version">v.1</div></a>
+                <a href="asset_detail.html" class="card"><div class="card-title">測試資料</div><div class="card-version">v.2</div></a>
+                <a href="asset_detail.html" class="card"><div class="card-title">測試資料</div><div class="card-version">v.2</div></a>
+                <a href="asset_detail.html" class="card"><div class="card-title">測試資料</div><div class="card-version">v.2</div></a>
+                <a href="asset_detail.html" class="card"><div class="card-title">測試資料</div><div class="card-version">v.2</div></a>
+                <a href="asset_detail.html" class="card"><div class="card-title">測試資料</div><div class="card-version">v.2</div></a>
+                <a href="asset_detail.html" class="card"><div class="card-title">測試資料</div><div class="card-version">v.2</div></a>
             </div>
         </main>
     </div>
@@ -555,25 +550,21 @@
         // 監聽檔案變化
         fileInput.addEventListener('change', (e) => {
             if (e.target.files.length > 0) {
-                // 將 FileList 轉為 Array 並傳入處理
                 handleFiles(Array.from(e.target.files));
             }
         });
 
         // 處理並顯示多個檔案
         function handleFiles(files) {
-            // 切換 UI 狀態
             if (!dropZone.classList.contains('has-file')) {
                 dropZone.classList.add('has-file');
                 emptyState.style.display = 'none';
                 fileListContainer.style.display = 'block';
             }
 
-            // 遍歷所有選取的檔案，逐一加入列表 (Append)
             files.forEach(file => {
                 const item = document.createElement('div');
                 item.className = 'file-list-item';
-                // 每個項目都賦予一個類別以便之後選取
                 item.innerHTML = `
                     <div class="file-info-left">
                         <img src="./image/checkmark_gray.png" class="check-icon status-icon" alt="Check">
@@ -584,13 +575,13 @@
             });
         }
 
-        // 點擊「上傳」按鈕：批次更新所有檔案狀態
+        // 點擊「上傳」按鈕
         uploadBtn.addEventListener('click', () => {
             const rows = document.querySelectorAll('.file-list-item');
             if (rows.length === 0) return;
 
             rows.forEach(row => {
-                // 1. 加入 AI TAG (如果還沒加過)
+                // 1. 加入 AI TAG
                 if (!row.querySelector('.ai-tag')) {
                     const tagSpan = document.createElement('span');
                     tagSpan.className = 'ai-tag';
@@ -598,9 +589,9 @@
                     row.appendChild(tagSpan);
                 }
                 
-                // 2. 切換 Icon 為實心打勾
+                // 2. 切換 Icon 為實心打勾 (請確認檔案名稱是否正確)
                 const icon = row.querySelector('.status-icon');
-                if (icon) icon.src = './image/checkmark_fill_gray.png';
+                if (icon) icon.src = './image/checkmark_fill_gray.png'; // 修正圖檔名稱，如果你的圖檔是 checkmark_fill.png 請自行修改
             });
 
             // 隱藏按鈕，顯示成功訊息
@@ -612,7 +603,7 @@
             dropZone.classList.remove('has-file');
             emptyState.style.display = 'flex';
             fileListContainer.style.display = 'none';
-            fileListContainer.innerHTML = ''; // 清空列表
+            fileListContainer.innerHTML = ''; 
             fileInput.value = '';
             
             modalButtons.style.display = 'flex';
