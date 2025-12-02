@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Dashboard Unified Gray</title>
+    <title>Dashboard Upload Final</title>
     <style>
         /* 引入系統字體 */
         * {
@@ -22,7 +22,7 @@
             background-color: #000;
         }
 
-        /* --- Header (保持不變) --- */
+        /* --- Header --- */
         header {
             background-color: #000; 
             height: 100px; 
@@ -88,12 +88,10 @@
         /* --- Sidebar --- */
         aside {
             width: 260px;
-            /* 這是您指定的基礎灰色 */
             background-color: rgba(193, 193, 193, 1);
             display: flex;
             flex-direction: column;
             flex-shrink: 0;
-            /* 這是您指定的線條灰色，將會統一使用這個顏色 */
             border-right: 1px solid rgba(142, 142, 142, 1);
             overflow-y: auto;
         }
@@ -101,9 +99,8 @@
         .menu-item {
             padding: 16px 24px;
             font-size: 1.1rem;
-            color: #444; /* 統一文字深灰 */
+            color: #444; 
             cursor: pointer;
-            /* 統一邊框顏色 */
             border-bottom: 1px solid rgba(142, 142, 142, 1);
             display: flex;
             justify-content: space-between;
@@ -129,15 +126,14 @@
             max-height: 0;
             overflow: hidden;
             transition: max-height 0.4s ease-out;
-            background-color: rgba(180, 180, 180, 1); /* 保持這個稍深的層次感 */
+            background-color: rgba(180, 180, 180, 1); 
         }
 
         .submenu-item {
             padding: 12px 24px 12px 40px;
             font-size: 1rem;
-            color: #555; /* 統一文字顏色 */
+            color: #555; 
             cursor: pointer;
-            /* 修改：原本是 rgba(160...)，現在統一改為 142 */
             border-bottom: 1px solid rgba(142, 142, 142, 1);
             transition: background-color 0.2s;
         }
@@ -155,7 +151,6 @@
             border-radius: 20px;
             font-size: 0.85rem;
             color: #333;
-            /* 修改：原本是 #ccc，現在統一改為 142 */
             border: 1px solid rgba(142, 142, 142, 1);
             cursor: pointer;
             font-weight: 500;
@@ -165,7 +160,7 @@
         .tag-pill:hover { transform: translateY(-1px); box-shadow: 0 4px 6px rgba(0,0,0,0.15); }
         .tag-pill:active { transform: translateY(1px); box-shadow: 0 1px 2px rgba(0,0,0,0.1); }
 
-        /* --- Main Content (保持不變) --- */
+        /* --- Main Content --- */
         main {
             flex: 1;
             background-color: rgba(7, 35, 125, 1);
@@ -244,9 +239,11 @@
             width: 700px;
             height: 500px;
             border-radius: 20px;
-            padding: 30px;
+            /* Padding 左右設定 30px，對應下方的對齊 */
+            padding: 20px 30px 30px 30px; 
             display: flex;
             flex-direction: column;
+            position: relative; 
             box-shadow: 0 20px 50px rgba(0,0,0,0.3);
             animation: modalPop 0.4s cubic-bezier(0.16, 1, 0.3, 1);
         }
@@ -261,18 +258,55 @@
             to { opacity: 1; }
         }
 
+        /* 關閉按鈕 X */
+        .close-modal-x {
+            position: absolute;
+            top: 15px;
+            /* 修改：設定 right: 30px，這會跟 modal-box 的 padding-right (30px) 以及 drop-zone 的邊緣對齊 */
+            right: 30px; 
+            font-size: 1.6rem;
+            color: #333;
+            cursor: pointer;
+            z-index: 10;
+            font-family: sans-serif;
+        }
+
+        /* 拖曳區樣式 */
         .drop-zone {
             flex: 1;
-            /* 修改：原本是 #ECECEC，現在調整為稍微溫暖一點的淺灰，與側邊欄更協調 */
             background-color: rgba(235, 235, 235, 1); 
-            /* 修改：原本是 #A0A0A0，現在統一改為 142 */
             border: 3px dashed rgba(142, 142, 142, 1);
             border-radius: 16px;
-            margin-bottom: 30px;
+            
+            /* 虛線框往下移，露出上方的 X 按鈕 */
+            margin-top: 35px;
+            margin-bottom: 25px;
+            
             display: flex;
             flex-direction: column;
-            justify-content: center;
+            justify-content: center; 
             align-items: center;
+            cursor: pointer;
+            position: relative;
+            overflow: hidden; 
+            transition: border-color 0.2s;
+        }
+
+        .drop-zone:hover { border-color: #666; }
+
+        .drop-zone.has-file {
+            justify-content: flex-start; 
+            align-items: stretch; 
+            padding-top: 0;
+        }
+
+        .empty-state-content {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            width: 100%;
+            height: 100%;
         }
 
         .folder-icon {
@@ -286,15 +320,63 @@
         .drop-text {
             font-size: 1.2rem;
             font-weight: 600;
-            /* 修改：原本是 #888，現在改深一點以配合整體 */
             color: #666;
             letter-spacing: 1px;
         }
 
+        /* --- 檔案列表項目 --- */
+        .file-list-item {
+            display: flex;
+            align-items: center;
+            justify-content: space-between; 
+            padding: 15px 25px; 
+            width: 100%;
+            border-bottom: 1px solid rgba(142, 142, 142, 1); 
+        }
+
+        .file-info-left {
+            display: flex;
+            align-items: center;
+        }
+
+        .check-icon {
+            width: 28px;
+            height: 28px;
+            object-fit: contain;
+            margin-right: 15px;
+            opacity: 0.8;
+        }
+
+        .file-name-text {
+            font-size: 1.05rem; 
+            font-weight: 600;   
+            color: #666;       
+        }
+
+        /* AI TAG 樣式 */
+        .ai-tag {
+            color: #999;
+            font-weight: 700;
+            font-size: 0.9rem;
+            letter-spacing: 0.5px;
+        }
+
+        /* 按鈕區 */
         .modal-buttons {
             display: flex;
             justify-content: center;
             gap: 40px;
+        }
+
+        /* 成功訊息 */
+        .success-message {
+            display: none; 
+            color: rgba(7, 35, 125, 1); 
+            font-size: 1.4rem;
+            font-weight: 700;
+            text-align: center;
+            margin-top: 10px;
+            animation: fadeInOverlay 0.5s ease;
         }
 
         .btn-modal {
@@ -308,25 +390,11 @@
             transition: all 0.2s cubic-bezier(0.25, 0.8, 0.25, 1);
         }
 
-        .btn-modal:hover {
-            transform: translateY(-2px);
-            box-shadow: 0 6px 15px rgba(0,0,0,0.15);
-        }
+        .btn-modal:hover { transform: translateY(-2px); box-shadow: 0 6px 15px rgba(0,0,0,0.15); }
+        .btn-modal:active { transform: scale(0.96) translateY(0); box-shadow: 0 2px 5px rgba(0,0,0,0.1); }
 
-        .btn-modal:active {
-            transform: scale(0.96) translateY(0);
-            box-shadow: 0 2px 5px rgba(0,0,0,0.1);
-        }
-
-        .btn-upload {
-            background-color: #D2E3FC; 
-            color: #333;
-        }
-
-        .btn-cancel {
-            background-color: #F9E8BD;
-            color: #333;
-        }
+        .btn-upload { background-color: #D2E3FC; color: #333; }
+        .btn-cancel { background-color: #F9E8BD; color: #333; }
 
     </style>
 </head>
@@ -400,31 +468,29 @@
                 <div class="card"><div class="card-title">測試資料</div><div class="card-version">v.2</div></div>
                 <div class="card"><div class="card-title">測試資料</div><div class="card-version">v.2</div></div>
             </div>
-
-            <div class="section-header">#測試資料</div>
-            <div class="content-row">
-                <div class="card"><div class="card-title">鬼話紅蟻</div><div class="card-version">v.1</div></div>
-                <div class="card"><div class="card-title">測試資料</div><div class="card-version">v.2</div></div>
-                <div class="card"><div class="card-title">測試資料</div><div class="card-version">v.2</div></div>
-                <div class="card"><div class="card-title">測試資料</div><div class="card-version">v.2</div></div>
-                <div class="card"><div class="card-title">測試資料</div><div class="card-version">v.2</div></div>
-                <div class="card"><div class="card-title">測試資料</div><div class="card-version">v.2</div></div>
-                <div class="card"><div class="card-title">測試資料</div><div class="card-version">v.2</div></div>
-            </div>
         </main>
     </div>
 
+    <input type="file" id="file-input" style="display: none;">
+
     <div class="modal-overlay" id="upload-modal">
         <div class="modal-box">
-            <div class="drop-zone">
-                <img src="./image/folder_icon.png" alt="Folder" class="folder-icon">
-                <div class="drop-text">拖曳檔案至此</div>
+            <span class="close-modal-x" id="close-modal-x">&times;</span>
+
+            <div class="drop-zone" id="drop-zone">
+                <div class="empty-state-content" id="empty-state">
+                    <img src="./image/upload_gray.png" alt="Folder" class="folder-icon">
+                    <div class="drop-text">拖曳檔案至此</div>
+                </div>
+                <div id="file-list-container" style="width: 100%; display: none;"></div>
             </div>
             
-            <div class="modal-buttons">
-                <button class="btn-modal btn-upload">上傳</button>
-                <button class="btn-modal btn-cancel" id="close-modal-btn">取消</button>
+            <div class="modal-buttons" id="modal-buttons">
+                <button class="btn-modal btn-upload" id="upload-btn-action">上傳</button>
+                <button class="btn-modal btn-cancel" id="cancel-btn">取消</button>
             </div>
+
+            <div class="success-message" id="success-msg">上傳成功！AI標籤標記完成</div>
         </div>
     </div>
 
@@ -440,26 +506,98 @@
             } else {
                 submenu.style.maxHeight = submenu.scrollHeight + "px";
             }
-        }//test_
+        }
 
-        // --- Modal Logic ---//test 2
+        // --- Modal & File Logic ---
         const addBtn = document.getElementById('add-btn');
         const modal = document.getElementById('upload-modal');
-        const closeBtn = document.getElementById('close-modal-btn');
+        const closeX = document.getElementById('close-modal-x');
+        const cancelBtn = document.getElementById('cancel-btn');
+        const uploadBtn = document.getElementById('upload-btn-action');
+        
+        const dropZone = document.getElementById('drop-zone');
+        const fileInput = document.getElementById('file-input');
+        const emptyState = document.getElementById('empty-state');
+        const fileListContainer = document.getElementById('file-list-container');
+        const modalButtons = document.getElementById('modal-buttons');
+        const successMsg = document.getElementById('success-msg');
 
-        addBtn.addEventListener('click', function() {
+        addBtn.addEventListener('click', () => {
             modal.style.display = 'flex';
+            resetFileState();
+        });
+        
+        function closeModal() { modal.style.display = 'none'; }
+        closeX.addEventListener('click', closeModal);
+        cancelBtn.addEventListener('click', closeModal);
+        modal.addEventListener('click', (e) => { if(e.target === modal) closeModal(); });
+
+        dropZone.addEventListener('click', () => {
+            if(modalButtons.style.display !== 'none') fileInput.click();
         });
 
-        closeBtn.addEventListener('click', function() {
-            modal.style.display = 'none';
+        fileInput.addEventListener('change', (e) => {
+            if (e.target.files.length > 0) showFileState(e.target.files[0].name);
         });
 
-        modal.addEventListener('click', function(e) {
-            if (e.target === modal) {
-                modal.style.display = 'none';
+        function showFileState(name) {
+            dropZone.classList.add('has-file');
+            emptyState.style.display = 'none';
+            fileListContainer.style.display = 'block';
+            
+            // 初始狀態顯示 checkmark_gray.png
+            fileListContainer.innerHTML = `
+                <div class="file-list-item" id="file-item-row">
+                    <div class="file-info-left">
+                        <img src="./image/checkmark_gray.png" class="check-icon" id="status-icon" alt="Check">
+                        <span class="file-name-text">${name}</span>
+                    </div>
+                </div>
+            `;
+        }
+
+        uploadBtn.addEventListener('click', () => {
+            const fileRow = document.getElementById('file-item-row');
+            if (!fileRow) return;
+
+            // 1. 在右側加入 AI TAG
+            const tagSpan = document.createElement('span');
+            tagSpan.className = 'ai-tag';
+            tagSpan.innerText = 'AI TAG[1]';
+            fileRow.appendChild(tagSpan);
+
+            // 2. 切換 Icon 為 checkmark_fill.png
+            const iconImg = document.getElementById('status-icon');
+            if(iconImg) {
+                iconImg.src = './image/checkmark_fill_gray.png';
+            }
+
+            // 3. 隱藏按鈕，顯示成功訊息
+            modalButtons.style.display = 'none';
+            successMsg.style.display = 'block';
+        });
+
+        function resetFileState() {
+            dropZone.classList.remove('has-file');
+            emptyState.style.display = 'flex';
+            fileListContainer.style.display = 'none';
+            fileListContainer.innerHTML = '';
+            fileInput.value = '';
+            
+            modalButtons.style.display = 'flex';
+            successMsg.style.display = 'none';
+        }
+
+        dropZone.addEventListener('dragover', (e) => { e.preventDefault(); dropZone.style.borderColor = '#666'; });
+        dropZone.addEventListener('dragleave', (e) => { e.preventDefault(); dropZone.style.borderColor = 'rgba(142, 142, 142, 1)'; });
+        dropZone.addEventListener('drop', (e) => {
+            e.preventDefault();
+            dropZone.style.borderColor = 'rgba(142, 142, 142, 1)';
+            if (e.dataTransfer.files.length > 0 && modalButtons.style.display !== 'none') {
+                showFileState(e.dataTransfer.files[0].name);
             }
         });
+
     </script>
 
 </body>
