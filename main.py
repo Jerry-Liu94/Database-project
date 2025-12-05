@@ -55,10 +55,10 @@ origins = [
     "http://127.0.0.1:5500",
     
     # 2. 你的後端網域 (Swagger UI 會用到)
-    "https://redantdem.indiechild.xyz",
+    "https://redantdam.indiechild.xyz",
     
     # 3. 前端網域
-    "https://www.indiechild.xyz", 
+    "https://www.redantdam.indiechild.xyz", 
 ]
 
 app.add_middleware(
