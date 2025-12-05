@@ -1,0 +1,242 @@
+/* --- Audit Log 頁面專屬樣式 --- */
+
+/* 主要內容區域 (.audit-main.full-width-layout) 樣式 */
+.audit-main.full-width-layout {
+    background-color: rgba(7, 35, 125, 1); 
+    padding: 30px 40px; 
+    display: flex;
+    flex-direction: column; 
+    min-height: calc(100vh - 100px); 
+    overflow-y: auto; 
+    width: 100%; 
+}
+
+/* --- 篩選器列 (Filter Bar) 佈局 --- */
+.filter-bar {
+    display: flex;
+    align-items: center;
+    background-color: transparent; 
+    padding: 0; 
+    box-shadow: none;
+    flex-shrink: 0; 
+    margin-bottom: 20px; 
+    gap: 15px; 
+}
+
+/* 篩選群組 (.filter-group) 樣式 */
+.filter-group {
+    display: flex;
+    align-items: center;
+    background-color: #ffffff; 
+    border-radius: 24px;
+    overflow: hidden; 
+    box-shadow: none; 
+    position: relative; 
+}
+
+/* 篩選標籤 (.filter-label) 樣式 */
+.filter-label {
+    background-color: transparent; 
+    color: #333;
+    font-weight: 700;
+    padding: 10px 18px; 
+    font-size: 1rem;
+    height: 48px; 
+    display: flex;
+    align-items: center;
+    flex-shrink: 0;
+    border-right: 1px solid #E0E0E0; 
+}
+
+/* 統一 input/select (.filter-input) 樣式 */
+.filter-input {
+    padding: 10px 18px;
+    margin-right: 0; 
+    border: none; 
+    background-color: transparent; 
+    border-radius: 0; 
+    font-size: 1rem;
+    color: #333;
+    outline: none;
+    min-width: 180px; 
+    height: 48px; 
+    box-shadow: none; 
+}
+
+/* 輸入框 placeholder 樣式 */
+.filter-input::placeholder {
+    color: #999;
+}
+
+/* Select 元素 (.filter-input.select-input) 外觀與自定義圖標 */
+.filter-input.select-input {
+    -webkit-appearance: none; 
+    -moz-appearance: none;
+    appearance: none;
+    
+    background-image: url('../static/image/down_black.png');
+    background-repeat: no-repeat;
+    background-position: right 10px center; 
+    background-size: 13px; 
+    padding-right: 40px;
+    cursor: pointer;
+}
+
+/* Date 元素外觀修正 */
+.filter-input[type="date"] {
+    padding-right: 18px; 
+    background-image: none;
+    
+    -webkit-appearance: textfield; 
+    -moz-appearance: textfield;
+    appearance: textfield;
+}
+
+/* 查詢按鈕 (.search-btn) 樣式 */
+.search-btn {
+    background-color: #F9E8BD; 
+    color: #333;
+    font-size: 1rem;
+    font-weight: 700;
+    padding: 10px 30px;
+    border: none;
+    border-radius: 24px; 
+    cursor: pointer;
+    transition: background-color 0.2s, transform 0.1s;
+    height: 48px; 
+    margin-left: auto; 
+}
+/* 查詢按鈕 Hover 效果 */
+.search-btn:hover {
+    background-color: #ffe28d;
+}
+/* 查詢按鈕 Active 效果 */
+.search-btn:active {
+    transform: translateY(1px);
+}
+
+
+/* --- 表格容器 (.audit-content-container) 樣式 --- */
+.audit-content-container {
+    flex: 1; 
+    background-color: #ffffff; 
+    border-radius: 12px;
+    box-shadow: 0 4px 10px rgba(0, 0, 0, 0.1); 
+    overflow: hidden; 
+    margin-bottom: 20px;
+    display: flex;
+    flex-direction: column; 
+    min-height: 400px; 
+}
+
+/* 滾動專用容器 (.table-scroll-wrapper) */
+.table-scroll-wrapper {
+    flex: 1; 
+    overflow-y: auto;
+    overflow-x: hidden;
+}
+
+/* 表格本體 (.audit-table) 樣式 */
+.audit-table {
+    width: 100%;
+    border-collapse: collapse; 
+    height: 100%; 
+    table-layout: fixed; 
+    font-size: 1rem;
+    color: #333;
+    background-color: transparent; 
+}
+
+/* 表格頭部 (thead) 樣式 (固定表頭) */
+.audit-table thead {
+    background-color: #ffffff; 
+    position: sticky; 
+    top: 0;
+    z-index: 10;
+}
+/* 表格頭部單元格 (th) 樣式 */
+.audit-table thead th {
+    background-color: #EFEFEF; 
+    color: #333;
+    font-weight: 700;
+    padding: 15px 10px;
+    text-align: left;
+    border-bottom: 1px solid #ccc; 
+}
+
+/* 表格內容單元格 (td) 樣式 */
+.audit-table tbody td {
+    padding: 15px 10px; 
+    border-bottom: 1px solid #f0f0f0;
+    text-align: left;
+    word-break: break-all;
+    font-weight: 500; 
+    color: #555; 
+    
+    height: 48px; 
+    vertical-align: middle; 
+}
+
+/* --- 斑馬紋效果 (白灰連續交替) --- */
+/* 奇數行設為白色 */
+.audit-table tbody tr {
+    background-color: #ffffff;
+}
+/* 偶數行設為淺灰色 */
+.audit-table tbody tr:nth-child(even) {
+    background-color: #f7f7f7;
+}
+
+/* 行 Hover 效果 */
+.audit-table tbody tr:hover {
+    background-color: #e6f7ff; 
+    cursor: default;
+}
+
+
+/* --- 分頁列 (Pagination Bar) 樣式 --- */
+.pagination-bar {
+    flex-shrink: 0; 
+    background-color: rgba(7, 35, 125, 1); 
+    padding: 10px 40px 10px 0; 
+    display: flex;
+    justify-content: space-between; 
+    align-items: center;
+}
+/* 分頁資訊 (.page-info) 樣式 */
+.page-info {
+    color: #fff;
+    padding: 5px 40px; 
+}
+/* 分頁控制群組 (.page-controls) 佈局 */
+.page-controls {
+    display: flex;
+    gap: 8px;
+    align-items: center;
+}
+/* 頁面箭頭和數字按鈕共同樣式 */
+.page-arrow,
+.page-number {
+    background-color: #ffffff; 
+    color: rgba(7, 35, 125, 1);
+    padding: 6px 12px; 
+    border-radius: 8px; 
+    cursor: pointer;
+    transition: background-color 0.2s;
+    user-select: none;
+    min-width: 30px;
+    text-align: center;
+    font-weight: 700;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+/* 當前活躍頁碼樣式 */
+.page-number.active {
+    background-color: rgba(7, 35, 125, 1); 
+    color: #ffffff; 
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.3);
+}
+/* 箭頭和非活躍頁碼 Hover 效果 */
+.page-arrow:hover,
+.page-number:not(.active):hover {
+    background-color: #e0e0e0;
+}

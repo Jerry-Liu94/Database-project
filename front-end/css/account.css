@@ -7,10 +7,10 @@
     -webkit-tap-highlight-color: transparent; 
 }
 
+/* body, html 頁面整體佈局與背景設定 */
 body, html {
     height: 100%;
     font-family: Arial, sans-serif;
-    /* NEW! 設定整個頁面背景為深藍色 */
     background-color: #07237D; 
     
     display: flex;
@@ -28,24 +28,21 @@ body, html {
     position: relative; 
 }
 
-/* 頂部深藍色區塊 */
+/* 頂部深藍色區塊 (.top-blue-bg) 樣式 */
 .top-blue-bg {
-    height: 28.85vh; /* 240/832 ≈ 28.85% */
+    height: 28.85vh;
     min-height: 150px;
- 
     color: white;
     position: relative; 
     
-    /* 啟用 Flexbox */
     display: flex;
-    justify-content: center; /* 水平居中 */
-    align-items: center; /* 垂直居中 */
+    justify-content: center;
+    align-items: center;
     
-    /* 移除所有 padding-top/bottom */
     padding: 0; 
 }
 
-/* DAM SYSTEM 標題 */
+/* 標題文字 (.header-text) 樣式 */
 .header-text {
     font-size: 64px; 
     font-weight: bold;
@@ -57,79 +54,71 @@ body, html {
     width: auto; 
     transform: none; 
     
-    /* 使用 margin-top 將標題從頂部推下來 (模擬 Y:113) */
     margin-top: 113px;
 }
 
-/* 中間白色區塊 */
+/* 中間白色區塊 (.middle-white-area) 樣式及陰影 */
 .middle-white-area {
     flex-grow: 1; 
     background-color: #FFFFFF;
     
-    /* NEW! 應用向下延伸的陰影 */
-    /* 這裡使用一個較大的 Y 偏移，確保陰影能覆蓋到底部藍色區塊的頂部 */
-    /* 陰影參數: X:0 Y:30 Blur:11 Spread:2 Color: 25% Black (來自您提供的 Figma 參數) */
     box-shadow: 0px 30px 11px 2px rgba(0, 0, 0, 0.25); 
     
     display: flex;
-    justify-content: center; /* 水平居中 */
+    justify-content: center;
     align-items: flex-start;
     padding-top: 50px; 
     position: relative; 
     z-index: 2;
 }
-/* 底部深藍色區塊 */
+/* 底部深藍色區塊 (.bottom-blue-bg) 樣式與分層 */
 .bottom-blue-bg {
-    height: 9.97vh; /* 83/832 ≈ 9.97% */
+    height: 9.97vh;
     min-height: 50px;
     background-color: #07237D;
-    position: relative; /* 確保它是一個定位元素 */
-    z-index: 1; /* 確保它在白色區塊之下 */ 
+    position: relative;
+    z-index: 1;
 }
 
 /* --- 表單內部樣式 --- */
 
+/* 表單容器 (.signup-form-final) 佈局 */
 .signup-form-final {
-    /* 總寬度：329px (110px + 5px + 214px) 這是最準確的寬度 */
     width: 329px; 
     display: flex;
     flex-direction: column;
     
     margin: 0 auto; 
     
-    /* NEW! 讓內容在 329px 寬度內完美居中 */
     align-items: center; 
 }
 
+/* 表單組 (.form-group-final) 佈局 */
 .form-group-final {
     display: flex;
     justify-content: flex-start; 
     align-items: center;
     
-    /* NEW! 設置精確寬度 329px，讓它能被父容器完美居中 */
     width: 329px; 
     margin-bottom: 25px;
 }
 
-/* 1. 帳號/Email/密碼 標籤 */
+/* 標籤 (label) 樣式 */
 .form-group-final label {
     font-size: 24px; 
     font-weight: bold;
     color: #333;
     
-    /* NEW! 移除固定寬度，讓寬度由文字長度決定 */
     width: auto; 
     text-align: right; 
     
-    /* NEW! 鎖定極小間隙，例如 5px */
     margin-right: 50px; 
     padding: 0;
     
-    /* 確保長標籤不換行 */
     white-space: nowrap; 
 }
 
-/* 2. 輸入框尺寸 */
+/* 輸入框 (input) 樣式 */
 .form-group-final input {
     width: 214px; 
     height: 39px; 
@@ -140,18 +129,18 @@ body, html {
     margin: 0; 
 }
 
+/* 輸入框 placeholder 樣式 */
 #username::placeholder {
     color: #999;
     font-size: 14px;
     text-align: center;
 }
-/* 3. 確認按鈕樣式 */
+/* 確認按鈕 (.confirm-button-final) 樣式 */
 .confirm-button-final {
     width: 100px;
     height: 42px; 
     display: block;
     
-    /* 確保按鈕在 367px 寬度的表單內居中 */
     margin-top: 15px;
     margin-left: auto; 
     margin-right: auto; 
@@ -167,13 +156,14 @@ body, html {
     transition: background-color 0.3s;
 }
 
+/* 確認按鈕 Hover 效果 */
 .confirm-button-final:hover {
     background: linear-gradient(to bottom, #AECBE8, #69A3D3);
 }
 
-/* --- 登入頁面專屬樣式 (新增於 signup.css 檔案末尾) --- */
+/* --- 登入頁面專屬樣式 --- */
 
-/* 輔助連結和記住我區塊樣式 */
+/* 輔助連結和記住我區塊 (.login-links) 樣式 */
 .login-links {
     width: 367px; 
     display: flex;
@@ -184,21 +174,22 @@ body, html {
     margin-bottom: 30px; 
     color: #555;
     
-    
     padding-right: 0px; 
 }
 
+/* 輔助連結 (a) 樣式 */
 .login-links a {
     color: #555;
     text-decoration: none;
     margin-right: 15px; 
 }
 
+/* 記住我 checkbox 樣式 */
 .login-links input[type="checkbox"] {
     margin-right: 5px;
 }
 
-/* 按鈕群組容器 */
+/* 按鈕群組容器 (.button-group) 佈局 */
 .button-group {
     width: 367px; 
     display: flex;
@@ -206,7 +197,7 @@ body, html {
     margin-top: 15px;
 }
 
-/* 登入按鈕樣式 */
+/* 登入 (.login-button) 和註冊 (.register-button) 按鈕共同樣式 */
 .login-button, .register-button {
     width: 100px;
     height: 42px; 
@@ -221,18 +212,20 @@ body, html {
     margin: 0 10px; 
 }
 
-/* 登入按鈕 */
+/* 登入按鈕背景色 */
 .login-button {
     background: linear-gradient(to bottom, #BFDDFF, #85B9E8); 
 }
+/* 登入按鈕 Hover 效果 */
 .login-button:hover {
     background: linear-gradient(to bottom, #AECBE8, #69A3D3);
 }
 
-/* 註冊按鈕 */
+/* 註冊按鈕背景色 */
 .register-button {
     background: linear-gradient(to bottom, #BFDDFF, #85B9E8); 
 }
+/* 註冊按鈕 Hover 效果 */
 .register-button:hover {
     background: linear-gradient(to bottom, #AECBE8, #69A3D3);
 }

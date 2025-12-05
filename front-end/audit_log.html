@@ -1,0 +1,115 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Audit Log - 稽核日誌</title>
+    <link rel="stylesheet" href="css/style.css"> 
+    <link rel="stylesheet" href="css/audit.css"> 
+</head>
+<body>
+
+    <header>
+        <div class="logo-area"><img src="static/image/logo.png" alt="Logo" class="logo-img"></div>
+        <div class="search-area"><div class="search-container"><input type="text" class="search-input" placeholder="請輸入搜尋項目"><img src="static/image/search_white.png" alt="Search" class="search-icon-img"></div></div>
+        <div class="header-icons"><img src="static/image/add_white.png" alt="Add" class="icon-btn-img" id="add-btn"><img src="static/image/reminder_white.png" alt="Notification" class="icon-btn-img"><img src="static/image/person_white.png" alt="User" class="icon-btn-img"></div>
+    </header>
+
+    <main class="audit-main full-width-layout">
+        
+        <div class="filter-bar">
+            
+            <div class="filter-group">
+                <div class="filter-label">日期</div>
+                <input type="date" class="filter-input date-input" value="2025-11-26">
+            </div>
+            
+            <div class="filter-group select-group">
+                <div class="filter-label">操作者</div>
+                <select class="filter-input select-input">
+                    <option value="all">所有操作者</option>
+                    <option value="jerry" selected>Jerry</option>
+                    <option value="lss">LSS</option>
+                    <option value="admin">Admin</option>
+                </select>
+            </div>
+            
+            <div class="filter-group select-group">
+                <div class="filter-label">動作類型</div>
+                <select class="filter-input select-input">
+                    <option value="all">所有動作</option>
+                    <option value="login" selected>Login</option>
+                    <option value="upload">Upload</option>
+                    <option value="download">Download</option>
+                </select>
+            </div>
+            
+            <button class="search-btn">查詢</button>
+        </div>
+
+        <div class="audit-content-container">
+            <div class="table-scroll-wrapper"> 
+                <table class="audit-table">
+                    <thead>
+                        <tr>
+                            <th>ID</th>
+                            <th>時間</th>
+                            <th>操作者</th>
+                            <th>動作</th>
+                            <th>目標</th>
+                            <th>IP位址</th>
+                            <th>狀態</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr class="data-row">
+                            <td data-label="ID">#CC</td>
+                            <td data-label="時間">2025-11-26</td>
+                            <td data-label="操作者">Jerry</td>
+                            <td data-label="動作">Login</td>
+                            <td data-label="目標">file_v1</td>
+                            <td data-label="IP位址">192.168.1.1</td>
+                            <td data-label="狀態">成功</td>
+                        </tr>
+                        <tr class="data-row">
+                            <td data-label="ID">#CD</td>
+                            <td data-label="時間">2025-11-26</td>
+                            <td data-label="操作者">LSS</td>
+                            <td data-label="動作">Upload</td>
+                            <td data-label="目標">new_asset</td>
+                            <td data-label="IP位址">203.0.113.45</td>
+                            <td data-label="狀態">失敗</td>
+                        </tr>
+                        <tr class="data-row">
+                            <td data-label="ID">#CE</td>
+                            <td data-label="時間">2025-11-26</td>
+                            <td data-label="操作者">Jerry</td>
+                            <td data-label="動作">Download</td>
+                            <td data-label="目標">report_v2</td>
+                            <td data-label="IP位址">192.168.1.1</td>
+                            <td data-label="狀態">成功</td>
+                        </tr>
+                        
+                        <tr class="data-row"><td></td><td></td><td></td><td></td><td></td><td></td><td></td></tr>
+                        <tr class="data-row"><td></td><td></td><td></td><td></td><td></td><td></td><td></td></tr>
+                        <tr class="data-row"><td></td><td></td><td></td><td></td><td></td><td></td><td></td></tr>
+                        <tr class="data-row"><td></td><td></td><td></td><td></td><td></td><td></td><td></td></tr>
+                        <tr class="data-row"><td></td><td></td><td></td><td></td><td></td><td></td><td></td></tr>
+                        <tr class="data-row"><td></td><td></td><td></td><td></td><td></td><td></td><td></td></tr>
+                        <tr class="data-row"><td></td><td></td><td></td><td></td><td></td><td></td><td></td></tr>
+                        <tr class="data-row"><td></td><td></td><td></td><td></td><td></td><td></td><td></td></tr>
+                        <tr class="data-row"><td></td><td></td><td></td><td></td><td></td><td></td><td></td></tr>
+                        <tr class="data-row"><td></td><td></td><td></td><td></td><td></td><td></td><td></td></tr>
+                        <tr class="data-row"><td></td><td></td><td></td><td></td><td></td><td></td><td></td></tr>
+                        <tr class="data-row"><td></td><td></td><td></td><td></td><td></td><td></td><td></td></tr>
+                        <tr class="data-row"><td></td><td></td><td></td><td></td><td></td><td></td><td></td></tr>
+                        <tr class="data-row"><td></td><td></td><td></td><td></td><td></td><td></td><td></td></tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+        
+    </main>
+
+</body>
+</html>
