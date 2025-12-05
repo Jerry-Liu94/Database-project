@@ -9,9 +9,9 @@
 <body>
 
     <header>
-        <div class="logo-area"><img src="static/images/logo.png" alt="Logo" class="logo-img"></div>
-        <div class="search-area"><div class="search-container"><input type="text" class="search-input" placeholder="請輸入搜尋項目"><img src="static/images/search_white.png" alt="Search" class="search-icon-img"></div></div>
-        <div class="header-icons"><img src="static/images/add_white.png" alt="Add" class="icon-btn-img" id="add-btn"><img src="static/images/reminder_white.png" alt="Notification" class="icon-btn-img"><img src="static/images/person_white.png" alt="User" class="icon-btn-img"></div>
+        <div class="logo-area"><img src="static/image/logo.png" alt="Logo" class="logo-img"></div>
+        <div class="search-area"><div class="search-container"><input type="text" class="search-input" placeholder="請輸入搜尋項目"><img src="static/image/search_white.png" alt="Search" class="search-icon-img"></div></div>
+        <div class="header-icons"><img src="static/image/add_white.png" alt="Add" class="icon-btn-img" id="add-btn"><img src="static/image/reminder_white.png" alt="Notification" class="icon-btn-img"><img src="static/image/person_white.png" alt="User" class="icon-btn-img"></div>
     </header>
 
     <div class="main-container">
@@ -21,7 +21,7 @@
             
             <div class="menu-item" onclick="toggleCategory()">
                 類別
-                <img src="static/images/down_gray.png" alt="Down" class="chevron-icon-img" id="category-chevron">
+                <img src="static/image/down_grey.png" alt="Down" class="chevron-icon-img" id="category-chevron">
             </div>
             <div class="submenu-container" id="category-submenu">
                 <div class="submenu-item" onclick="filterAssets('Marketing', this)">Marketing</div>
@@ -44,19 +44,19 @@
             <div class="section-header" id="header-marketing">Marketing Assets</div>
             <div class="content-row" id="row-marketing">
                 <a href="asset_detail.html" class="card" data-category="Marketing" data-tags="白襪體育生" data-favorite="true">
-                    <img src="static/images/heart_fill.png" class="favorite-btn" onclick="toggleFavorite(event, this)">
+                    <img src="static/image/heart_fill_black.png" class="favorite-btn" onclick="toggleFavorite(event, this)">
                     <div class="card-title">活動海報</div>
                     <div class="card-tag-display">#白襪體育生</div>
                     <div class="card-version">v.2</div>
                 </a>
                 <a href="asset_detail.html" class="card" data-category="Marketing" data-tags="白襪體育生" data-favorite="false">
-                    <img src="static/images/heart_outline.png" class="favorite-btn" onclick="toggleFavorite(event, this)">
+                    <img src="static/image/heart_black.png" class="favorite-btn" onclick="toggleFavorite(event, this)">
                     <div class="card-title">廣告橫幅</div>
                     <div class="card-tag-display">#白襪體育生</div>
                     <div class="card-version">v.1</div>
                 </a>
                 <a href="asset_detail.html" class="card" data-category="Marketing" data-tags="白襪體育生" data-favorite="false">
-                    <img src="static/images/heart_outline.png" class="favorite-btn" onclick="toggleFavorite(event, this)">
+                    <img src="static/image/heart_black.png" class="favorite-btn" onclick="toggleFavorite(event, this)">
                     <div class="card-title">行銷簡報</div>
                     <div class="card-tag-display">#白襪體育生</div>
                     <div class="card-version">v.3</div>
@@ -66,13 +66,13 @@
             <div class="section-header" id="header-social">Social Media</div>
             <div class="content-row" id="row-social">
                 <a href="asset_detail.html" class="card" data-category="Social Media" data-tags="痘痘那個" data-favorite="true">
-                    <img src="static/images/heart_fill.png" class="favorite-btn" onclick="toggleFavorite(event, this)">
+                    <img src="static/image/heart_fill_black.png" class="favorite-btn" onclick="toggleFavorite(event, this)">
                     <div class="card-title">IG 貼文</div>
                     <div class="card-tag-display">#痘痘那個</div>
                     <div class="card-version">v.1</div>
                 </a>
                 <a href="asset_detail.html" class="card" data-category="Social Media" data-tags="痘痘那個" data-favorite="false">
-                    <img src="static/images/heart_outline.png" class="favorite-btn" onclick="toggleFavorite(event, this)">
+                    <img src="static/image/heart_black.png" class="favorite-btn" onclick="toggleFavorite(event, this)">
                     <div class="card-title">FB 封面</div>
                     <div class="card-tag-display">#痘痘那個</div>
                     <div class="card-version">v.2</div>
@@ -82,13 +82,13 @@
             <div class="section-header" id="header-internal">Internal Docs</div>
             <div class="content-row" id="row-internal">
                 <a href="asset_detail.html" class="card" data-category="Internal Docs" data-tags="排球少年" data-favorite="false">
-                    <img src="static/images/heart_outline.png" class="favorite-btn" onclick="toggleFavorite(event, this)">
+                    <img src="static/image/heart_black.png" class="favorite-btn" onclick="toggleFavorite(event, this)">
                     <div class="card-title">員工手冊</div>
                     <div class="card-tag-display">#排球少年</div>
                     <div class="card-version">v.1</div>
                 </a>
                 <a href="asset_detail.html" class="card" data-category="Internal Docs" data-tags="排球少年" data-favorite="true">
-                    <img src="static/images/heart_fill.png" class="favorite-btn" onclick="toggleFavorite(event, this)">
+                    <img src="static/image/heart_fill_black.png" class="favorite-btn" onclick="toggleFavorite(event, this)">
                     <div class="card-title">會議記錄</div>
                     <div class="card-tag-display">#排球少年</div>
                     <div class="card-version">v.5</div>
@@ -102,7 +102,7 @@
         <div class="modal-box">
             <span class="close-modal-x" id="close-modal-x">&times;</span>
             <div class="drop-zone" id="drop-zone">
-                <div class="empty-state-content" id="empty-state"><img src="static/images/upload_gray.png" alt="Folder" class="folder-icon"><div class="drop-text">拖曳檔案至此</div></div>
+                <div class="empty-state-content" id="empty-state"><img src="static/image/upload_grey.png" alt="Folder" class="folder-icon"><div class="drop-text">拖曳檔案至此</div></div>
                 <div id="file-list-container"></div>
             </div>
             <div class="modal-buttons"><button class="btn-modal btn-upload" id="upload-btn-action">上傳</button><button class="btn-modal btn-cancel" id="cancel-btn">取消</button></div>
