@@ -15,11 +15,11 @@ header { background-color: #000; height: 100px; display: flex; align-items: cent
 .header-icons { display: flex; gap: 24px; align-items: center; }
 .icon-btn-img { width: 24px; height: 24px; cursor: pointer; object-fit: contain; display: block; }
 
-/* --- Main Layout Containers --- */
+/* --- Main Layout --- */
 .main-container, .detail-container { flex: 1; display: flex; height: calc(100vh - 100px); }
 .detail-container { background-color: rgba(7, 35, 125, 1); padding: 40px; gap: 30px; justify-content: center; align-items: stretch; }
 
-/* --- Sidebar (Dashboard) --- */
+/* --- Sidebar --- */
 aside { width: 260px; background-color: rgba(193, 193, 193, 1); display: flex; flex-direction: column; flex-shrink: 0; border-right: 1px solid rgba(142, 142, 142, 1); overflow-y: auto; }
 .menu-item { padding: 16px 24px; font-size: 1.1rem; color: #444; cursor: pointer; border-bottom: 1px solid rgba(142, 142, 142, 1); display: flex; justify-content: space-between; align-items: center; font-weight: 600; letter-spacing: 1px; transition: background-color 0.2s; }
 .menu-item:first-child { border-top: 1px solid rgba(142, 142, 142, 1); }
@@ -34,7 +34,7 @@ aside { width: 260px; background-color: rgba(193, 193, 193, 1); display: flex; f
 .submenu-item.child-category.active-filter { border-left: 4px solid #555; }
 .menu-item.active .chevron-icon-img { transform: rotate(180deg); }
 
-/* --- Tags (Dashboard) --- */
+/* --- Tags --- */
 .tags-section { padding: 20px 24px; }
 .tags-title { color: #666; font-size: 1.1rem; margin-bottom: 16px; font-weight: 600; }
 .tags-container { display: flex; flex-wrap: wrap; gap: 10px; }
@@ -53,7 +53,7 @@ main { flex: 1; background-color: rgba(7, 35, 125, 1); padding: 30px 40px; overf
 .content-row::-webkit-scrollbar-thumb { background-color: rgba(255, 255, 255, 0.4); border-radius: 10px; border: 1px solid rgba(255,255,255,0.1); }
 .content-row::-webkit-scrollbar-thumb:hover { background-color: rgba(255, 255, 255, 0.7); }
 
-/* --- Card (Dashboard) --- */
+/* --- Card --- */
 .card { background-color: #fff; width: 150px; height: 150px; border-radius: 16px; padding: 16px; position: relative; display: flex; flex-direction: column; justify-content: flex-start; box-shadow: 0 4px 10px rgba(0,0,0,0.15); flex-shrink: 0; transition: transform 0.2s; cursor: pointer; text-decoration: none; }
 .card:hover { transform: scale(1.03); }
 .card.hidden { display: none !important; }
@@ -63,7 +63,7 @@ main { flex: 1; background-color: rgba(7, 35, 125, 1); padding: 30px 40px; overf
 .card-tag-display { background-color: #f0f0f0; color: #888; font-size: 0.75rem; padding: 4px 10px; border-radius: 12px; align-self: center; margin-bottom: 8px; font-weight: 500; max-width: 100%; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .card-version { color: #999; align-self: flex-end; font-weight: 700; font-size: 1.2rem; }
 
-/* --- Detail View: Preview Panel --- */
+/* --- Detail View Panels --- */
 .preview-panel { flex: 1; background-color: #fff; border-radius: 20px; padding: 30px; display: flex; flex-direction: column; justify-content: center; align-items: center; box-shadow: 0 10px 30px rgba(0,0,0,0.2); position: relative; }
 .preview-box { width: 90%; height: 80%; border: 8px solid #E0E0E0; border-radius: 8px; display: flex; justify-content: center; align-items: center; margin-bottom: 20px; }
 .preview-text { color: #999; font-size: 1.5rem; font-weight: 600; letter-spacing: 1px; }
@@ -71,60 +71,110 @@ main { flex: 1; background-color: rgba(7, 35, 125, 1); padding: 30px 40px; overf
 .nav-arrow { width: 18px; height: 18px; cursor: pointer; opacity: 0.6; transition: opacity 0.2s; }
 .nav-arrow:hover { opacity: 1; }
 
-/* --- Detail View: Info Panel --- */
 .info-panel { width: 400px; background-color: #fff; border-radius: 20px; padding: 40px 35px; display: flex; flex-direction: column; box-shadow: 0 10px 30px rgba(0,0,0,0.2); position: relative; overflow-y: hidden; }
 .list-icon { position: absolute; top: 35px; right: 35px; width: 22px; height: auto; object-fit: contain; cursor: pointer; opacity: 0.8; z-index: 20; }
-
 .file-title { color: rgba(7, 35, 125, 1); font-size: 1.5rem; font-weight: 800; text-align: center; margin-bottom: 5px; margin-top: 10px; }
 .file-id { color: #999; font-size: 1rem; text-align: center; margin-bottom: 35px; font-weight: 600; }
 .info-row { display: flex; justify-content: space-between; padding: 14px 0; border-bottom: 1px solid #ddd; font-size: 1.1rem; }
 .info-label { color: rgba(7, 35, 125, 1); font-weight: 700; }
 .info-value { color: #666; font-weight: 500; }
 
-/* --- Detail View: Version History --- */
 .version-section { margin-top: 40px; flex: 1; display: flex; flex-direction: column; min-height: 0; }
 .version-header { display: flex; align-items: center; gap: 10px; color: rgba(7, 35, 125, 1); font-size: 1.15rem; font-weight: 700; margin-bottom: 15px; flex-shrink: 0; }
 .plus-icon { width: 20px; height: 20px; cursor: pointer; transition: transform 0.2s; }
 .plus-icon:hover { transform: scale(1.1); }
-
 .version-scroll-list { overflow-y: auto; max-height: 200px; padding-right: 5px; scrollbar-width: thin; scrollbar-color: rgba(0,0,0,0.2) transparent; }
 .version-scroll-list::-webkit-scrollbar { width: 4px; }
 .version-scroll-list::-webkit-scrollbar-track { background: transparent; }
 .version-scroll-list::-webkit-scrollbar-thumb { background-color: rgba(0,0,0,0.2); border-radius: 10px; }
-
 .version-btn { display: flex; justify-content: space-between; padding: 14px 25px; border-radius: 30px; margin-bottom: 12px; cursor: pointer; font-weight: 600; font-size: 1rem; transition: background-color 0.2s; }
 .version-btn.active { background-color: #8E8E8E; color: white; box-shadow: 0 3px 8px rgba(0,0,0,0.2); }
 .version-btn.inactive { background-color: #D6D6D6; color: #666; }
 .version-btn.inactive:hover { background-color: #C0C0C0; }
 
-/* --- Dropdown Menu --- */
+/* --- Modals Common --- */
+.modal-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background-color: rgba(0, 0, 0, 0.4); backdrop-filter: blur(5px); z-index: 1000; display: none; justify-content: center; align-items: center; animation: fadeInOverlay 0.3s ease-out; }
+@keyframes fadeInOverlay { from { opacity: 0; } to { opacity: 1; } }
+@keyframes modalPop { 0% { opacity: 0; transform: scale(0.9) translateY(20px); } 100% { opacity: 1; transform: scale(1) translateY(0); } }
+
+/* --- Modal Styles (Updated for Alignment) --- */
+.modal-box, .share-modal-box, .modal-box-common {
+    background-color: #fff;
+    width: 700px;
+    height: auto; /* 修改：自動高度 */
+    border-radius: 20px;
+    /* 修改：內距設定，左右40px對齊 */
+    padding: 20px 40px 40px 40px; 
+    display: flex;
+    flex-direction: column;
+    position: relative;
+    box-shadow: 0 20px 50px rgba(0,0,0,0.3);
+    animation: modalPop 0.4s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+/* 修改：X 按鈕對齊 */
+.close-modal-x {
+    position: absolute;
+    top: 15px;
+    right: 40px; /* 與 padding-right: 40px 對齊 */
+    font-size: 1.8rem;
+    color: #333;
+    cursor: pointer;
+    z-index: 10;
+    font-family: sans-serif;
+    line-height: 1;
+}
+
+/* 修改：上傳區域 */
+.drop-zone {
+    flex: 1;
+    background-color: rgba(235, 235, 235, 1);
+    border: 3px dashed rgba(142, 142, 142, 1);
+    border-radius: 16px;
+    margin-top: 35px; /* 避開 X 按鈕 */
+    margin-bottom: 25px;
+    min-height: 200px; /* 保持適當高度 */
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    cursor: pointer;
+    position: relative;
+    overflow: hidden;
+    transition: border-color 0.2s;
+}
+.drop-zone:hover { border-color: #666; }
+.drop-zone.has-file { justify-content: flex-start; align-items: stretch; padding-top: 0; }
+
+#file-list-container { width: 100%; display: none; overflow-y: auto; max-height: 330px; }
+#file-list-container::-webkit-scrollbar { width: 6px; }
+#file-list-container::-webkit-scrollbar-thumb { background-color: rgba(0,0,0,0.2); border-radius: 10px; }
+#file-list-container::-webkit-scrollbar-track { background: transparent; }
+.empty-state-content { display: flex; flex-direction: column; align-items: center; justify-content: center; width: 100%; height: 100%; }
+.folder-icon { width: 60px; height: 60px; object-fit: contain; opacity: 0.6; margin-bottom: 10px; }
+.drop-text { font-size: 1.1rem; font-weight: 600; color: #666; letter-spacing: 1px; }
+.file-list-item { display: flex; align-items: center; justify-content: space-between; padding: 15px 25px; width: 100%; border-bottom: 1px solid rgba(142, 142, 142, 1); }
+.file-info-left { display: flex; align-items: center; overflow: hidden; }
+.check-icon { width: 24px; height: 24px; object-fit: contain; margin-right: 15px; opacity: 0.8; flex-shrink: 0; }
+.file-name-text { font-size: 1rem; font-weight: 600; color: #666; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 350px; }
+.ai-tag { color: #999; font-weight: 700; font-size: 0.9rem; letter-spacing: 0.5px; white-space: nowrap; }
+
+.modal-buttons { display: flex; justify-content: center; gap: 30px; margin-top: 20px; }
+.btn-action, .btn-modal { padding: 10px 50px; border-radius: 12px; border: none; font-size: 1.1rem; font-weight: 600; cursor: pointer; box-shadow: 0 4px 12px rgba(0,0,0,0.1); transition: all 0.2s cubic-bezier(0.25, 0.8, 0.25, 1); }
+.btn-action:active, .btn-modal:active { transform: scale(0.96); }
+.btn-save, .btn-upload { background-color: #D2E3FC; color: #333; }
+.btn-cancel { background-color: #F9E8BD; color: #333; }
+.success-message { display: none; color: rgba(7, 35, 125, 1); font-size: 1.4rem; font-weight: 700; text-align: center; margin-top: 10px; animation: fadeInOverlay 0.5s ease; }
+.success-toast { position: absolute; bottom: 30px; left: 50%; transform: translateX(-50%); background-color: rgba(7, 35, 125, 0.9); color: white; padding: 10px 30px; border-radius: 30px; font-weight: 600; display: none; animation: fadeUp 0.3s ease-out; z-index: 2000; }
+@keyframes fadeUp { from { opacity: 0; transform: translate(-50%, 20px); } to { opacity: 1; transform: translate(-50%, 0); } }
+
+/* --- Other Modal Elements --- */
 .dropdown-menu { position: absolute; top: 65px; right: 35px; background-color: #D3D3D3; border-radius: 12px; padding: 0; overflow: hidden; width: 100px; box-shadow: 0 5px 15px rgba(0,0,0,0.2); display: none; z-index: 30; flex-direction: column; }
 .dropdown-menu.show { display: flex; animation: fadeIn 0.2s ease; }
 .menu-option { padding: 12px 0; text-align: center; color: #555; font-size: 1rem; font-weight: 600; cursor: pointer; transition: background-color 0.2s; border-bottom: 1px solid rgba(255,255,255,0.3); }
 .menu-option:last-child { border-bottom: none; }
 .menu-option:hover { background-color: #C0C0C0; color: #333; }
 
-/* --- Modals Common --- */
-.modal-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background-color: rgba(0, 0, 0, 0.4); backdrop-filter: blur(5px); z-index: 1000; display: none; justify-content: center; align-items: center; animation: fadeInOverlay 0.3s ease-out; }
-@keyframes fadeInOverlay { from { opacity: 0; } to { opacity: 1; } }
-@keyframes modalPop { 0% { opacity: 0; transform: scale(0.9) translateY(20px); } 100% { opacity: 1; transform: scale(1) translateY(0); } }
-.modal-box-common, .modal-box, .share-modal-box { background-color: #fff; border-radius: 20px; position: relative; box-shadow: 0 20px 50px rgba(0,0,0,0.3); display: flex; flex-direction: column; animation: modalPop 0.4s cubic-bezier(0.16, 1, 0.3, 1); }
-.modal-box-common { width: 600px; padding: 40px; }
-.modal-box { width: 700px; height: 500px; padding: 20px 30px 30px 30px; }
-.share-modal-box { width: 600px; padding: 40px 40px; }
-
-.close-modal-x { position: absolute; top: 15px; right: 20px; font-size: 1.5rem; color: #333; cursor: pointer; z-index: 10; font-family: sans-serif; }
-.modal-buttons { display: flex; justify-content: center; gap: 30px; margin-top: 20px; }
-.btn-action, .btn-modal { padding: 10px 50px; border-radius: 12px; border: none; font-size: 1.1rem; font-weight: 600; cursor: pointer; box-shadow: 0 4px 12px rgba(0,0,0,0.1); transition: all 0.2s; }
-.btn-action:active, .btn-modal:active { transform: scale(0.96); }
-.btn-save, .btn-upload { background-color: #D2E3FC; color: #333; }
-.btn-cancel { background-color: #F9E8BD; color: #333; }
-
-.success-message { display: none; color: rgba(7, 35, 125, 1); font-size: 1.4rem; font-weight: 700; text-align: center; margin-top: 10px; animation: fadeInOverlay 0.5s ease; }
-.success-toast { position: absolute; bottom: 30px; left: 50%; transform: translateX(-50%); background-color: rgba(7, 35, 125, 0.9); color: white; padding: 10px 30px; border-radius: 30px; font-weight: 600; display: none; animation: fadeUp 0.3s ease-out; z-index: 2000; }
-@keyframes fadeUp { from { opacity: 0; transform: translate(-50%, 20px); } to { opacity: 1; transform: translate(-50%, 0); } }
-
-/* --- Specific Modal Elements --- */
 .edit-title { text-align: center; font-size: 1.5rem; font-weight: 800; color: rgba(7, 35, 125, 1); margin-bottom: 25px; margin-top: -5px; }
 .form-group { display: flex; align-items: center; margin-bottom: 20px; }
 .form-label { width: 80px; font-size: 1.1rem; font-weight: 700; color: #333; text-align: right; margin-right: 20px; }
@@ -137,17 +187,6 @@ main { flex: 1; background-color: rgba(7, 35, 125, 1); padding: 30px 40px; overf
 .share-controls-row { display: flex; align-items: center; gap: 15px; }
 .control-label { font-weight: 800; font-size: 1.1rem; color: #222; }
 .control-pill { background-color: #D3D3D3; border: none; border-radius: 20px; padding: 8px 20px; font-size: 1rem; font-weight: 700; color: #333; cursor: pointer; outline: none; text-align: center; font-family: inherit; }
-.permission-select { min-width: 140px; appearance: none; -webkit-appearance: none; background-image: url('../static/images/down_black.png'); background-repeat: no-repeat; background-position: right 15px center; background-size: 12px; padding-right: 35px; text-align-last: center; }
+.permission-select { min-width: 140px; appearance: none; -webkit-appearance: none; background-image: url('../static/image/down_black.png'); background-repeat: no-repeat; background-position: right 15px center; background-size: 12px; padding-right: 35px; text-align-last: center; }
 .date-input { min-width: 160px; padding: 7px 20px; color: #333; }
 .date-input::-webkit-calendar-picker-indicator { cursor: pointer; opacity: 0.6; }
-
-.drop-zone { flex: 1; background-color: rgba(235, 235, 235, 1); border: 3px dashed rgba(142, 142, 142, 1); border-radius: 16px; margin-bottom: 10px; min-height: 200px; display: flex; flex-direction: column; justify-content: center; align-items: center; cursor: pointer; position: relative; overflow: hidden; transition: border-color 0.2s; }
-.drop-zone:hover { border-color: #666; }
-.drop-zone.has-file { justify-content: flex-start; align-items: stretch; padding-top: 0; }
-.empty-state-content { display: flex; flex-direction: column; align-items: center; justify-content: center; width: 100%; height: 100%; }
-.folder-icon { width: 60px; height: 60px; object-fit: contain; opacity: 0.6; margin-bottom: 10px; }
-.drop-text { font-size: 1.1rem; font-weight: 600; color: #666; letter-spacing: 1px; }
-.file-list-item { display: flex; align-items: center; justify-content: space-between; padding: 15px 25px; width: 100%; border-bottom: 1px solid rgba(142, 142, 142, 1); }
-.file-info-left { display: flex; align-items: center; overflow: hidden; }
-.check-icon { width: 24px; height: 24px; object-fit: contain; margin-right: 15px; opacity: 0.8; flex-shrink: 0; }
-.file-name-text { font-size: 1rem; font-weight: 600; color: #666; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 350px; }

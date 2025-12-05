@@ -6,7 +6,7 @@ let currentType = 'category';
 let activeTags = new Set();
 let showFavoritesOnly = false;
 
-// 1. 一般篩選重置
+// 1. 一般篩選重置 (所有資產)
 function resetFilters(element) {
     currentFilter = 'all';
     currentType = 'category';
@@ -20,7 +20,7 @@ function resetFilters(element) {
     applyFilter();
 }
 
-// 2. 選擇類別
+// 2. 選擇類別 (單選)
 function filterAssets(category, element) {
     currentFilter = category;
     currentType = 'category';
@@ -44,7 +44,7 @@ function filterFavorites(element) {
     applyFilter();
 }
 
-// 4. 選擇標籤
+// 4. 選擇標籤 (多選)
 function toggleTag(tag, element) {
     if (activeTags.has(tag)) {
         activeTags.delete(tag);
@@ -56,7 +56,7 @@ function toggleTag(tag, element) {
     applyFilter();
 }
 
-// 5. 愛心切換
+// 5. 愛心切換邏輯
 function toggleFavorite(event, btn) {
     event.preventDefault(); 
     event.stopPropagation(); 
@@ -66,10 +66,10 @@ function toggleFavorite(event, btn) {
 
     if (isFav) {
         card.setAttribute('data-favorite', 'false');
-        btn.src = 'static/images/heart_outline.png';
+        btn.src = 'static/image/heart_black.png';
     } else {
         card.setAttribute('data-favorite', 'true');
-        btn.src = 'static/images/heart_fill.png';
+        btn.src = 'static/image/heart_fill_black.png';
     }
 
     if (showFavoritesOnly) applyFilter();
@@ -168,7 +168,10 @@ function handleFiles(files) {
     files.forEach(file => {
         const item = document.createElement('div');
         item.className = 'file-list-item';
-        item.innerHTML = `<div class="file-info-left"><img src="static/images/checkmark_gray.png" class="check-icon status-icon"><span class="file-name-text">${file.name}</span></div>`;
+        
+        // --- 修改：使用 checkmark_black.png (選取時的空心/黑色勾勾) ---
+        item.innerHTML = `<div class="file-info-left"><img src="static/image/checkmark_grey.png" class="check-icon status-icon"><span class="file-name-text">${file.name}</span></div>`;
+        
         fileListContainer.appendChild(item);
     });
 }
@@ -180,7 +183,10 @@ if(uploadBtn) uploadBtn.addEventListener('click', () => {
         if (!row.querySelector('.ai-tag')) {
             const tagSpan = document.createElement('span'); tagSpan.className = 'ai-tag'; tagSpan.innerText = 'AI TAG[1]'; row.appendChild(tagSpan);
         }
-        const icon = row.querySelector('.status-icon'); if (icon) icon.src = 'static/images/checkmark_fill_gray.png';
+        
+        // --- 修改：上傳成功後切換為 checkmark_fill_black.png (實心勾勾) ---
+        const icon = row.querySelector('.status-icon'); 
+        if (icon) icon.src = 'static/image/checkmark_fill_grey.png';
     });
     modalButtons.style.display = 'none';
     successMsg.style.display = 'block';
