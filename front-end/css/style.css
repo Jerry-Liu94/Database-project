@@ -43,7 +43,7 @@ aside { width: 260px; background-color: rgba(193, 193, 193, 1); display: flex; f
 .tag-pill:active { transform: translateY(1px); box-shadow: 0 1px 2px rgba(0,0,0,0.1); }
 .tag-pill.active-filter { background-color: #333; color: #fff; border-color: #333; }
 
-/* --- Main Content (Dashboard) --- */
+/* --- Main Content --- */
 main { flex: 1; background-color: rgba(7, 35, 125, 1); padding: 30px 40px; overflow-y: auto; overflow-x: hidden; }
 .section-header { color: #fff; font-size: 1.25rem; margin-bottom: 12px; font-weight: 700; letter-spacing: 1px; }
 .content-row { background-color: rgba(255, 255, 255, 0.25); border-radius: 12px; padding: 20px; margin-bottom: 30px; display: flex; align-items: center; height: 220px; overflow-x: auto; overflow-y: hidden; gap: 20px; scroll-behavior: smooth; transition: opacity 0.3s; }
@@ -79,32 +79,48 @@ main { flex: 1; background-color: rgba(7, 35, 125, 1); padding: 30px 40px; overf
 .info-label { color: rgba(7, 35, 125, 1); font-weight: 700; }
 .info-value { color: #666; font-weight: 500; }
 
+/* --- Detail View: Version History (Scrollable) --- */
 .version-section { margin-top: 40px; flex: 1; display: flex; flex-direction: column; min-height: 0; }
 .version-header { display: flex; align-items: center; gap: 10px; color: rgba(7, 35, 125, 1); font-size: 1.15rem; font-weight: 700; margin-bottom: 15px; flex-shrink: 0; }
 .plus-icon { width: 20px; height: 20px; cursor: pointer; transition: transform 0.2s; }
 .plus-icon:hover { transform: scale(1.1); }
-.version-scroll-list { overflow-y: auto; max-height: 200px; padding-right: 5px; scrollbar-width: thin; scrollbar-color: rgba(0,0,0,0.2) transparent; }
+
+/* --- 這裡確保版本列表可滑動 --- */
+.version-scroll-list { 
+    overflow-y: auto; 
+    max-height: 200px; /* 限制高度 */
+    padding-right: 5px; 
+    scrollbar-width: thin; 
+    scrollbar-color: rgba(0,0,0,0.2) transparent; 
+}
 .version-scroll-list::-webkit-scrollbar { width: 4px; }
 .version-scroll-list::-webkit-scrollbar-track { background: transparent; }
 .version-scroll-list::-webkit-scrollbar-thumb { background-color: rgba(0,0,0,0.2); border-radius: 10px; }
+
 .version-btn { display: flex; justify-content: space-between; padding: 14px 25px; border-radius: 30px; margin-bottom: 12px; cursor: pointer; font-weight: 600; font-size: 1rem; transition: background-color 0.2s; }
 .version-btn.active { background-color: #8E8E8E; color: white; box-shadow: 0 3px 8px rgba(0,0,0,0.2); }
 .version-btn.inactive { background-color: #D6D6D6; color: #666; }
 .version-btn.inactive:hover { background-color: #C0C0C0; }
+
+/* --- Dropdown Menu --- */
+.dropdown-menu { position: absolute; top: 65px; right: 35px; background-color: #D3D3D3; border-radius: 12px; padding: 0; overflow: hidden; width: 100px; box-shadow: 0 5px 15px rgba(0,0,0,0.2); display: none; z-index: 30; flex-direction: column; }
+.dropdown-menu.show { display: flex; animation: fadeIn 0.2s ease; }
+.menu-option { padding: 12px 0; text-align: center; color: #555; font-size: 1rem; font-weight: 600; cursor: pointer; transition: background-color 0.2s; border-bottom: 1px solid rgba(255,255,255,0.3); }
+.menu-option:last-child { border-bottom: none; }
+.menu-option:hover { background-color: #C0C0C0; color: #333; }
 
 /* --- Modals Common --- */
 .modal-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background-color: rgba(0, 0, 0, 0.4); backdrop-filter: blur(5px); z-index: 1000; display: none; justify-content: center; align-items: center; animation: fadeInOverlay 0.3s ease-out; }
 @keyframes fadeInOverlay { from { opacity: 0; } to { opacity: 1; } }
 @keyframes modalPop { 0% { opacity: 0; transform: scale(0.9) translateY(20px); } 100% { opacity: 1; transform: scale(1) translateY(0); } }
 
-/* --- Modal Styles (Updated for Alignment) --- */
+/* --- Modal Styles (Updated Alignment) --- */
 .modal-box, .share-modal-box, .modal-box-common {
     background-color: #fff;
     width: 700px;
-    height: auto; /* 修改：自動高度 */
+    height: auto;
     border-radius: 20px;
-    /* 修改：內距設定，左右40px對齊 */
-    padding: 20px 40px 40px 40px; 
+    padding: 20px 40px 40px 40px; /* 左右 Padding */
     display: flex;
     flex-direction: column;
     position: relative;
@@ -112,52 +128,20 @@ main { flex: 1; background-color: rgba(7, 35, 125, 1); padding: 30px 40px; overf
     animation: modalPop 0.4s cubic-bezier(0.16, 1, 0.3, 1);
 }
 
-/* 修改：X 按鈕對齊 */
-.close-modal-x {
-    position: absolute;
-    top: 15px;
-    right: 40px; /* 與 padding-right: 40px 對齊 */
-    font-size: 1.8rem;
-    color: #333;
-    cursor: pointer;
-    z-index: 10;
-    font-family: sans-serif;
+.share-modal-box { width: 600px; } /* 分享彈窗稍微小一點 */
+
+/* 修改：X 按鈕對齊優化 */
+.close-modal-x { 
+    position: absolute; 
+    top: 15px; 
+    right: 40px; /* 與內距一致，達成右對齊 */
+    font-size: 1.8rem; 
+    color: #333; 
+    cursor: pointer; 
+    z-index: 10; 
+    font-family: sans-serif; 
     line-height: 1;
 }
-
-/* 修改：上傳區域 */
-.drop-zone {
-    flex: 1;
-    background-color: rgba(235, 235, 235, 1);
-    border: 3px dashed rgba(142, 142, 142, 1);
-    border-radius: 16px;
-    margin-top: 35px; /* 避開 X 按鈕 */
-    margin-bottom: 25px;
-    min-height: 200px; /* 保持適當高度 */
-    display: flex;
-    flex-direction: column;
-    justify-content: center;
-    align-items: center;
-    cursor: pointer;
-    position: relative;
-    overflow: hidden;
-    transition: border-color 0.2s;
-}
-.drop-zone:hover { border-color: #666; }
-.drop-zone.has-file { justify-content: flex-start; align-items: stretch; padding-top: 0; }
-
-#file-list-container { width: 100%; display: none; overflow-y: auto; max-height: 330px; }
-#file-list-container::-webkit-scrollbar { width: 6px; }
-#file-list-container::-webkit-scrollbar-thumb { background-color: rgba(0,0,0,0.2); border-radius: 10px; }
-#file-list-container::-webkit-scrollbar-track { background: transparent; }
-.empty-state-content { display: flex; flex-direction: column; align-items: center; justify-content: center; width: 100%; height: 100%; }
-.folder-icon { width: 60px; height: 60px; object-fit: contain; opacity: 0.6; margin-bottom: 10px; }
-.drop-text { font-size: 1.1rem; font-weight: 600; color: #666; letter-spacing: 1px; }
-.file-list-item { display: flex; align-items: center; justify-content: space-between; padding: 15px 25px; width: 100%; border-bottom: 1px solid rgba(142, 142, 142, 1); }
-.file-info-left { display: flex; align-items: center; overflow: hidden; }
-.check-icon { width: 24px; height: 24px; object-fit: contain; margin-right: 15px; opacity: 0.8; flex-shrink: 0; }
-.file-name-text { font-size: 1rem; font-weight: 600; color: #666; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 350px; }
-.ai-tag { color: #999; font-weight: 700; font-size: 0.9rem; letter-spacing: 0.5px; white-space: nowrap; }
 
 .modal-buttons { display: flex; justify-content: center; gap: 30px; margin-top: 20px; }
 .btn-action, .btn-modal { padding: 10px 50px; border-radius: 12px; border: none; font-size: 1.1rem; font-weight: 600; cursor: pointer; box-shadow: 0 4px 12px rgba(0,0,0,0.1); transition: all 0.2s cubic-bezier(0.25, 0.8, 0.25, 1); }
@@ -168,20 +152,29 @@ main { flex: 1; background-color: rgba(7, 35, 125, 1); padding: 30px 40px; overf
 .success-toast { position: absolute; bottom: 30px; left: 50%; transform: translateX(-50%); background-color: rgba(7, 35, 125, 0.9); color: white; padding: 10px 30px; border-radius: 30px; font-weight: 600; display: none; animation: fadeUp 0.3s ease-out; z-index: 2000; }
 @keyframes fadeUp { from { opacity: 0; transform: translate(-50%, 20px); } to { opacity: 1; transform: translate(-50%, 0); } }
 
-/* --- Other Modal Elements --- */
-.dropdown-menu { position: absolute; top: 65px; right: 35px; background-color: #D3D3D3; border-radius: 12px; padding: 0; overflow: hidden; width: 100px; box-shadow: 0 5px 15px rgba(0,0,0,0.2); display: none; z-index: 30; flex-direction: column; }
-.dropdown-menu.show { display: flex; animation: fadeIn 0.2s ease; }
-.menu-option { padding: 12px 0; text-align: center; color: #555; font-size: 1rem; font-weight: 600; cursor: pointer; transition: background-color 0.2s; border-bottom: 1px solid rgba(255,255,255,0.3); }
-.menu-option:last-child { border-bottom: none; }
-.menu-option:hover { background-color: #C0C0C0; color: #333; }
+/* --- Specific Modal Elements --- */
+/* 修改：深藍色標題往下移 */
+.edit-title { 
+    text-align: center; 
+    font-size: 1.5rem; 
+    font-weight: 800; 
+    color: rgba(7, 35, 125, 1); 
+    margin-bottom: 25px; 
+    margin-top: 20px; /* 增加上邊距，不再太靠近頂部 */
+}
 
-.edit-title { text-align: center; font-size: 1.5rem; font-weight: 800; color: rgba(7, 35, 125, 1); margin-bottom: 25px; margin-top: -5px; }
 .form-group { display: flex; align-items: center; margin-bottom: 20px; }
 .form-label { width: 80px; font-size: 1.1rem; font-weight: 700; color: #333; text-align: right; margin-right: 20px; }
 .edit-input { flex-grow: 1; background-color: #D3D3D3; border: none; border-radius: 30px; padding: 10px 25px; font-size: 1rem; font-weight: 600; color: #333; outline: none; }
 .edit-input:focus { background-color: #C0C0C0; }
 
-.share-link-row { display: flex; align-items: center; margin-bottom: 25px; margin-top: 10px; }
+/* 修改：分享連結列上方間距，避開 X 按鈕 */
+.share-link-row { 
+    display: flex; 
+    align-items: center; 
+    margin-bottom: 25px; 
+    margin-top: 45px; /* 大幅增加上邊距，確保不重疊 */
+}
 .url-box { flex-grow: 1; background-color: #D3D3D3; border-radius: 30px; padding: 12px 25px; font-size: 1.1rem; font-weight: 700; color: #333; text-decoration: underline; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .link-icon-img { width: 28px; height: 28px; object-fit: contain; margin-left: 20px; cursor: pointer; opacity: 0.8; }
 .share-controls-row { display: flex; align-items: center; gap: 15px; }
@@ -190,3 +183,25 @@ main { flex: 1; background-color: rgba(7, 35, 125, 1); padding: 30px 40px; overf
 .permission-select { min-width: 140px; appearance: none; -webkit-appearance: none; background-image: url('../static/image/down_black.png'); background-repeat: no-repeat; background-position: right 15px center; background-size: 12px; padding-right: 35px; text-align-last: center; }
 .date-input { min-width: 160px; padding: 7px 20px; color: #333; }
 .date-input::-webkit-calendar-picker-indicator { cursor: pointer; opacity: 0.6; }
+
+/* 修改：上傳區域 */
+.drop-zone { 
+    flex: 1; 
+    background-color: rgba(235, 235, 235, 1); 
+    border: 3px dashed rgba(142, 142, 142, 1); 
+    border-radius: 16px; 
+    margin-bottom: 10px; 
+    margin-top: 20px; /* 稍微增加間距 */
+    min-height: 250px; 
+    max-height: 300px; /* 限制最大高度 */
+    display: flex; flex-direction: column; justify-content: center; align-items: center; cursor: pointer; position: relative; overflow: hidden; transition: border-color 0.2s; 
+}
+.drop-zone:hover { border-color: #666; }
+.drop-zone.has-file { justify-content: flex-start; align-items: stretch; padding-top: 0; }
+.empty-state-content { display: flex; flex-direction: column; align-items: center; justify-content: center; width: 100%; height: 100%; }
+.folder-icon { width: 60px; height: 60px; object-fit: contain; opacity: 0.6; margin-bottom: 10px; }
+.drop-text { font-size: 1.1rem; font-weight: 600; color: #666; letter-spacing: 1px; }
+.file-list-item { display: flex; align-items: center; justify-content: space-between; padding: 15px 25px; width: 100%; border-bottom: 1px solid rgba(142, 142, 142, 1); }
+.file-info-left { display: flex; align-items: center; overflow: hidden; }
+.check-icon { width: 24px; height: 24px; object-fit: contain; margin-right: 15px; opacity: 0.8; flex-shrink: 0; }
+.file-name-text { font-size: 1rem; font-weight: 600; color: #666; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 350px; }

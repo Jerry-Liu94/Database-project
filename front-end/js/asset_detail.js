@@ -37,8 +37,8 @@ const closeShareX = document.getElementById('close-share-x');
 if(shareOption) {
     shareOption.addEventListener('click', () => { dropdownMenu.classList.remove('show'); shareModal.style.display = 'flex'; });
     const closeShare = () => shareModal.style.display = 'none';
-    closeShareX.addEventListener('click', closeShare);
-    shareModal.addEventListener('click', (e) => { if (e.target === shareModal) closeShare(); });
+    if(closeShareX) closeShareX.addEventListener('click', closeShare);
+    if(shareModal) shareModal.addEventListener('click', (e) => { if (e.target === shareModal) closeShare(); });
 }
 
 // 5. 編輯彈窗 (Edit Modal)
@@ -50,7 +50,9 @@ const saveEditBtn = document.getElementById('save-edit-btn');
 
 const displayFilename = document.getElementById('display-filename');
 const displayId = document.getElementById('display-id');
-const displayTags = document.getElementById('display-tags');
+// 注意：在您的 HTML 中，標籤的 ID 似乎沒有加上，建議在 HTML 中補上 id="display-tags" 讓這裡能抓到
+const displayTags = document.getElementById('display-tags'); 
+
 const inputFilename = document.getElementById('edit-filename-input');
 const inputId = document.getElementById('edit-id-input');
 const inputTags = document.getElementById('edit-tags-input');
@@ -58,9 +60,11 @@ const inputTags = document.getElementById('edit-tags-input');
 if(editOption) {
     editOption.addEventListener('click', () => {
         dropdownMenu.classList.remove('show');
-        inputFilename.value = displayFilename.innerText;
-        inputId.value = displayId.innerText;
-        inputTags.value = displayTags.innerText;
+        if(displayFilename) inputFilename.value = displayFilename.innerText;
+        if(displayId) inputId.value = displayId.innerText;
+        // 這裡做個防呆，如果找不到 ID 就不填值
+        if(displayTags) inputTags.value = displayTags.innerText;
+        
         editModal.style.display = 'flex';
     });
 
@@ -70,15 +74,15 @@ if(editOption) {
     if(editModal) editModal.addEventListener('click', (e) => { if (e.target === editModal) closeEdit(); });
 
     if(saveEditBtn) saveEditBtn.addEventListener('click', () => {
-        displayFilename.innerText = inputFilename.value;
-        displayId.innerText = inputId.value;
-        displayTags.innerText = inputTags.value;
+        if(displayFilename) displayFilename.innerText = inputFilename.value;
+        if(displayId) displayId.innerText = inputId.value;
+        if(displayTags) displayTags.innerText = inputTags.value;
         closeEdit();
         showToast('修改已儲存！');
     });
 }
 
-// 6. 上傳新版本 (New Version Modal)
+// 6. 上傳新版本 (New Version Modal) - 重點修改部分
 const addVersionBtn = document.getElementById('add-version-btn');
 const versionModal = document.getElementById('version-modal');
 const closeVersionX = document.getElementById('close-version-x');
@@ -93,19 +97,31 @@ const versionScrollList = document.getElementById('version-scroll-list');
 
 if(addVersionBtn) {
     addVersionBtn.addEventListener('click', () => { resetVersionModal(); versionModal.style.display = 'flex'; });
+    
     const closeVersion = () => versionModal.style.display = 'none';
     if(closeVersionX) closeVersionX.addEventListener('click', closeVersion);
     if(cancelVersionBtn) cancelVersionBtn.addEventListener('click', closeVersion);
     if(versionModal) versionModal.addEventListener('click', (e) => { if (e.target === versionModal) closeVersion(); });
 
     vDropZone.addEventListener('click', () => vFileInput.click());
-    vFileInput.addEventListener('change', (e) => { if (e.target.files.length > 0) showVersionFile(e.target.files[0].name); });
+    
+    // 檔案選取後
+    vFileInput.addEventListener('change', (e) => { 
+        if (e.target.files.length > 0) showVersionFile(e.target.files[0].name); 
+    });
 
+    // 顯示檔案列表 (這裡使用 checkmark_grey.png)
     function showVersionFile(name) {
         vDropZone.classList.add('has-file');
         vEmptyState.style.display = 'none';
         vFileList.style.display = 'block';
-        vFileList.innerHTML = `<div class="file-list-item"><div class="file-info-left"><img src="static/images/checkmark_gray.png" class="check-icon" alt="Check"><span class="file-name-text">${name}</span></div></div>`;
+        vFileList.innerHTML = `
+            <div class="file-list-item">
+                <div class="file-info-left">
+                    <img src="static/image/checkmark_grey.png" class="check-icon status-icon" alt="Check">
+                    <span class="file-name-text">${name}</span>
+                </div>
+            </div>`;
     }
 
     function resetVersionModal() {
@@ -116,9 +132,15 @@ if(addVersionBtn) {
         vFileInput.value = '';
     }
 
-    saveVersionBtn.addEventListener('click', () => {
+    // 點擊上傳按鈕
+    if(saveVersionBtn) saveVersionBtn.addEventListener('click', () => {
         if (!vDropZone.classList.contains('has-file')) return;
 
+        // 1. 切換為灰色實心勾勾 (checkmark_fill_grey.png)
+        const icon = vFileList.querySelector('.status-icon');
+        if (icon) icon.src = 'static/image/checkmark_fill_grey.png';
+
+        // 2. 準備新增版本資料
         const today = new Date();
         const dateStr = today.getFullYear() + '.' + (today.getMonth()+1).toString().padStart(2, '0') + '.' + today.getDate().toString().padStart(2, '0');
         const count = document.querySelectorAll('.version-btn').length + 1;
@@ -129,15 +151,23 @@ if(addVersionBtn) {
         newBtn.onclick = function() { selectVersion(this); };
         newBtn.innerHTML = `<span>${dateStr}</span><span>${newVerName}</span>`;
 
-        versionScrollList.insertBefore(newBtn, versionScrollList.firstChild);
+        // 3. 插入新版本到列表頂部
+        if(versionScrollList) versionScrollList.insertBefore(newBtn, versionScrollList.firstChild);
 
-        closeVersion();
-        showToast('新版本上傳成功！');
-        selectVersion(newBtn);
+        // 4. 延遲 0.6秒 讓使用者看到勾勾變色，然後關閉視窗
+        setTimeout(() => {
+            closeVersion();
+            showToast('新版本上傳成功！');
+            selectVersion(newBtn); // 自動選取新版本
+        }, 600);
     });
 
-    // Drag & Drop for Version
+    // 拖曳功能
     vDropZone.addEventListener('dragover', (e) => { e.preventDefault(); vDropZone.style.borderColor = '#666'; });
     vDropZone.addEventListener('dragleave', (e) => { e.preventDefault(); vDropZone.style.borderColor = 'rgba(142, 142, 142, 1)'; });
-    vDropZone.addEventListener('drop', (e) => { e.preventDefault(); vDropZone.style.borderColor = 'rgba(142, 142, 142, 1)'; if (e.dataTransfer.files.length > 0) showVersionFile(e.dataTransfer.files[0].name); });
+    vDropZone.addEventListener('drop', (e) => { 
+        e.preventDefault(); 
+        vDropZone.style.borderColor = 'rgba(142, 142, 142, 1)'; 
+        if (e.dataTransfer.files.length > 0) showVersionFile(e.dataTransfer.files[0].name); 
+    });
 }
