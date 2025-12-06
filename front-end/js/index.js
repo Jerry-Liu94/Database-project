@@ -6,7 +6,7 @@ let currentType = 'category';
 let activeTags = new Set();
 let showFavoritesOnly = false;
 
-// 1. 一般篩選重置
+// 1. 一般篩選重置 (所有資產)
 function resetFilters(element) {
     currentFilter = 'all';
     currentType = 'category';
@@ -20,7 +20,7 @@ function resetFilters(element) {
     applyFilter();
 }
 
-// 2. 選擇類別
+// 2. 選擇類別 (單選)
 function filterAssets(category, element) {
     currentFilter = category;
     currentType = 'category';
@@ -44,7 +44,7 @@ function filterFavorites(element) {
     applyFilter();
 }
 
-// 4. 選擇標籤
+// 4. 選擇標籤 (多選)
 function toggleTag(tag, element) {
     if (activeTags.has(tag)) {
         activeTags.delete(tag);
@@ -56,7 +56,7 @@ function toggleTag(tag, element) {
     applyFilter();
 }
 
-// 5. 愛心切換邏輯 (首頁使用黑色愛心)
+// 5. 愛心切換邏輯 (修正圖片路徑)
 function toggleFavorite(event, btn) {
     event.preventDefault(); 
     event.stopPropagation(); 
@@ -159,7 +159,6 @@ if(modal) modal.addEventListener('click', (e) => { if(e.target === modal) closeM
 if(dropZone) dropZone.addEventListener('click', () => { if(modalButtons.style.display !== 'none') fileInput.click(); });
 if(fileInput) fileInput.addEventListener('change', (e) => { if (e.target.files.length > 0) handleFiles(Array.from(e.target.files)); });
 
-// --- 修正：補全 handleFiles 函式 ---
 function handleFiles(files) {
     if (!dropZone.classList.contains('has-file')) {
         dropZone.classList.add('has-file');
@@ -169,13 +168,14 @@ function handleFiles(files) {
     files.forEach(file => {
         const item = document.createElement('div');
         item.className = 'file-list-item';
-        // 使用 checkmark_black.png (選取時)
-        item.innerHTML = `<div class="file-info-left"><img src="static/image/checkmark_black.png" class="check-icon status-icon"><span class="file-name-text">${file.name}</span></div>`;
+        
+        // --- 使用 checkmark_black.png (黑色空心勾勾) ---
+        item.innerHTML = `<div class="file-info-left"><img src="static/image/checkmark_grey.png" class="check-icon status-icon"><span class="file-name-text">${file.name}</span></div>`;
+        
         fileListContainer.appendChild(item);
     });
 }
 
-// --- 修正：補全 上傳按鈕 事件 ---
 if(uploadBtn) uploadBtn.addEventListener('click', () => {
     const rows = document.querySelectorAll('.file-list-item');
     if (rows.length === 0) return;
@@ -186,9 +186,10 @@ if(uploadBtn) uploadBtn.addEventListener('click', () => {
             tagSpan.innerText = 'AI TAG[1]'; 
             row.appendChild(tagSpan);
         }
-        // 上傳成功後切換為 checkmark_fill_black.png
+        
+        // --- 上傳成功後切換為 checkmark_fill_black.png (黑色實心勾勾) ---
         const icon = row.querySelector('.status-icon'); 
-        if (icon) icon.src = 'static/image/checkmark_fill_black.png';
+        if (icon) icon.src = 'static/image/checkmark_fill_grey.png';
     });
     modalButtons.style.display = 'none';
     successMsg.style.display = 'block';
@@ -204,7 +205,6 @@ function resetFileState() {
     successMsg.style.display = 'none';
 }
 
-// --- 修正：補全 拖曳 (Drag & Drop) 事件 ---
 if(dropZone) {
     dropZone.addEventListener('dragover', (e) => { 
         e.preventDefault(); 
@@ -223,7 +223,7 @@ if(dropZone) {
     });
 }
 
-// --- Notification Sidebar Logic (如果有加鈴鐺功能的話) ---
+// --- Notification Sidebar Logic ---
 const notifyBtn = document.getElementById('notification-btn');
 const notifySidebar = document.getElementById('notify-sidebar');
 const notifyOverlay = document.getElementById('notify-overlay');

@@ -24,7 +24,6 @@
 
         <div class="header-icons">
             <img src="static/image/add_white.png" alt="Add" class="icon-btn-img" id="add-btn">
-            <img src="static/image/bell_white.png" alt="Notification" class="icon-btn-img" id="notification-btn">
             <img src="static/image/person_white.png" alt="User" class="icon-btn-img">
         </div>
     </header>
@@ -39,6 +38,8 @@
         </div>
 
         <div class="info-panel">
+            <img src="static/image/heart_black.png" alt="Favorite" class="detail-heart-btn" id="detail-heart-btn">
+
             <img src="static/image/list_black.png" alt="Menu" class="list-icon" id="menu-trigger">
             
             <div class="dropdown-menu" id="dropdown-menu">
@@ -118,6 +119,22 @@
     </div>
     <input type="file" id="version-file-input" style="display: none;">
 
+    <div class="modal-overlay" id="upload-modal">
+        <div class="modal-box">
+            <span class="close-modal-x" id="close-modal-x">&times;</span>
+            <div class="drop-zone" id="drop-zone">
+                <div class="empty-state-content" id="empty-state">
+                    <img src="static/image/upload_grey.png" alt="Folder" class="folder-icon">
+                    <div class="drop-text">拖曳檔案至此</div>
+                </div>
+                <div id="file-list-container"></div>
+            </div>
+            <div class="modal-buttons"><button class="btn-modal btn-upload" id="upload-btn-action">上傳</button><button class="btn-modal btn-cancel" id="cancel-btn">取消</button></div>
+            <div class="success-message" id="success-msg">上傳成功！AI標籤標記完成</div>
+        </div>
+    </div>
+    <input type="file" id="file-input" style="display: none;" multiple>
+
     <div class="notification-overlay" id="notify-overlay"></div>
     <div class="notification-sidebar" id="notify-sidebar">
         <div class="notify-header">
@@ -134,6 +151,20 @@
                 <div class="unread-dot"></div>
             </div>
         </div>
+    </div>
+
+    <div class="modal-overlay" id="restore-modal">
+    <div class="modal-box-common restore-modal-box">
+        <div class="restore-message">
+            確定要將 <span id="restore-ver-name">V1</span> 設為最新版本嗎？<br>
+            此操作將產生一個新的 <span id="new-ver-name">V3</span> 版本
+        </div>
+
+        <div class="modal-buttons">
+            <button class="btn-action btn-save" id="confirm-restore-btn">確認</button>
+            <button class="btn-action btn-cancel" id="cancel-restore-btn">取消</button>
+        </div>
+    </div>
     </div>
 
     <script src="js/asset_detail.js"></script>

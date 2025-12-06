@@ -75,6 +75,21 @@ main { flex: 1; background-color: rgba(7, 35, 125, 1); padding: 30px 40px; overf
 .info-panel { width: 400px; background-color: #fff; border-radius: 20px; padding: 40px 35px; display: flex; flex-direction: column; box-shadow: 0 10px 30px rgba(0,0,0,0.2); position: relative; overflow-y: hidden; }
 .list-icon { position: absolute; top: 35px; right: 35px; width: 22px; height: auto; object-fit: contain; cursor: pointer; opacity: 0.8; z-index: 20; }
 
+/* 右上角愛心按鈕 */
+.detail-heart-btn {
+    position: absolute;
+    top: 35px;
+    right: 75px; /* 放在清單 Icon 左邊 */
+    width: 22px;
+    height: auto;
+    object-fit: contain;
+    cursor: pointer;
+    opacity: 0.8;
+    z-index: 20;
+    transition: transform 0.2s;
+}
+.detail-heart-btn:hover { transform: scale(1.1); opacity: 1; }
+
 .file-title { color: rgba(7, 35, 125, 1); font-size: 1.5rem; font-weight: 800; text-align: center; margin-bottom: 5px; margin-top: 10px; }
 .file-id { color: #999; font-size: 1rem; text-align: center; margin-bottom: 35px; font-weight: 600; }
 .info-row { display: flex; justify-content: space-between; padding: 14px 0; border-bottom: 1px solid #ddd; font-size: 1.1rem; }
@@ -108,14 +123,39 @@ main { flex: 1; background-color: rgba(7, 35, 125, 1); padding: 30px 40px; overf
 .modal-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background-color: rgba(0, 0, 0, 0.4); backdrop-filter: blur(5px); z-index: 1000; display: none; justify-content: center; align-items: center; animation: fadeInOverlay 0.3s ease-out; }
 @keyframes fadeInOverlay { from { opacity: 0; } to { opacity: 1; } }
 @keyframes modalPop { 0% { opacity: 0; transform: scale(0.9) translateY(20px); } 100% { opacity: 1; transform: scale(1) translateY(0); } }
-.modal-box-common, .modal-box, .share-modal-box { background-color: #fff; border-radius: 20px; position: relative; box-shadow: 0 20px 50px rgba(0,0,0,0.3); display: flex; flex-direction: column; animation: modalPop 0.4s cubic-bezier(0.16, 1, 0.3, 1); }
-.modal-box-common { width: 600px; padding: 40px; }
-.modal-box { width: 700px; height: 500px; padding: 20px 30px 30px 30px; }
-.share-modal-box { width: 600px; padding: 40px 40px; }
 
-.close-modal-x { position: absolute; top: 15px; right: 20px; font-size: 1.5rem; color: #333; cursor: pointer; z-index: 10; font-family: sans-serif; }
+/* --- Modal Styles (Alignment Fixed) --- */
+.modal-box, .share-modal-box, .modal-box-common {
+    background-color: #fff;
+    width: 700px;
+    height: auto;
+    border-radius: 20px;
+    /* 左右 Padding 40px */
+    padding: 20px 40px 40px 40px; 
+    display: flex;
+    flex-direction: column;
+    position: relative;
+    box-shadow: 0 20px 50px rgba(0,0,0,0.3);
+    animation: modalPop 0.4s cubic-bezier(0.16, 1, 0.3, 1);
+}
+.share-modal-box { width: 600px; }
+
+/* 關閉按鈕 X (右對齊) */
+.close-modal-x {
+    position: absolute;
+    top: 15px;
+    /* 與內容邊界對齊 */
+    right: 40px; 
+    font-size: 1.8rem;
+    color: #333;
+    cursor: pointer;
+    z-index: 10;
+    font-family: sans-serif;
+    line-height: 1;
+}
+
 .modal-buttons { display: flex; justify-content: center; gap: 30px; margin-top: 20px; }
-.btn-action, .btn-modal { padding: 10px 50px; border-radius: 12px; border: none; font-size: 1.1rem; font-weight: 600; cursor: pointer; box-shadow: 0 4px 12px rgba(0,0,0,0.1); transition: all 0.2s; }
+.btn-action, .btn-modal { padding: 10px 50px; border-radius: 12px; border: none; font-size: 1.1rem; font-weight: 600; cursor: pointer; box-shadow: 0 4px 12px rgba(0,0,0,0.1); transition: all 0.2s cubic-bezier(0.25, 0.8, 0.25, 1); }
 .btn-action:active, .btn-modal:active { transform: scale(0.96); }
 .btn-save, .btn-upload { background-color: #D2E3FC; color: #333; }
 .btn-cancel { background-color: #F9E8BD; color: #333; }
@@ -125,23 +165,34 @@ main { flex: 1; background-color: rgba(7, 35, 125, 1); padding: 30px 40px; overf
 @keyframes fadeUp { from { opacity: 0; transform: translate(-50%, 20px); } to { opacity: 1; transform: translate(-50%, 0); } }
 
 /* --- Specific Modal Elements --- */
-.edit-title { text-align: center; font-size: 1.5rem; font-weight: 800; color: rgba(7, 35, 125, 1); margin-bottom: 25px; margin-top: -5px; }
+.edit-title { text-align: center; font-size: 1.5rem; font-weight: 800; color: rgba(7, 35, 125, 1); margin-bottom: 25px; margin-top: 20px; }
 .form-group { display: flex; align-items: center; margin-bottom: 20px; }
 .form-label { width: 80px; font-size: 1.1rem; font-weight: 700; color: #333; text-align: right; margin-right: 20px; }
 .edit-input { flex-grow: 1; background-color: #D3D3D3; border: none; border-radius: 30px; padding: 10px 25px; font-size: 1rem; font-weight: 600; color: #333; outline: none; }
 .edit-input:focus { background-color: #C0C0C0; }
 
-.share-link-row { display: flex; align-items: center; margin-bottom: 25px; margin-top: 10px; }
+.share-link-row { display: flex; align-items: center; margin-bottom: 25px; margin-top: 45px; }
 .url-box { flex-grow: 1; background-color: #D3D3D3; border-radius: 30px; padding: 12px 25px; font-size: 1.1rem; font-weight: 700; color: #333; text-decoration: underline; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .link-icon-img { width: 28px; height: 28px; object-fit: contain; margin-left: 20px; cursor: pointer; opacity: 0.8; }
 .share-controls-row { display: flex; align-items: center; gap: 15px; }
 .control-label { font-weight: 800; font-size: 1.1rem; color: #222; }
 .control-pill { background-color: #D3D3D3; border: none; border-radius: 20px; padding: 8px 20px; font-size: 1rem; font-weight: 700; color: #333; cursor: pointer; outline: none; text-align: center; font-family: inherit; }
-.permission-select { min-width: 140px; appearance: none; -webkit-appearance: none; background-image: url('../static/images/down_black.png'); background-repeat: no-repeat; background-position: right 15px center; background-size: 12px; padding-right: 35px; text-align-last: center; }
+.permission-select { min-width: 140px; appearance: none; -webkit-appearance: none; background-image: url('../static/image/down_black.png'); background-repeat: no-repeat; background-position: right 15px center; background-size: 12px; padding-right: 35px; text-align-last: center; }
 .date-input { min-width: 160px; padding: 7px 20px; color: #333; }
 .date-input::-webkit-calendar-picker-indicator { cursor: pointer; opacity: 0.6; }
 
-.drop-zone { flex: 1; background-color: rgba(235, 235, 235, 1); border: 3px dashed rgba(142, 142, 142, 1); border-radius: 16px; margin-bottom: 10px; min-height: 200px; display: flex; flex-direction: column; justify-content: center; align-items: center; cursor: pointer; position: relative; overflow: hidden; transition: border-color 0.2s; }
+/* 拖曳區 */
+.drop-zone { 
+    flex: 1; 
+    background-color: rgba(235, 235, 235, 1); 
+    border: 3px dashed rgba(142, 142, 142, 1); 
+    border-radius: 16px; 
+    margin-bottom: 10px; 
+    margin-top: 35px; /* 避開 X */
+    min-height: 250px; 
+    max-height: 300px;
+    display: flex; flex-direction: column; justify-content: center; align-items: center; cursor: pointer; position: relative; overflow: hidden; transition: border-color 0.2s; 
+}
 .drop-zone:hover { border-color: #666; }
 .drop-zone.has-file { justify-content: flex-start; align-items: stretch; padding-top: 0; }
 .empty-state-content { display: flex; flex-direction: column; align-items: center; justify-content: center; width: 100%; height: 100%; }
@@ -151,3 +202,21 @@ main { flex: 1; background-color: rgba(7, 35, 125, 1); padding: 30px 40px; overf
 .file-info-left { display: flex; align-items: center; overflow: hidden; }
 .check-icon { width: 24px; height: 24px; object-fit: contain; margin-right: 15px; opacity: 0.8; flex-shrink: 0; }
 .file-name-text { font-size: 1rem; font-weight: 600; color: #666; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 350px; }
+
+.restore-modal-box {
+    width: 500px; 
+    padding: 50px 40px; 
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    text-align: center;
+}
+
+.restore-message {
+    font-size: 1.25rem; /* 字體大一點 */
+    font-weight: 700;   /* 粗體 */
+    color: #333;
+    line-height: 1.6;   /* 行高 */
+    margin-bottom: 30px;
+}
