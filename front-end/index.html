@@ -9,12 +9,15 @@
 <body>
 
     <header>
-        <div class="logo-area"><img src="static/image/logo.png" alt="Logo" class="logo-img"></div>
+        <div class="logo-area"><a href="index.html"><img src="static/image/logo.png" alt="Logo" class="logo-img"></a></div>
         <div class="search-area"><div class="search-container"><input type="text" class="search-input" placeholder="請輸入搜尋項目"><img src="static/image/search_white.png" alt="Search" class="search-icon-img"></div></div>
         
         <div class="header-icons">
             <img src="static/image/add_white.png" alt="Add" class="icon-btn-img" id="add-btn">
-            <img src="static/image/person_white.png" alt="User" class="icon-btn-img">
+            
+            <a href="profile.html">
+                <img src="static/image/person_white.png" alt="User" class="icon-btn-img">
+            </a>
         </div>
     </header>
 
@@ -111,6 +114,24 @@
             </div>
             <div class="modal-buttons"><button class="btn-modal btn-upload" id="upload-btn-action">上傳</button><button class="btn-modal btn-cancel" id="cancel-btn">取消</button></div>
             <div class="success-message" id="success-msg">上傳成功！AI標籤標記完成</div>
+        </div>
+    </div>
+
+    <div class="notification-overlay" id="notify-overlay"></div>
+    <div class="notification-sidebar" id="notify-sidebar">
+        <div class="notify-header">
+            <h3>通知中心</h3>
+            <span class="close-notify" id="close-notify">&times;</span>
+        </div>
+        <div class="notify-list">
+            <div class="notify-item unread">
+                <div class="notify-icon-box"><img src="static/image/person_white.png" style="filter: invert(1);"></div>
+                <div class="notify-content">
+                    <p class="notify-text"><strong>系統訊息</strong>：您的檔案 <span class="highlight">A11423008.zip</span> 已上傳成功。</p>
+                    <span class="notify-time">剛剛</span>
+                </div>
+                <div class="unread-dot"></div>
+            </div>
         </div>
     </div>
 

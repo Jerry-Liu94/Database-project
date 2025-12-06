@@ -29,22 +29,7 @@ if(menuTrigger) {
     document.addEventListener('click', (e) => { if (!dropdownMenu.contains(e.target) && e.target !== menuTrigger) dropdownMenu.classList.remove('show'); });
 }
 
-// 4. 愛心收藏切換邏輯
-const detailHeartBtn = document.getElementById('detail-heart-btn');
-let isFavorite = false;
-
-if (detailHeartBtn) {
-    detailHeartBtn.addEventListener('click', () => {
-        isFavorite = !isFavorite;
-        if (isFavorite) {
-            detailHeartBtn.src = 'static/image/heart_fill_black.png'; // 實心
-            showToast('已加入收藏');
-        } else {
-            detailHeartBtn.src = 'static/image/heart_black.png'; // 空心
-            showToast('已取消收藏');
-        }
-    });
-}
+// 4. (已移除愛心收藏功能)
 
 // 5. 分享彈窗
 const shareOption = document.getElementById('share-option');
@@ -96,7 +81,7 @@ if(editOption) {
     });
 }
 
-// 7. 上傳新版本 (修正 checkmark 邏輯)
+// 7. 上傳新版本 (New Version Modal - 頁面專屬功能)
 const addVersionBtn = document.getElementById('add-version-btn');
 const versionModal = document.getElementById('version-modal');
 const closeVersionX = document.getElementById('close-version-x');
@@ -123,7 +108,6 @@ if(addVersionBtn) {
         if (e.target.files.length > 0) showVersionFile(e.target.files[0].name); 
     });
 
-    // 顯示選取檔案：使用 checkmark_grey.png (灰色空心)
     function showVersionFile(name) {
         vDropZone.classList.add('has-file');
         vEmptyState.style.display = 'none';
@@ -148,7 +132,7 @@ if(addVersionBtn) {
     if(saveVersionBtn) saveVersionBtn.addEventListener('click', () => {
         if (!vDropZone.classList.contains('has-file')) return;
 
-        // 1. 上傳成功：切換為 checkmark_fill_grey.png (灰色實心)
+        // 1. 切換為灰色實心勾勾
         const icon = vFileList.querySelector('.status-icon');
         if (icon) icon.src = 'static/image/checkmark_fill_grey.png';
 
@@ -165,7 +149,6 @@ if(addVersionBtn) {
 
         if(versionScrollList) versionScrollList.insertBefore(newBtn, versionScrollList.firstChild);
 
-        // 3. 延遲關閉，讓使用者看到變色效果
         setTimeout(() => {
             closeVersion();
             showToast('新版本上傳成功！');
@@ -182,119 +165,164 @@ if(addVersionBtn) {
     });
 }
 
-// Notification Logic (複製過來以確保鈴鐺功能正常)
-const notifyBtn = document.getElementById('notification-btn');
-const notifySidebar = document.getElementById('notify-sidebar');
-const notifyOverlay = document.getElementById('notify-overlay');
-const closeNotifyBtn = document.getElementById('close-notify');
+// ==========================================
+// 8. 全域功能：新增資產彈窗 (Global Upload Asset) - [新增部分]
+// ==========================================
+const addBtn = document.getElementById('add-btn');
+const modal = document.getElementById('upload-modal');
+const closeX = document.getElementById('close-modal-x');
+const cancelBtn = document.getElementById('cancel-btn');
+const uploadBtn = document.getElementById('upload-btn-action');
 
-if (notifyBtn) {
-    notifyBtn.addEventListener('click', (e) => {
-        e.stopPropagation();
-        if(notifySidebar) notifySidebar.classList.add('show');
-        if(notifyOverlay) notifyOverlay.classList.add('show');
+// 使用全域的 drop-zone ID (注意：這裡用的是 upload-modal 裡的 drop-zone，跟版本上傳的不同)
+const dropZone = document.getElementById('drop-zone');
+const fileInput = document.getElementById('file-input');
+const emptyState = document.getElementById('empty-state');
+const fileListContainer = document.getElementById('file-list-container');
+const modalButtons = document.querySelector('.modal-buttons'); // 這裡抓取 upload-modal 內的按鈕區
+const successMsg = document.getElementById('success-msg');
+
+if (addBtn) {
+    addBtn.addEventListener('click', () => { modal.style.display = 'flex'; resetGlobalFileState(); });
+    
+    function closeGlobalModal() { modal.style.display = 'none'; }
+    if(closeX) closeX.addEventListener('click', closeGlobalModal);
+    if(cancelBtn) cancelBtn.addEventListener('click', closeGlobalModal);
+    if(modal) modal.addEventListener('click', (e) => { if(e.target === modal) closeGlobalModal(); });
+
+    dropZone.addEventListener('click', () => { 
+        // 只有當按鈕還在顯示時(未上傳成功)，才允許點擊選擇檔案
+        if(modalButtons.style.display !== 'none') fileInput.click(); 
+    });
+    
+    fileInput.addEventListener('change', (e) => { if (e.target.files.length > 0) handleGlobalFiles(Array.from(e.target.files)); });
+
+    function handleGlobalFiles(files) {
+        if (!dropZone.classList.contains('has-file')) {
+            dropZone.classList.add('has-file');
+            emptyState.style.display = 'none';
+            fileListContainer.style.display = 'block';
+        }
+        files.forEach(file => {
+            const item = document.createElement('div');
+            item.className = 'file-list-item';
+            // 使用黑色空心勾勾
+            item.innerHTML = `<div class="file-info-left"><img src="static/image/checkmark_black.png" class="check-icon status-icon"><span class="file-name-text">${file.name}</span></div>`;
+            fileListContainer.appendChild(item);
+        });
+    }
+
+    if(uploadBtn) uploadBtn.addEventListener('click', () => {
+        const rows = document.querySelectorAll('#file-list-container .file-list-item');
+        rows.forEach(row => {
+            if (!row.querySelector('.ai-tag')) {
+                const tagSpan = document.createElement('span'); tagSpan.className = 'ai-tag'; tagSpan.innerText = 'AI TAG[1]'; row.appendChild(tagSpan);
+            }
+            // 使用黑色實心勾勾
+            const icon = row.querySelector('.status-icon'); if (icon) icon.src = 'static/image/checkmark_fill_black.png';
+        });
+        
+        // 隱藏按鈕，顯示成功訊息
+        if(modalButtons) modalButtons.style.display = 'none';
+        if(successMsg) successMsg.style.display = 'block';
+        
+        // 1.5秒後自動關閉
+        setTimeout(() => { closeGlobalModal(); }, 1500);
+    });
+
+    function resetGlobalFileState() {
+        dropZone.classList.remove('has-file'); 
+        emptyState.style.display = 'flex'; 
+        fileListContainer.style.display = 'none'; 
+        fileListContainer.innerHTML = ''; 
+        fileInput.value = '';
+        if(modalButtons) modalButtons.style.display = 'flex'; 
+        if(successMsg) successMsg.style.display = 'none';
+    }
+    
+    // 拖曳功能
+    dropZone.addEventListener('dragover', (e) => { e.preventDefault(); dropZone.style.borderColor = '#666'; });
+    dropZone.addEventListener('dragleave', (e) => { e.preventDefault(); dropZone.style.borderColor = 'rgba(142, 142, 142, 1)'; });
+    dropZone.addEventListener('drop', (e) => { 
+        e.preventDefault(); 
+        dropZone.style.borderColor = 'rgba(142, 142, 142, 1)'; 
+        if (e.dataTransfer.files.length > 0 && (!modalButtons || modalButtons.style.display !== 'none')) {
+            handleGlobalFiles(Array.from(e.dataTransfer.files));
+        }
     });
 }
 
-function closeNotification() {
-    if (notifySidebar) notifySidebar.classList.remove('show');
-    if (notifyOverlay) notifyOverlay.classList.remove('show');
-}
-
-if (closeNotifyBtn) closeNotifyBtn.addEventListener('click', closeNotification);
-if (notifyOverlay) notifyOverlay.addEventListener('click', closeNotification);
-
-// ==========================================
-// 8. 版本還原邏輯 (Restore Version) - 重點修改
-// ==========================================
-
+// 9. 版本還原邏輯 (Restore Version)
 const restoreModal = document.getElementById('restore-modal');
 const confirmRestoreBtn = document.getElementById('confirm-restore-btn');
 const cancelRestoreBtn = document.getElementById('cancel-restore-btn');
 const restoreVerNameSpan = document.getElementById('restore-ver-name');
 const newVerNameSpan = document.getElementById('new-ver-name');
+let targetRestoreBtn = null;
 
-// 這是原本 HTML 裡的 onclick="selectVersion(this)" 會呼叫的函式
-// 我們這裡做修改，加入判斷
-function selectVersion(clickedBtn) {
+// 取代 selectVersion 的行為：舊版本點擊時觸發彈窗
+const _originalSelectVersion = selectVersion; // 保存舊邏輯 (其實上面已經定義了，這裡重新綁定邏輯比較安全)
+
+// 我們覆寫 selectVersion，讓它支援彈窗判斷
+window.selectVersion = function(clickedBtn) {
     const allBtns = Array.from(document.querySelectorAll('.version-btn'));
     const index = allBtns.indexOf(clickedBtn);
 
-    // 邏輯判斷：
-    // 如果點擊的不是第 0 個 (最新版)，且它目前不是 active 狀態
-    // 就視為點擊了舊版本，觸發彈窗
-    if (index > 0) {
-        // 1. 取得舊版本名稱 (例如 Version_1)
-        const oldVerName = clickedBtn.querySelectorAll('span')[1].innerText;
+    // 如果點擊的是最新的 (index 0) -> 直接切換
+    if (index === 0) {
+        // 呼叫原本的切換樣式邏輯
+        allBtns.forEach(btn => {
+            btn.classList.remove('active');
+            btn.classList.add('inactive');
+        });
+        clickedBtn.classList.remove('inactive');
+        clickedBtn.classList.add('active');
+    } else {
+        // 如果是舊版本 -> 開啟還原確認窗
+        targetRestoreBtn = clickedBtn;
         
-        // 2. 計算新版本名稱 (目前數量 + 1)
+        // 抓取版本名稱 (假設結構是 <span>Date</span><span>Name</span>)
+        const oldVerName = clickedBtn.querySelectorAll('span')[1].innerText;
         const nextVerNum = allBtns.length + 1;
         const nextVerName = "Version_" + nextVerNum;
 
-        // 3. 更新彈窗文字
         if(restoreVerNameSpan) restoreVerNameSpan.innerText = oldVerName;
         if(newVerNameSpan) newVerNameSpan.innerText = nextVerName;
 
-        // 4. 顯示彈窗
-        restoreModal.style.display = 'flex';
-    } else {
-        // 如果點擊的是最新版(第0個)，則單純切換樣式 (原本的邏輯)
-        updateActiveState(clickedBtn);
+        if(restoreModal) restoreModal.style.display = 'flex';
     }
 }
 
-// 輔助函式：切換 Active 樣式
-function updateActiveState(targetBtn) {
-    const allBtns = document.querySelectorAll('.version-btn');
-    allBtns.forEach(btn => {
-        btn.classList.remove('active');
-        btn.classList.add('inactive');
-    });
-    targetBtn.classList.remove('inactive');
-    targetBtn.classList.add('active');
-}
-
-// --- 還原彈窗按鈕事件 ---
-
-// 取消：關閉視窗
 if(cancelRestoreBtn) {
     cancelRestoreBtn.addEventListener('click', () => {
-        restoreModal.style.display = 'none';
+        if(restoreModal) restoreModal.style.display = 'none';
     });
 }
 
-// 確認：執行還原 (新增一個新版本到最上方)
 if(confirmRestoreBtn) {
     confirmRestoreBtn.addEventListener('click', () => {
-        // 1. 準備新版本資料 (模擬今天日期)
         const today = new Date();
         const dateStr = today.getFullYear() + '.' + (today.getMonth()+1).toString().padStart(2, '0') + '.' + today.getDate().toString().padStart(2, '0');
         const count = document.querySelectorAll('.version-btn').length + 1;
-        const newVerName = "Version_" + count; // 例如 Version_3
+        const newVerName = "Version_" + count;
 
-        // 2. 建立 DOM
         const newBtn = document.createElement('div');
-        newBtn.className = 'version-btn inactive'; // 剛建立時先設為 inactive
-        // 綁定點擊事件
+        newBtn.className = 'version-btn inactive';
         newBtn.onclick = function() { selectVersion(this); };
         newBtn.innerHTML = `<span>${dateStr}</span><span>${newVerName}</span>`;
 
-        // 3. 插入到捲動列表的最上方 (變成最新版)
-        const scrollList = document.getElementById('version-scroll-list');
-        if(scrollList) {
-            scrollList.insertBefore(newBtn, scrollList.firstChild);
-        }
+        if(versionScrollList) versionScrollList.insertBefore(newBtn, versionScrollList.firstChild);
 
-        // 4. 關閉視窗並選取新版本
-        restoreModal.style.display = 'none';
+        if(restoreModal) restoreModal.style.display = 'none';
         showToast('已還原並建立新版本！');
-        updateActiveState(newBtn); // 讓新產生的版本變為 Active
-    });
-}
-
-// 點擊遮罩關閉
-if(restoreModal) {
-    restoreModal.addEventListener('click', (e) => {
-        if (e.target === restoreModal) restoreModal.style.display = 'none';
+        
+        // 選取最新的
+        const allBtns = document.querySelectorAll('.version-btn');
+        allBtns.forEach(btn => {
+            btn.classList.remove('active');
+            btn.classList.add('inactive');
+        });
+        newBtn.classList.remove('inactive');
+        newBtn.classList.add('active');
     });
 }

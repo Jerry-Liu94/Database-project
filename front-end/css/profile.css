@@ -12,19 +12,20 @@
 /* 網格容器 (.profile-container) 佈局 */
 .profile-container {
     display: grid;
-    grid-template-columns: 1.2fr 1fr; 
-    grid-template-rows: 1fr 1fr; 
+    grid-template-columns: 1.2fr 1fr; /* 左欄稍寬，右欄稍窄 */
+    grid-template-rows: 1fr 1fr; /* 上下兩列高度均分 */
     
-    gap: 35px; 
+    gap: 35px; /* 卡片間距 */
     width: 100%;
     max-width: 1200px; 
-    min-height: 700px; 
+    min-height: 700px; /* 確保有足夠的高度撐開 */
     
     margin-top: 50px; 
     margin-bottom: 50px;
 }
 
 /* 左側資訊卡片 (.profile-info-card) 跨欄設定 */
+/* 讓個人資訊卡片跨越上下兩列，佔滿左側 */
 .profile-info-card {
     grid-row: 1 / span 2; 
 }
@@ -59,6 +60,7 @@
     width: 100px;
     height: 100px;
     border-radius: 50%;
+    object-fit: cover; /* 確保圖片不變形 */
 }
 
 /* 編輯按鈕 (.edit-btn) 樣式 */
@@ -119,7 +121,6 @@
     border-bottom: none; 
 }
 
-
 /* 資訊標籤 (.info-label) 樣式 */
 .info-label {
     font-size: 1.1rem;
@@ -135,7 +136,7 @@
 }
 
 /* 可編輯資訊值 (.info-value.info-editable) 樣式 */
-info-value.info-editable {
+.info-value.info-editable {
     display: flex;
     align-items: center;
     gap: 8px;
@@ -163,6 +164,7 @@ info-value.info-editable {
 .info-value.info-editable span {
     flex-shrink: 0; 
 }
+
 
 /* --- 右側：設定區塊 --- */
 
@@ -199,7 +201,6 @@ info-value.info-editable {
 .setting-group-box .setting-row:last-child {
     border-bottom: none;
 }
-
 
 /* 設定標籤 (.setting-label) 樣式 */
 .setting-label {
