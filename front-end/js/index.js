@@ -6,7 +6,11 @@ let currentType = 'category';
 let activeTags = new Set();
 let showFavoritesOnly = false;
 
+<<<<<<< HEAD
 // 1. 一般篩選重置 (所有資產)
+=======
+// 1. 一般篩選重置
+>>>>>>> 7e293acab540f5d82ca357b34b657400286a8670
 function resetFilters(element) {
     currentFilter = 'all';
     currentType = 'category';
@@ -20,7 +24,11 @@ function resetFilters(element) {
     applyFilter();
 }
 
+<<<<<<< HEAD
 // 2. 選擇類別 (單選)
+=======
+// 2. 選擇類別
+>>>>>>> 7e293acab540f5d82ca357b34b657400286a8670
 function filterAssets(category, element) {
     currentFilter = category;
     currentType = 'category';
@@ -44,7 +52,11 @@ function filterFavorites(element) {
     applyFilter();
 }
 
+<<<<<<< HEAD
 // 4. 選擇標籤 (多選)
+=======
+// 4. 選擇標籤
+>>>>>>> 7e293acab540f5d82ca357b34b657400286a8670
 function toggleTag(tag, element) {
     if (activeTags.has(tag)) {
         activeTags.delete(tag);
@@ -56,7 +68,11 @@ function toggleTag(tag, element) {
     applyFilter();
 }
 
+<<<<<<< HEAD
 // 5. 愛心切換邏輯
+=======
+// 5. 愛心切換
+>>>>>>> 7e293acab540f5d82ca357b34b657400286a8670
 function toggleFavorite(event, btn) {
     event.preventDefault(); 
     event.stopPropagation(); 
@@ -66,10 +82,17 @@ function toggleFavorite(event, btn) {
 
     if (isFav) {
         card.setAttribute('data-favorite', 'false');
+<<<<<<< HEAD
         btn.src = 'static/image/heart_black.png';
     } else {
         card.setAttribute('data-favorite', 'true');
         btn.src = 'static/image/heart_fill_black.png';
+=======
+        btn.src = 'static/images/heart_outline.png';
+    } else {
+        card.setAttribute('data-favorite', 'true');
+        btn.src = 'static/images/heart_fill.png';
+>>>>>>> 7e293acab540f5d82ca357b34b657400286a8670
     }
 
     if (showFavoritesOnly) applyFilter();
@@ -168,10 +191,14 @@ function handleFiles(files) {
     files.forEach(file => {
         const item = document.createElement('div');
         item.className = 'file-list-item';
+<<<<<<< HEAD
         
         // --- 修改：使用 checkmark_black.png (選取時的空心/黑色勾勾) ---
         item.innerHTML = `<div class="file-info-left"><img src="static/image/checkmark_grey.png" class="check-icon status-icon"><span class="file-name-text">${file.name}</span></div>`;
         
+=======
+        item.innerHTML = `<div class="file-info-left"><img src="static/images/checkmark_gray.png" class="check-icon status-icon"><span class="file-name-text">${file.name}</span></div>`;
+>>>>>>> 7e293acab540f5d82ca357b34b657400286a8670
         fileListContainer.appendChild(item);
     });
 }
@@ -183,10 +210,14 @@ if(uploadBtn) uploadBtn.addEventListener('click', () => {
         if (!row.querySelector('.ai-tag')) {
             const tagSpan = document.createElement('span'); tagSpan.className = 'ai-tag'; tagSpan.innerText = 'AI TAG[1]'; row.appendChild(tagSpan);
         }
+<<<<<<< HEAD
         
         // --- 修改：上傳成功後切換為 checkmark_fill_black.png (實心勾勾) ---
         const icon = row.querySelector('.status-icon'); 
         if (icon) icon.src = 'static/image/checkmark_fill_grey.png';
+=======
+        const icon = row.querySelector('.status-icon'); if (icon) icon.src = 'static/images/checkmark_fill_gray.png';
+>>>>>>> 7e293acab540f5d82ca357b34b657400286a8670
     });
     modalButtons.style.display = 'none';
     successMsg.style.display = 'block';

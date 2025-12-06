@@ -1,0 +1,109 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Profile Settings</title>
+    <link rel="stylesheet" href="css/style.css">
+    <link rel="stylesheet" href="css/profile.css">
+    </head>
+<body>
+
+    <header>
+        <div class="logo-area"><img src="static/image/logo.png" alt="Logo" class="logo-img"></div>
+        <div class="search-area"><div class="search-container"><input type="text" class="search-input" placeholder="請輸入搜尋項目"><img src="static/image/search_white.png" alt="Search" class="search-icon-img"></div></div>
+        <div class="header-icons"><img src="static/image/add_white.png" alt="Add" class="icon-btn-img" id="add-btn"><img src="static/image/reminder_white.png" alt="Notification" class="icon-btn-img"><img src="static/image/person_white.png" alt="User" class="icon-btn-img"></div>
+    </header>
+
+    <div class="main-container">
+        
+        <aside>
+            <div class="menu-item">所有資產</div>
+            <div class="menu-item">我的收藏</div>
+            
+            <div class="menu-item">
+                類別
+                <img src="static/image/down_grey.png" alt="Down" class="chevron-icon-img">
+            </div>
+            <div class="submenu-container">
+                <div class="submenu-item">Marketing</div>
+                <div class="submenu-item child-category">Social Media</div>
+                <div class="submenu-item">Internal Docs</div>
+            </div>
+
+            <div class="tags-section">
+                <div class="tags-title">標籤</div>
+                <div class="tags-container">
+                    <span class="tag-pill">#白襪體育生</span>
+                    <span class="tag-pill">#痘痘那個</span>
+                    <span class="tag-pill">#排球少年</span>
+                </div>
+            </div>
+        </aside>
+
+        <main class="profile-main">
+            <div class="profile-container">
+                
+                <div class="profile-card profile-info-card">
+                    <div class="avatar-area">
+                        <img src="static/image/user_avatar.png" alt="Avatar" class="avatar-img">
+                        <div class="edit-btn">編輯</div>
+                    </div>
+                    <div class="user-name">LSS</div>
+                    <div class="user-email">lss@gmail.com</div>
+                    
+                    <div class="info-group-box">
+                        <div class="info-group">
+                            <div class="info-label">職稱</div>
+                            <div class="info-value info-editable">
+                                <span></span> <img src="static/image/edit_black.png" alt="Edit Title" class="edit-icon info-edit-icon">
+                            </div>
+                        </div>
+                        <div class="info-group">
+                            <div class="info-label">權限</div>
+                            <div class="info-value info-editable">
+                                <span>Viewer</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="profile-card security-card">
+                    <div class="card-title">安全性</div>
+                    <div class="setting-group-box"> 
+                        <div class="setting-row">
+                            <div class="setting-label">密碼</div>
+                            <div class="setting-value password-display">
+                                <span>XXXXX</span>
+                                <img src="static/image/edit_black.png" alt="Edit" class="edit-icon">
+                            </div>
+                        </div>
+                        <div class="setting-row">
+                            <div class="setting-label">多因素認證</div>
+                            <div class="toggle-switch">
+                                <input type="checkbox" id="mfa-toggle">
+                                <label for="mfa-toggle" class="slider"></label>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="profile-card developer-card">
+                    <div class="card-title">開發者設定</div>
+                    <div class="setting-group-box">
+                        <div class="setting-row">
+                            <div class="setting-label">API Token</div>
+                            <div class="setting-value api-token-display">
+                                <span>sk-xxxxx</span>
+                                <img src="static/image/link.png" alt="Copy" class="copy-icon">
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+            </div>
+        </main>
+    </div>
+
+</body>
+</html>

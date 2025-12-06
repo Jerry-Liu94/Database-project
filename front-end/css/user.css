@@ -1,0 +1,199 @@
+/* --- 用戶管理頁面樣式 --- */
+
+/* 頁面主要內容區域 (.audit-main.full-width-layout) 樣式 */
+.audit-main.full-width-layout {
+    background-color: rgba(7, 35, 125, 1); 
+    padding: 30px 40px; 
+    display: flex;
+    flex-direction: column; 
+    min-height: calc(100vh - 100px); 
+    overflow-y: auto; 
+    width: 100%; 
+}
+
+/* --- 篩選器列 (Filter Bar) 佈局 --- */
+.filter-bar {
+    display: flex;
+    align-items: center;
+    background-color: transparent; 
+    padding: 0; 
+    box-shadow: none;
+    flex-shrink: 0; 
+    margin-bottom: 30px;
+    justify-content: space-between;
+}
+
+/* 搜索輸入框與圖標容器 (.input-search-group) */
+.input-search-group {
+    display: flex;
+    flex-grow: 0; 
+    width: 450px;
+    background-color: #ffffff;
+    border-radius: 24px;
+    box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1); 
+    margin-right: auto; 
+    height: 48px; 
+    overflow: hidden;
+}
+
+/* 搜索輸入框 (.filter-input.single-search-input) 樣式 */
+.filter-input.single-search-input {
+    flex-grow: 1;
+    border: none;
+    border-radius: 12px;
+    padding: 12px 20px;
+    margin-right: 0; 
+    box-shadow: none; 
+    height: 48px;
+    min-width: 0; 
+    font-size: 1rem;
+    color: #333;
+    outline: none;
+}
+
+/* 搜索圖標按鈕 (.icon-search-btn) 樣式 */
+.icon-search-btn {
+    background: none;
+    border: none;
+    padding: 0 20px;
+    font-size: 1.2rem;
+    cursor: pointer;
+    color: #333;
+    transition: color 0.2s;
+    height: 100%;
+    display: flex;
+    align-items: center;
+    border-left: 1px solid #eee; 
+}
+
+/* 新增使用者按鈕 (.add-user-btn) 樣式 */
+.add-user-btn {
+    background-color: #F9E8BD; 
+    color: #333;
+    font-size: 1rem;
+    font-weight: 700;
+    padding: 12px 30px;
+    border: none;
+    border-radius: 24px; 
+    cursor: pointer;
+    transition: background-color 0.2s, transform 0.1s;
+    height: 48px;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+}
+/* 新增使用者按鈕 Hover 效果 */
+.add-user-btn:hover {
+    background-color: #ffe28d;
+}
+
+
+/* --- 表格容器 (.audit-content-container) 樣式 --- */
+.audit-content-container {
+    flex: 1; 
+    background-color: #ffffff; 
+    border-radius: 12px;
+    box-shadow: 0 4px 10px rgba(0, 0, 0, 0.1); 
+    overflow: hidden; 
+    margin-bottom: 20px;
+    display: flex;
+    flex-direction: column; 
+    min-height: 400px; 
+}
+
+/* 表格滾動包裝器 (.table-scroll-wrapper) */
+.table-scroll-wrapper {
+    flex: 1; 
+    overflow-y: auto; 
+    overflow-x: hidden;
+}
+
+/* 表格本體 (.audit-table) 樣式 */
+.audit-table {
+    width: 100%;
+    border-collapse: collapse; 
+    height: 100%; 
+    table-layout: fixed; 
+    font-size: 1rem;
+    color: #333;
+    background-color: transparent; 
+}
+
+/* 表格頭部 (thead) 樣式 */
+.audit-table thead {
+    background-color: #ffffff; 
+    position: sticky; 
+    top: 0;
+    z-index: 10;
+}
+/* 表格頭部單元格 (th) 樣式 */
+.audit-table thead th {
+    background-color: #EFEFEF; 
+    color: #333;
+    font-weight: 700;
+    padding: 15px 10px;
+    text-align: left;
+    border-bottom: 1px solid #ccc; 
+}
+
+/* 表格內容單元格 (td) 樣式 */
+.audit-table tbody td {
+    padding: 15px 10px; 
+    border-bottom: 1px solid #f0f0f0;
+    text-align: left;
+    word-break: break-all;
+    font-weight: 500; 
+    color: #555; 
+    height: 48px; 
+    vertical-align: middle; 
+}
+
+/* --- 斑馬紋效果 --- */
+.audit-table tbody tr {
+    background-color: #ffffff; 
+}
+/* 第一行 (資料行) 高亮樣式 */
+.audit-table tbody tr:first-child {
+    background-color: #e6e6e6; 
+}
+/* 偶數行條紋樣式 (排除第一行) */
+.audit-table tbody tr:nth-child(even):not(:first-child) {
+    background-color: #f7f7f7; 
+}
+
+/* 行 Hover 效果 */
+.audit-table tbody tr:hover {
+    background-color: #e6f7ff; 
+    cursor: default;
+}
+
+/* --- 角色徽章 (.role-badge) 樣式 --- */
+.role-badge {
+    display: inline-block;
+    padding: 4px 12px;
+    border-radius: 23px; 
+    font-size: 0.85rem;
+    font-weight: 600;
+    text-align: center;
+    background-color: #e0e0e0;
+    color: #333;
+}
+
+
+/* --- 分頁列 (Pagination Bar) 簡化樣式 --- */
+.pagination-bar.pagination-simple {
+    flex-shrink: 0; 
+    background-color: rgba(7, 35, 125, 1); 
+    padding: 10px 40px 10px 40px; 
+    display: flex;
+    justify-content: flex-start; 
+    align-items: center;
+}
+/* 隱藏分頁控制按鈕 */
+.pagination-simple .page-controls {
+    display: none; 
+}
+/* 分頁資訊文字樣式 */
+.pagination-simple .page-info {
+    color: #fff;
+    padding: 0; 
+    font-size: 1rem;
+}
