@@ -6,11 +6,7 @@ let currentType = 'category';
 let activeTags = new Set();
 let showFavoritesOnly = false;
 
-<<<<<<< HEAD
-// 1. 一般篩選重置 (所有資產)
-=======
 // 1. 一般篩選重置
->>>>>>> 7e293acab540f5d82ca357b34b657400286a8670
 function resetFilters(element) {
     currentFilter = 'all';
     currentType = 'category';
@@ -24,11 +20,7 @@ function resetFilters(element) {
     applyFilter();
 }
 
-<<<<<<< HEAD
-// 2. 選擇類別 (單選)
-=======
 // 2. 選擇類別
->>>>>>> 7e293acab540f5d82ca357b34b657400286a8670
 function filterAssets(category, element) {
     currentFilter = category;
     currentType = 'category';
@@ -52,11 +44,7 @@ function filterFavorites(element) {
     applyFilter();
 }
 
-<<<<<<< HEAD
-// 4. 選擇標籤 (多選)
-=======
 // 4. 選擇標籤
->>>>>>> 7e293acab540f5d82ca357b34b657400286a8670
 function toggleTag(tag, element) {
     if (activeTags.has(tag)) {
         activeTags.delete(tag);
@@ -68,11 +56,7 @@ function toggleTag(tag, element) {
     applyFilter();
 }
 
-<<<<<<< HEAD
-// 5. 愛心切換邏輯
-=======
-// 5. 愛心切換
->>>>>>> 7e293acab540f5d82ca357b34b657400286a8670
+// 5. 愛心切換邏輯 (首頁使用黑色愛心)
 function toggleFavorite(event, btn) {
     event.preventDefault(); 
     event.stopPropagation(); 
@@ -82,17 +66,10 @@ function toggleFavorite(event, btn) {
 
     if (isFav) {
         card.setAttribute('data-favorite', 'false');
-<<<<<<< HEAD
-        btn.src = 'static/image/heart_black.png';
+        btn.src = 'static/image/heart_black.png'; // 空心
     } else {
         card.setAttribute('data-favorite', 'true');
-        btn.src = 'static/image/heart_fill_black.png';
-=======
-        btn.src = 'static/images/heart_outline.png';
-    } else {
-        card.setAttribute('data-favorite', 'true');
-        btn.src = 'static/images/heart_fill.png';
->>>>>>> 7e293acab540f5d82ca357b34b657400286a8670
+        btn.src = 'static/image/heart_fill_black.png'; // 實心
     }
 
     if (showFavoritesOnly) applyFilter();
@@ -182,6 +159,7 @@ if(modal) modal.addEventListener('click', (e) => { if(e.target === modal) closeM
 if(dropZone) dropZone.addEventListener('click', () => { if(modalButtons.style.display !== 'none') fileInput.click(); });
 if(fileInput) fileInput.addEventListener('change', (e) => { if (e.target.files.length > 0) handleFiles(Array.from(e.target.files)); });
 
+// --- 修正：補全 handleFiles 函式 ---
 function handleFiles(files) {
     if (!dropZone.classList.contains('has-file')) {
         dropZone.classList.add('has-file');
@@ -191,45 +169,78 @@ function handleFiles(files) {
     files.forEach(file => {
         const item = document.createElement('div');
         item.className = 'file-list-item';
-<<<<<<< HEAD
-        
-        // --- 修改：使用 checkmark_black.png (選取時的空心/黑色勾勾) ---
-        item.innerHTML = `<div class="file-info-left"><img src="static/image/checkmark_grey.png" class="check-icon status-icon"><span class="file-name-text">${file.name}</span></div>`;
-        
-=======
-        item.innerHTML = `<div class="file-info-left"><img src="static/images/checkmark_gray.png" class="check-icon status-icon"><span class="file-name-text">${file.name}</span></div>`;
->>>>>>> 7e293acab540f5d82ca357b34b657400286a8670
+        // 使用 checkmark_black.png (選取時)
+        item.innerHTML = `<div class="file-info-left"><img src="static/image/checkmark_black.png" class="check-icon status-icon"><span class="file-name-text">${file.name}</span></div>`;
         fileListContainer.appendChild(item);
     });
 }
 
+// --- 修正：補全 上傳按鈕 事件 ---
 if(uploadBtn) uploadBtn.addEventListener('click', () => {
     const rows = document.querySelectorAll('.file-list-item');
     if (rows.length === 0) return;
     rows.forEach(row => {
         if (!row.querySelector('.ai-tag')) {
-            const tagSpan = document.createElement('span'); tagSpan.className = 'ai-tag'; tagSpan.innerText = 'AI TAG[1]'; row.appendChild(tagSpan);
+            const tagSpan = document.createElement('span'); 
+            tagSpan.className = 'ai-tag'; 
+            tagSpan.innerText = 'AI TAG[1]'; 
+            row.appendChild(tagSpan);
         }
-<<<<<<< HEAD
-        
-        // --- 修改：上傳成功後切換為 checkmark_fill_black.png (實心勾勾) ---
+        // 上傳成功後切換為 checkmark_fill_black.png
         const icon = row.querySelector('.status-icon'); 
-        if (icon) icon.src = 'static/image/checkmark_fill_grey.png';
-=======
-        const icon = row.querySelector('.status-icon'); if (icon) icon.src = 'static/images/checkmark_fill_gray.png';
->>>>>>> 7e293acab540f5d82ca357b34b657400286a8670
+        if (icon) icon.src = 'static/image/checkmark_fill_black.png';
     });
     modalButtons.style.display = 'none';
     successMsg.style.display = 'block';
 });
 
 function resetFileState() {
-    dropZone.classList.remove('has-file'); emptyState.style.display = 'flex'; fileListContainer.style.display = 'none'; fileListContainer.innerHTML = ''; fileInput.value = '';
-    modalButtons.style.display = 'flex'; successMsg.style.display = 'none';
+    dropZone.classList.remove('has-file'); 
+    emptyState.style.display = 'flex'; 
+    fileListContainer.style.display = 'none'; 
+    fileListContainer.innerHTML = ''; 
+    fileInput.value = '';
+    modalButtons.style.display = 'flex'; 
+    successMsg.style.display = 'none';
 }
 
+// --- 修正：補全 拖曳 (Drag & Drop) 事件 ---
 if(dropZone) {
-    dropZone.addEventListener('dragover', (e) => { e.preventDefault(); dropZone.style.borderColor = '#666'; });
-    dropZone.addEventListener('dragleave', (e) => { e.preventDefault(); dropZone.style.borderColor = 'rgba(142, 142, 142, 1)'; });
-    dropZone.addEventListener('drop', (e) => { e.preventDefault(); dropZone.style.borderColor = 'rgba(142, 142, 142, 1)'; if (e.dataTransfer.files.length > 0 && modalButtons.style.display !== 'none') handleFiles(Array.from(e.dataTransfer.files)); });
+    dropZone.addEventListener('dragover', (e) => { 
+        e.preventDefault(); 
+        dropZone.style.borderColor = '#666'; 
+    });
+    dropZone.addEventListener('dragleave', (e) => { 
+        e.preventDefault(); 
+        dropZone.style.borderColor = 'rgba(142, 142, 142, 1)'; 
+    });
+    dropZone.addEventListener('drop', (e) => { 
+        e.preventDefault(); 
+        dropZone.style.borderColor = 'rgba(142, 142, 142, 1)'; 
+        if (e.dataTransfer.files.length > 0 && modalButtons.style.display !== 'none') {
+            handleFiles(Array.from(e.dataTransfer.files));
+        }
+    });
 }
+
+// --- Notification Sidebar Logic (如果有加鈴鐺功能的話) ---
+const notifyBtn = document.getElementById('notification-btn');
+const notifySidebar = document.getElementById('notify-sidebar');
+const notifyOverlay = document.getElementById('notify-overlay');
+const closeNotifyBtn = document.getElementById('close-notify');
+
+if (notifyBtn) {
+    notifyBtn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        notifySidebar.classList.add('show');
+        notifyOverlay.classList.add('show');
+    });
+}
+
+function closeNotification() {
+    if (notifySidebar) notifySidebar.classList.remove('show');
+    if (notifyOverlay) notifyOverlay.classList.remove('show');
+}
+
+if (closeNotifyBtn) closeNotifyBtn.addEventListener('click', closeNotification);
+if (notifyOverlay) notifyOverlay.addEventListener('click', closeNotification);
