@@ -58,7 +58,7 @@ origins = [
     "https://redantdam.indiechild.xyz",
     
     # 3. 前端網域
-    "https://www.redantdam.indiechild.xyz", 
+    "https://redant-web.indiechild.xyz", 
 ]
 
 app.add_middleware(
