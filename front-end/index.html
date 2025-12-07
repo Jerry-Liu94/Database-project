@@ -9,12 +9,20 @@
 <body>
 
     <header>
-        <div class="logo-area"><a href="index.html"><img src="static/image/logo.png" alt="Logo" class="logo-img"></a></div>
-        <div class="search-area"><div class="search-container"><input type="text" class="search-input" placeholder="請輸入搜尋項目"><img src="static/image/search_white.png" alt="Search" class="search-icon-img"></div></div>
+        <div class="logo-area">
+            <a href="index.html">
+                <img src="static/image/logo.png" alt="Logo" class="logo-img">
+            </a>
+        </div>
+        <div class="search-area">
+            <div class="search-container">
+                <input type="text" class="search-input" placeholder="請輸入搜尋項目">
+                <img src="static/image/search_white.png" alt="Search" class="search-icon-img">
+            </div>
+        </div>
         
         <div class="header-icons">
             <img src="static/image/add_white.png" alt="Add" class="icon-btn-img" id="add-btn">
-            
             <a href="profile.html">
                 <img src="static/image/person_white.png" alt="User" class="icon-btn-img">
             </a>
@@ -25,7 +33,7 @@
         <aside>
             <div class="menu-item active-filter" onclick="resetFilters(this)">所有資產</div>
             <div class="menu-item" onclick="filterFavorites(this)">我的收藏</div>
-            
+
             <div class="menu-item" onclick="toggleCategory()">
                 類別
                 <img src="static/image/down_grey.png" alt="Down" class="chevron-icon-img" id="category-chevron">
@@ -50,16 +58,16 @@
         <main>
             <div class="section-header">所有資產列表</div>
     
-            <div class="content-row" id="all-assets-container" style="flex-wrap: wrap; gap: 20px;">
+            <div class="assets-grid" id="all-assets-container">
                 </div>
-            
-            </main>
+        </main>
     </div>
 
     <input type="file" id="file-input" style="display: none;" multiple>
     <div class="modal-overlay" id="upload-modal">
         <div class="modal-box">
             <span class="close-modal-x" id="close-modal-x">&times;</span>
+            
             <div class="drop-zone" id="drop-zone">
                 <div class="empty-state-content" id="empty-state">
                     <img src="static/image/upload_grey.png" alt="Folder" class="folder-icon">
@@ -67,11 +75,16 @@
                 </div>
                 <div id="file-list-container"></div>
             </div>
+
             <div class="modal-buttons">
                 <button class="btn-modal btn-upload" id="upload-btn-action">上傳</button>
                 <button class="btn-modal btn-cancel" id="cancel-btn">取消</button>
             </div>
-            <div class="success-message" id="success-msg">上傳成功！AI標籤標記完成</div>
+
+            <div class="success-message" id="success-msg">
+                <img src="static/image/checkmark_fill_grey.png" alt="Success" class="success-icon-img">
+                上傳成功！AI標籤標記完成
+            </div>
         </div>
     </div>
 

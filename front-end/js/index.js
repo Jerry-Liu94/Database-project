@@ -35,42 +35,42 @@ async function loadAssets() {
     }
 }
 
-// --- [修改] API: 把後端資料畫到畫面上 (網格佈局) ---
+// --- API: 把後端資料畫到畫面上 (網格佈局) ---
 function renderApiAssets(assets) {
-    // 改為抓取新的網格容器 ID
     const container = document.getElementById('all-assets-container'); 
-    if (!container) return; // 若找不到容器則不執行
+    if (!container) return; 
 
     container.innerHTML = ''; 
 
-    // 更新標題數量 (如果有這個元素的話)
     const headerTitle = document.querySelector('.section-header');
     if(headerTitle) headerTitle.innerText = `所有資產列表 (${assets.length})`;
 
     if (assets.length === 0) {
-        container.innerHTML = '<div style="width:100%; text-align:center; color:#ccc; padding:40px;">目前沒有任何資產</div>';
+        // 無資料時，讓提示文字置中
+        container.style.display = 'flex';
+        container.style.justifyContent = 'center';
+        container.innerHTML = '<div style="width:100%; text-align:center; color:#ccc; padding:40px; font-size:1.2rem;">目前沒有任何資產</div>';
         return;
+    } else {
+        // 有資料時恢復 Grid
+        container.style.display = 'grid';
     }
 
     assets.forEach(asset => {
-        // 縮圖處理
         const thumb = asset.thumbnail_url || 'static/image/upload_grey.png'; 
-        
-        // 設定資料屬性 (Category 與 Tags 暫時用後端資料模擬，需依實際 API 回傳調整)
-        // 這裡預設給它 'Marketing' 方便測試篩選，您可以改成 asset.category
         const categoryData = asset.category || "Marketing"; 
-        const tagsData = asset.filename; // 暫時用檔名當標籤作搜尋
+        const tagsData = asset.filename; 
 
         const cardHTML = `
             <a href="asset_detail.html?id=${asset.asset_id}" class="card" data-category="${categoryData}" data-tags="${tagsData}" data-favorite="false">
                 <img src="static/image/heart_black.png" class="favorite-btn" onclick="toggleFavorite(event, this)">
                 
-                <div style="width:100%; height:120px; overflow:hidden; border-radius:8px; display:flex; align-items:center; justify-content:center; background:#f0f0f0; margin-bottom:10px;">
-                    <img src="${thumb}" style="width:100%; height:100%; object-fit:cover;" onerror="this.src='static/image/upload_grey.png'">
+                <div class="card-img-container">
+                    <img src="${thumb}" onerror="this.src='static/image/upload_grey.png'">
                 </div>
 
                 <div class="card-title">${asset.filename}</div>
-                <div class="card-tag-display">#${asset.file_type || 'file'}</div>
+                <div class="card-tag-display">#${asset.file_type || 'AI Tag'}</div>
                 <div class="card-version">ID: ${asset.asset_id}</div>
             </a>
         `;
@@ -128,7 +128,7 @@ window.toggleTag = function(tag, element) {
     applyFilter();
 }
 
-// 5. 愛心切換 (首頁使用黑色愛心)
+// 5. 愛心切換
 window.toggleFavorite = function(event, btn) {
     event.preventDefault(); 
     event.stopPropagation(); 
@@ -147,7 +147,7 @@ window.toggleFavorite = function(event, btn) {
     if (showFavoritesOnly) applyFilter();
 }
 
-// 6. [修改] 核心篩選應用 (簡化版：只需控制卡片顯示)
+// 6. 核心篩選應用
 function applyFilter() {
     const allCards = document.querySelectorAll('.card');
 
@@ -182,8 +182,6 @@ function applyFilter() {
         if (shouldShow) card.classList.remove('hidden');
         else card.classList.add('hidden');
     });
-    
-    // Grid 佈局不需要像 Row 佈局那樣隱藏標題，所以這裡移除了相關邏輯
 }
 
 // 7. 側邊欄折疊
@@ -196,7 +194,7 @@ window.toggleCategory = function() {
     else submenu.style.maxHeight = submenu.scrollHeight + "px";
 }
 
-// 8. 上傳彈窗邏輯 (整合 API + 黑色勾勾)
+// 8. 上傳彈窗邏輯
 const addBtn = document.getElementById('add-btn');
 const modal = document.getElementById('upload-modal');
 const closeX = document.getElementById('close-modal-x');
@@ -219,6 +217,7 @@ if(modal) modal.addEventListener('click', (e) => { if(e.target === modal) closeM
 if(dropZone) dropZone.addEventListener('click', () => { if(modalButtons.style.display !== 'none') fileInput.click(); });
 if(fileInput) fileInput.addEventListener('change', (e) => { if (e.target.files.length > 0) handleFiles(Array.from(e.target.files)); });
 
+// [修改] 處理檔案顯示：使用 checkmark_grey.png (空心)
 function handleFiles(files) {
     if (!dropZone.classList.contains('has-file')) {
         dropZone.classList.add('has-file');
@@ -228,20 +227,26 @@ function handleFiles(files) {
     files.forEach(file => {
         const item = document.createElement('div');
         item.className = 'file-list-item';
-        // [修改] 使用黑色空心勾勾
-        item.innerHTML = `<div class="file-info-left"><img src="static/image/checkmark_black.png" class="check-icon status-icon"><span class="file-name-text">${file.name}</span></div>`;
+        
+        item.innerHTML = `
+            <div class="file-info-left">
+                <img src="static/image/checkmark_grey.png" class="check-icon status-icon" alt="status">
+                <span class="file-name-text">${file.name}</span>
+            </div>`;
+            
         fileListContainer.appendChild(item);
     });
 }
 
-// 點擊上傳按鈕 (API 上傳)
+// [修改] 點擊上傳按鈕 (API 上傳 + 切換圖示)
 if(uploadBtn) {
     const newUploadBtn = uploadBtn.cloneNode(true);
     uploadBtn.parentNode.replaceChild(newUploadBtn, uploadBtn);
 
     newUploadBtn.addEventListener('click', async () => {
         const files = fileInput.files;
-        if (files.length === 0) {
+        // 如果 input 沒有檔案，檢查是否有拖曳進來的檔案顯示在 UI 上 (這裡僅做簡易檢查)
+        if (files.length === 0 && document.querySelectorAll('.file-list-item').length === 0) {
             alert("請先選擇檔案");
             return;
         }
@@ -250,6 +255,7 @@ if(uploadBtn) {
         newUploadBtn.disabled = true;
 
         try {
+            // 迴圈上傳每一個檔案
             for (let i = 0; i < files.length; i++) {
                 const formData = new FormData();
                 formData.append('file', files[i]);
@@ -263,6 +269,7 @@ if(uploadBtn) {
                 if (!res.ok) throw new Error(`檔案 ${files[i].name} 上傳失敗`);
             }
 
+            // 全部成功後，更新 UI 圖示
             const rows = document.querySelectorAll('.file-list-item');
             rows.forEach(row => {
                 if (!row.querySelector('.ai-tag')) {
@@ -271,20 +278,25 @@ if(uploadBtn) {
                     tagSpan.innerText = 'AI Analysis...'; 
                     row.appendChild(tagSpan);
                 }
-                // [修改] 切換為黑色實心勾勾
+                
+                // [關鍵修改] 上傳成功，切換為 checkmark_fill_grey.png (實心灰色勾勾)
+                // 注意：請確保您的圖片檔名是 grey 或 gray，這裡使用 grey
                 const icon = row.querySelector('.status-icon'); 
-                if (icon) icon.src = 'static/image/checkmark_fill_black.png';
+                if (icon) icon.src = 'static/image/checkmark_fill_grey.png';
             });
 
+            // 隱藏按鈕，顯示成功訊息 (成功訊息內已有綠色勾勾或圖片)
             modalButtons.style.display = 'none';
-            successMsg.style.display = 'block';
-            successMsg.innerText = "🎉 上傳成功！正在重新載入...";
+            // 使用 flex 讓圖文置中
+            if(successMsg) successMsg.style.display = 'flex'; 
 
+            // 1.5秒後重新整理頁面
             setTimeout(() => {
                 location.reload(); 
             }, 1500);
 
         } catch (error) {
+            console.error(error);
             alert("上傳錯誤: " + error.message);
             newUploadBtn.innerText = "上傳";
             newUploadBtn.disabled = false;
@@ -293,8 +305,17 @@ if(uploadBtn) {
 }
 
 function resetFileState() {
-    dropZone.classList.remove('has-file'); emptyState.style.display = 'flex'; fileListContainer.style.display = 'none'; fileListContainer.innerHTML = ''; fileInput.value = '';
-    modalButtons.style.display = 'flex'; successMsg.style.display = 'none';
+    dropZone.classList.remove('has-file'); 
+    emptyState.style.display = 'flex'; 
+    fileListContainer.style.display = 'none'; 
+    fileListContainer.innerHTML = ''; 
+    fileInput.value = '';
+    
+    // 重置按鈕與訊息
+    if(modalButtons) modalButtons.style.display = 'flex'; 
+    if(successMsg) successMsg.style.display = 'none';
+    
+    // 重置按鈕文字
     const btn = document.querySelector('.btn-upload');
     if(btn) { btn.innerText = "上傳"; btn.disabled = false; }
 }
@@ -318,7 +339,6 @@ const notifySidebar = document.getElementById('notify-sidebar');
 const notifyOverlay = document.getElementById('notify-overlay');
 const closeNotifyBtn = document.getElementById('close-notify');
 
-// 如果首頁沒有鈴鐺 (notifyBtn 為 null)，這段就不會執行，不會報錯
 if (notifyBtn && notifySidebar) {
     notifyBtn.addEventListener('click', (e) => {
         e.stopPropagation();
