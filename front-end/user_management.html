@@ -45,10 +45,23 @@
                         <tr class="data-row">
                             <td data-label="ID">#1234</td>
                             <td data-label="姓名">LSS</td>
-                            <td data-label="角色"><span class="role-badge editor-badge">Editor</span></td>
+                            <td data-label="角色">
+                                <select class="role-select">
+                                    <option value="admin">Admin</option>
+                                    <option value="editor" selected>Editor</option>
+                                    <option value="viewer">Viewer</option>
+                                </select>
+                            </td>
                             <td data-label="狀態">Active</td>
                             <td data-label="最近登入">2025-11-26</td>
-                            <td data-label="操作"></td>
+                            <td data-label="操作"> <div class="action-icons"> <button class="action-icon delete-btn" title="刪除使用者">
+                                        <img src="static/image/trash.png" alt="刪除" class="icon-img">
+                                    </button>
+                                    <button class="action-icon disable-btn" title="停用使用者">
+                                        <img src="static/image/stop.circle.png" alt="停用" class="icon-img">
+                                    </button>
+                                </div>
+                            </td>
                         </tr>
                         
                         <tr class="data-row"><td></td><td></td><td></td><td></td><td></td><td></td></tr>
@@ -71,6 +84,117 @@
         
         
     </main>
+
+    <div id="user-modal" class="modal-overlay hidden">
+    <div class="modal-content">
+        <h3 class="modal-title">新增使用者</h3>
+        
+        <div class="form-group">
+            <label for="user-id">ID</label>
+            <input type="text" id="user-id" placeholder="自動生成 (可選)">
+        </div>
+        
+        <div class="form-group">
+            <label for="user-name">姓名</label>
+            <input type="text" id="user-name" placeholder="請輸入姓名">
+        </div>
+
+        <div class="form-group">
+            <label for="user-role">角色</label>
+            <div class="role-select-wrapper">
+                <select id="user-role" class="role-select-modal">
+                    <option value="admin">Admin</option>
+                    <option value="editor" selected>Editor</option>
+                    <option value="viewer">Viewer</option>
+                </select>
+            </div>
+        </div>
+        
+        <div class="modal-actions">
+            <button class="confirm-btn">確認</button>
+            </div>
+    </div>
+    </div>
+
+    <div id="confirm-modal" class="modal-overlay hidden">
+    <div class="modal-content small-content">
+        <h3 class="modal-title">確定停用此帳號？</h3>
+        
+        <div class="modal-actions confirm-actions">
+            <button class="confirm-btn modal-confirm-btn">確認</button> 
+            <button class="cancel-btn modal-cancel-btn">取消</button>
+        </div>
+    </div>
+    </div>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            // 獲取元素
+            const addUserBtn = document.querySelector('.add-user-btn');
+            const modal = document.getElementById('user-modal');
+            const confirmBtn = document.querySelector('.confirm-btn'); // 假設確認按鈕也用來關閉
+
+            // 1. 點擊「新增使用者」按鈕，顯示彈窗
+            addUserBtn.addEventListener('click', () => {
+                modal.classList.remove('hidden');
+            });
+
+            // 2. 點擊「確認」按鈕，隱藏彈窗
+            confirmBtn.addEventListener('click', () => {
+                // 這裡應該加上表單驗證和資料提交邏輯
+                modal.classList.add('hidden');
+            });
+            
+            // 3. 點擊遮罩層（彈窗外部）隱藏彈窗 (可選，但推薦)
+            modal.addEventListener('click', (e) => {
+                // 檢查點擊是否發生在 modal-overlay 本身上，而非 modal-content 內部
+                if (e.target === modal) {
+                    modal.classList.add('hidden');
+                }
+            });
+
+            // 4. 也可以添加一個取消按鈕或 X 關閉按鈕
+        });
+
+        document.addEventListener('DOMContentLoaded', () => {
+            // ... (保留之前的 addUserBtn 和 userModal 邏輯) ...
+
+            // 獲取確認彈窗相關元素
+            const confirmModal = document.getElementById('confirm-modal');
+            const deleteButtons = document.querySelectorAll('.delete-btn'); // 操作欄位中的垃圾桶按鈕
+            const confirmModalCancelBtn = document.querySelector('#confirm-modal .modal-cancel-btn');
+            const confirmModalConfirmBtn = document.querySelector('#confirm-modal .modal-confirm-btn');
+
+            // 1. 點擊操作欄位的 Delete/停用按鈕，顯示確認彈窗
+            deleteButtons.forEach(button => {
+                button.addEventListener('click', () => {
+                    confirmModal.classList.remove('hidden');
+                    // 實際應用中，您會在這裡記錄要停用的使用者 ID
+                });
+            });
+
+            // 2. 點擊「取消」按鈕，隱藏確認彈窗
+            confirmModalCancelBtn.addEventListener('click', () => {
+                confirmModal.classList.add('hidden');
+            });
+
+            // 3. 點擊「確認」按鈕（執行停用操作），隱藏確認彈窗
+            confirmModalConfirmBtn.addEventListener('click', () => {
+                // 實際的停用（Disable）API 請求或邏輯放在這裡
+                console.log("使用者帳號已確認停用。"); 
+                confirmModal.classList.add('hidden');
+                // 之後需要更新表格的「狀態」欄位
+            });
+
+            // 4. 點擊遮罩層（彈窗外部）隱藏彈窗 (同樣適用於此確認彈窗)
+            confirmModal.addEventListener('click', (e) => {
+                if (e.target === confirmModal) {
+                    confirmModal.classList.add('hidden');
+                }
+            });
+
+        });
+    </script>
 
 </body>
 </html>

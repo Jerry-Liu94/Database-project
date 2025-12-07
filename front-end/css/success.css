@@ -1,0 +1,130 @@
+/* 全局樣式重置 */
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+    font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", "Segoe UI", Roboto, "Helvetica Neue", Arial, "Microsoft JhengHei", sans-serif;
+    -webkit-tap-highlight-color: transparent;
+}
+
+/* 頁面整體佈局與背景設定 */
+body, html {
+    height: 100%;
+    font-family: Arial, sans-serif;
+    background-color: #07237D;
+
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    min-height: 100vh;
+}
+
+/* 響應式容器和分層 */
+.container {
+    width: 100vw;
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+    position: relative;
+}
+
+/* 頂部深藍色區塊 (佔約 28.85vh 高度) */
+.top-blue-bg {
+    height: 28.85vh;
+    min-height: 150px;
+    color: white;
+    position: relative;
+
+    display: flex;
+    justify-content: center;
+    align-items: center;
+
+    padding: 0;
+}
+
+/* 標題文字樣式 */
+.header-text {
+    font-size: 64px;
+    font-weight: bold;
+    color: white;
+
+    position: static;
+    left: auto;
+    top: auto;
+    width: auto;
+    transform: none;
+
+    margin-top: 113px;
+}
+
+/* 中間白色區塊 (彈性擴展) */
+.middle-white-area {
+    flex-grow: 1;
+    background-color: #FFFFFF;
+
+    box-shadow: 0px 30px 11px 2px rgba(0, 0, 0, 0.25);
+
+    display: flex;
+    justify-content: center;
+    align-items: flex-start;
+    padding-top: 50px;
+    position: relative;
+    z-index: 2;
+}
+
+/* 底部深藍色區塊 (佔約 9.97vh 高度) */
+.bottom-blue-bg {
+    height: 9.97vh;
+    min-height: 50px;
+    background-color: #07237D;
+    position: relative;
+    z-index: 1;
+}
+
+/* 登入成功畫面專屬樣式 */
+
+/* 成功卡片容器 (淺灰色底，放大 40%) */
+.success-card {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+
+    width: 280px;
+    height: 350px;
+
+    background-color: #E6E6E6;
+    border-radius: 14px;
+    box-shadow: 0 5px 10px rgba(0, 0, 0, 0.15);
+
+    margin-top: 80px;
+    padding: 30px;
+}
+
+/* 打勾圖示的圓形背景 (放大 40%) */
+.success-icon-bg {
+    width: 98px;
+    height: 98px;
+    background-color: white;
+    border-radius: 50%;
+
+    /* 引入自訂圖片 */
+    background-image: url('../static/image/checkmark_fill_gray.png');
+    background-size: 80%;
+    background-repeat: no-repeat;
+    background-position: center;
+
+    display: flex;
+    justify-content: center;
+    align-items: center;
+
+    margin-bottom: 35px;
+    margin-top: 40px;
+    box-shadow: 0 3px 5px rgba(0, 0, 0, 0.1);
+}
+
+/* 成功提示文字 (放大 40%) */
+.success-text {
+    font-size: 34px;
+    font-weight: bold;
+    color: #333;
+}

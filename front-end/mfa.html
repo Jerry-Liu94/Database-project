@@ -1,0 +1,83 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>DAM SYSTEM - MFA 認證</title>
+    <link rel="stylesheet" href="../front-end/css/mfa.css"> 
+</head>
+<body>
+    <div class="container">
+        
+        <div class="top-blue-bg">
+            <h1 class="header-text">DAM SYSTEM</h1>
+        </div>
+
+        <div class="middle-white-area">
+            <div class="mfa-container"> 
+                
+                <div class="mfa-image-placeholder"></div>
+                
+                <div class="mfa-timer">04:59</div>
+                
+                <input type="text" class="mfa-input" placeholder="XXX-XXX">
+                
+                <button type="submit" class="confirm-button-final mfa-button">確認</button>
+            </div>
+        </div>
+
+        <div class="bottom-blue-bg"></div>
+    </div>
+
+    <script>
+                // 假設後端傳來的總秒數。通常是 5 分鐘 (300 秒)。
+        // 在實際應用中，這個值應該從後端 API 獲取。
+        let totalSeconds = 300; 
+
+        const timerElement = document.querySelector('.mfa-timer');
+        const inputElement = document.querySelector('.mfa-input');
+        const buttonElement = document.querySelector('.confirm-button-final');
+
+        // 格式化時間：將總秒數轉換成 MM:SS 格式
+        function formatTime(seconds) {
+            const minutes = Math.floor(seconds / 60);
+            const remainingSeconds = seconds % 60;
+            
+            // 使用 padStart 確保是兩位數 (例如 05:00)
+            const formattedMinutes = String(minutes).padStart(2, '0');
+            const formattedSeconds = String(remainingSeconds).padStart(2, '0');
+            
+            return `${formattedMinutes}:${formattedSeconds}`;
+        }
+
+        // 倒數計時主要函式
+        function startTimer() {
+            
+            // 初始化顯示時間
+            timerElement.textContent = formatTime(totalSeconds);
+
+            const countdownInterval = setInterval(() => {
+                totalSeconds--;
+
+                // 更新計時器顯示
+                timerElement.textContent = formatTime(totalSeconds);
+
+                // 檢查計時是否結束
+                if (totalSeconds <= 0) {
+                    clearInterval(countdownInterval);
+                    timerElement.textContent = "驗證碼已過期";
+                    timerElement.style.color = 'red'; // 顯示為紅色
+                    
+                    // 禁用輸入框和確認按鈕
+                    if (inputElement) inputElement.disabled = true;
+                    if (buttonElement) buttonElement.disabled = true;
+                }
+
+            }, 1000); // 每 1000 毫秒 (1秒) 執行一次
+        }
+
+        // 頁面載入後啟動計時器
+        document.addEventListener('DOMContentLoaded', startTimer);
+    </script>
+</body>
+</html>

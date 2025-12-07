@@ -112,7 +112,7 @@
     border-collapse: collapse; 
     height: 100%; 
     table-layout: fixed; 
-    font-size: 1rem;
+    font-size: 1.3rem;
     color: #333;
     background-color: transparent; 
 }
@@ -170,12 +170,95 @@
     display: inline-block;
     padding: 4px 12px;
     border-radius: 23px; 
-    font-size: 0.85rem;
+    font-size: 1rem;
     font-weight: 600;
     text-align: center;
     background-color: #e0e0e0;
     color: #333;
 }
+
+.role-select {
+    display: inline-block;
+    padding: 4px 12px;
+    border: 1px solid #ccc; 
+    border-radius: 24px; 
+    font-size: 1.1rem;
+    font-weight: 600;
+    text-align: center;
+    
+    /* 核心要求：白色底色 */
+    background-color: #ffffff; 
+    color: #333;
+    
+    /* 移除瀏覽器預設外觀 */
+    -webkit-appearance: none; 
+    -moz-appearance: none;
+    appearance: none;
+    
+    /* === 新增：自定義下拉箭頭圖標 === */
+    background-image: url('../static/image/down_gray.png'); /* 箭頭圖片路徑 */
+    background-repeat: no-repeat;
+    background-position: right 8px center; /* 圖標位置 */
+    background-size: 14px; /* 圖標大小 */
+    padding-right: 30px; /* 為圖標留出空間 */
+    /* ============================== */
+    
+    /* 調整寬度以適應內容，或固定寬度 */
+    width: 100px; 
+    height: 30px;
+    cursor: pointer;
+    
+    /* 確保 Select 位於表格單元格內時垂直居中 */
+    vertical-align: middle;
+}
+
+/* --- 操作按鈕圖標樣式 --- */
+.action-icons {
+    display: flex;
+    gap: 10px; 
+    align-items: center;
+    justify-content: flex-start; /* **[修正]**：改為從左側開始排列，以匹配左邊欄位的內容位置 */
+}
+
+.action-icon {
+    /* 圓形按鈕基礎樣式 */
+    width: 30px;
+    height: 30px;
+    padding: 0;
+    border: none;
+    border-radius: 50%; 
+    cursor: pointer;
+    transition: background-color 0.2s;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+}
+
+/* 圖片圖標樣式，確保圖片在圓形按鈕內正確縮放 */
+.action-icon .icon-img {
+    width: 18px; 
+    height: 18px;
+    object-fit: contain;
+}
+
+
+.delete-btn {
+    background-color: #ffcccc; 
+    color: #d9534f; 
+}
+.delete-btn:hover {
+    background-color: #ffb3b3;
+}
+
+.disable-btn {
+    background-color: #e0f2f1; 
+    color: #00897b; 
+}
+.disable-btn:hover {
+    background-color: #b2dfdb;
+}
+
 
 
 /* --- 分頁列 (Pagination Bar) 簡化樣式 --- */
@@ -196,4 +279,181 @@
     color: #fff;
     padding: 0; 
     font-size: 1rem;
+}
+
+/* --- 彈窗底層遮罩 (Modal Overlay) --- */
+.modal-overlay {
+    position: fixed; /* 固定定位，覆蓋整個視窗 */
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background-color: rgba(0, 0, 0, 0.4); /* 半透明深色背景 */
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    z-index: 1000; /* 確保在所有元素之上 */
+    transition: opacity 0.3s ease;
+}
+
+/* 初始隱藏狀態 */
+.modal-overlay.hidden {
+    display: none;
+    opacity: 0;
+}
+
+/* --- 彈窗內容容器 (Modal Content) --- */
+.modal-content {
+    background-color: #ffffff;
+    padding: 30px;
+    border-radius: 15px;
+    box-shadow: 0 5px 15px rgba(0, 0, 0, 0.3);
+    width: 350px; /* 根據截圖調整合適的寬度 */
+    max-width: 90%;
+    display: flex;
+    flex-direction: column;
+    gap: 15px;
+    transform: scale(0.95);
+    transition: transform 0.3s ease;
+}
+/* 顯示時的變形效果 */
+.modal-overlay:not(.hidden) .modal-content {
+    transform: scale(1);
+}
+
+/* --- 表單組 (.form-group) --- */
+.form-group {
+    display: flex;
+    flex-direction: column;
+    gap: 5px;
+}
+
+/* 彈窗標籤 (Label) 樣式 */
+.form-group label {
+    font-weight: 700;
+    color: #333;
+    font-size: 0.95rem;
+}
+
+/* 彈窗輸入框 (Input) 樣式 */
+.modal-content input[type="text"] {
+    padding: 10px 15px;
+    border: 1px solid #ccc;
+    border-radius: 8px;
+    font-size: 1rem;
+    outline: none;
+    transition: border-color 0.2s;
+}
+.modal-content input[type="text"]:focus {
+    border-color: rgba(7, 35, 125, 1);
+}
+
+/* 角色下拉選單容器 */
+.role-select-wrapper {
+    position: relative;
+    display: inline-block;
+}
+
+/* 彈窗角色下拉選單 (Select) 樣式 (微調以適應彈窗) */
+.role-select-modal {
+    width: 150px; /* 根據截圖調整長度 */
+    height: 38px;
+    padding: 8px 30px 8px 15px; /* 調整內邊距 */
+    border: 1px solid #ccc;
+    border-radius: 8px; /* 彈窗內使用更方的圓角 */
+    font-size: 1rem;
+    font-weight: 500;
+    color: #333;
+    background-color: #ffffff;
+    
+    /* 確保與外部的 role-select 樣式一致 */
+    -webkit-appearance: none; 
+    -moz-appearance: none;
+    appearance: none;
+    background-image: url('../static/image/down_gray.png'); /* 箭頭圖片路徑 */
+    background-repeat: no-repeat;
+    background-position: right 10px center; 
+    background-size: 14px; 
+    cursor: pointer;
+}
+
+
+/* --- 確認按鈕 (.confirm-btn) --- */
+.modal-actions {
+    display: flex;
+    justify-content: center;
+    margin-top: 15px;
+}
+
+.confirm-btn {
+    background-color: #bbdefb; /* 截圖中的淡藍色 */
+    color: rgba(7, 35, 125, 1);
+    font-size: 1rem;
+    font-weight: 700;
+    padding: 10px 40px;
+    border: none;
+    border-radius: 8px; 
+    cursor: pointer;
+    transition: background-color 0.2s;
+}
+
+.confirm-btn:hover {
+    background-color: #90caf9; 
+}
+
+/* --- 針對較小的確認彈窗內容 --- */
+.modal-content.small-content {
+    width: 300px; /* 縮小寬度 */
+    padding: 25px; 
+    text-align: center; /* 讓文字和標題置中 */
+}
+
+/* --- 彈窗標題置中 (覆蓋預設) --- */
+.modal-content.small-content .modal-title {
+    margin-bottom: 20px;
+    font-size: 1.1rem;
+}
+
+/* --- 確認彈窗的按鈕排列 (居中並設定間距) --- */
+.modal-actions.confirm-actions {
+    display: flex;
+    justify-content: center;
+    gap: 15px; /* 按鈕間距 */
+    margin-top: 0;
+}
+
+/* --- 確認按鈕 (淺藍色) 樣式 --- */
+.modal-confirm-btn {
+    background-color: #bbdefb; /* 淺藍色 */
+    color: rgba(7, 35, 125, 1);
+    font-size: 0.95rem;
+    font-weight: 700;
+    padding: 8px 25px;
+    border: none;
+    border-radius: 8px; 
+    cursor: pointer;
+    transition: background-color 0.2s;
+    flex-grow: 1; /* 讓按鈕平均分配寬度 */
+    max-width: 100px;
+}
+.modal-confirm-btn:hover {
+    background-color: #90caf9;
+}
+
+/* --- 取消按鈕 (淺黃色) 樣式 --- */
+.modal-cancel-btn {
+    background-color: #F9E8BD; /* 淺黃色 */
+    color: #333;
+    font-size: 0.95rem;
+    font-weight: 700;
+    padding: 8px 25px;
+    border: none;
+    border-radius: 8px; 
+    cursor: pointer;
+    transition: background-color 0.2s;
+    flex-grow: 1; /* 讓按鈕平均分配寬度 */
+    max-width: 100px;
+}
+.modal-cancel-btn:hover {
+    background-color: #ffe28d;
 }

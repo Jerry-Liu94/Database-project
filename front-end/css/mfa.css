@@ -1,0 +1,149 @@
+/* 全局樣式重置 */
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+    font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", "Segoe UI", Roboto, "Helvetica Neue", Arial, "Microsoft JhengHei", sans-serif;
+    -webkit-tap-highlight-color: transparent;
+}
+
+/* 頁面整體佈局與背景設定 */
+body, html {
+    height: 100%;
+    font-family: Arial, sans-serif;
+    background-color: #07237D;
+
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    min-height: 100vh;
+}
+
+/* 響應式容器和分層 */
+.container {
+    width: 100vw;
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+    position: relative;
+}
+
+/* 頂部深藍色區塊 (佔約 28.85vh 高度) */
+.top-blue-bg {
+    height: 28.85vh;
+    min-height: 150px;
+    color: white;
+    position: relative;
+
+    display: flex;
+    justify-content: center;
+    align-items: center;
+
+    padding: 0;
+}
+
+/* 標題文字樣式 */
+.header-text {
+    font-size: 64px;
+    font-weight: bold;
+    color: white;
+
+    position: static;
+    left: auto;
+    top: auto;
+    width: auto;
+    transform: none;
+
+    margin-top: 113px;
+}
+
+/* 中間白色區塊 (彈性擴展，用於容納 MFA 內容) */
+.middle-white-area {
+    flex-grow: 1;
+    background-color: #FFFFFF;
+
+    box-shadow: 0px 30px 11px 2px rgba(0, 0, 0, 0.25);
+
+    display: flex;
+    justify-content: center;
+    align-items: flex-start;
+    padding-top: 50px;
+    position: relative;
+    z-index: 2;
+}
+
+/* 底部深藍色區塊 (佔約 9.97vh 高度) */
+.bottom-blue-bg {
+    height: 9.97vh;
+    min-height: 50px;
+    background-color: #07237D;
+    position: relative;
+    z-index: 1;
+}
+
+/* --- MFA 認證頁面專屬樣式 --- */
+
+/* MFA 容器：負責內容垂直排列和水平置中 */
+.mfa-container {
+    width: 300px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    margin: 0 auto;
+}
+
+/* 圖片佔位符 (灰色方塊，寬高 180px) */
+.mfa-image-placeholder {
+    width: 180px;
+    height: 180px;
+
+    background-color: #E0E0E0;
+
+    margin-bottom: 25px;
+    margin-top: 50px;
+}
+
+/* 計時器文字樣式 */
+.mfa-timer {
+    font-size: 20px;
+    font-weight: bold;
+    color: #333;
+
+    margin-bottom: 30px;
+}
+
+/* 認證碼輸入框樣式 */
+.mfa-input {
+    width: 150px;
+    height: 39px;
+    padding: 5px 10px;
+    border: 1px solid #ccc;
+    border-radius: 4px;
+    font-size: 16px;
+    text-align: center;
+
+    margin-bottom: 15px;
+}
+
+/* 確認按鈕的最終樣式 */
+.confirm-button-final {
+    width: 100px;
+    height: 42px;
+    display: block;
+    margin: 0 auto;
+
+    border: none;
+    background: linear-gradient(to bottom, #BFDDFF, #85B9E8);
+    border-radius: 5px;
+    font-size: 16px;
+    font-weight: bold;
+    color: #333;
+    cursor: pointer;
+    box-shadow: 3px 4px 3px 0px rgba(0, 0, 0, 0.25);
+    transition: background-color 0.3s;
+}
+
+/* 確認按鈕 Hover 效果 */
+.confirm-button-final:hover {
+    background: linear-gradient(to bottom, #AECBE8, #69A3D3);
+}

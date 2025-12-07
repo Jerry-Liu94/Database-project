@@ -40,7 +40,7 @@
     color: #333;
     font-weight: 700;
     padding: 10px 18px; 
-    font-size: 1rem;
+    font-size: 1.2rem;
     height: 48px; 
     display: flex;
     align-items: center;
@@ -55,7 +55,7 @@
     border: none; 
     background-color: transparent; 
     border-radius: 0; 
-    font-size: 1rem;
+    font-size: 1.2rem;
     color: #333;
     outline: none;
     min-width: 180px; 
@@ -96,7 +96,7 @@
 .search-btn {
     background-color: #F9E8BD; 
     color: #333;
-    font-size: 1rem;
+    font-size: 1.2rem;
     font-weight: 700;
     padding: 10px 30px;
     border: none;
@@ -142,7 +142,7 @@
     border-collapse: collapse; 
     height: 100%; 
     table-layout: fixed; 
-    font-size: 1rem;
+    font-size: 1.3rem;
     color: #333;
     background-color: transparent; 
 }
