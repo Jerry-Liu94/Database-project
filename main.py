@@ -1034,7 +1034,7 @@ def read_asset_tags(
 def read_all_tags(db: Session = Depends(get_db)):
     return db.query(models.Tag).all()
 
-# [新增] API: 取得縮圖 (FR-2.4)
+# [修正版] API: 取得縮圖 (改為從 MinIO 讀取)
 @app.get("/assets/{asset_id}/thumbnail")
 def get_asset_thumbnail(asset_id: int, db: Session = Depends(get_db)):
     # 1. 找資產
@@ -1043,19 +1043,31 @@ def get_asset_thumbnail(asset_id: int, db: Session = Depends(get_db)):
          raise HTTPException(status_code=404, detail="檔案不存在")
     
     version = asset.latest_version
-    original_path = version.storage_path
+    original_object_name = version.storage_path # 這裡是 MinIO 裡的物件名稱
     
-    # 2. 推算縮圖路徑
-    # 邏輯跟上傳時一樣: 原路徑_thumb.jpg
-    thumb_path = f"{os.path.splitext(original_path)[0]}_thumb.jpg"
+    # 2. 推算縮圖物件名稱
+    # 邏輯: 原檔名_thumb.jpg
+    thumb_object_name = f"{os.path.splitext(original_object_name)[0]}_thumb.jpg"
     
-    # 3. 檢查縮圖是否存在
-    if os.path.exists(thumb_path):
-        return FileResponse(thumb_path, media_type="image/jpeg")
-    else:
-        # 如果沒有縮圖 (例如非圖片檔，或舊檔案)，就回傳原圖，或回傳一個預設圖
-        # 這裡我們先簡單回傳原圖
-        return FileResponse(original_path, media_type=asset.file_type)
+    # 3. 嘗試從 MinIO 讀取
+    try:
+        # 先試著讀取縮圖
+        try:
+            data = minio_client.get_object(MINIO_BUCKET_NAME, thumb_object_name)
+            return StreamingResponse(data, media_type="image/jpeg")
+        except S3Error:
+            # 如果縮圖不存在 (例如非圖片檔)，改讀原檔
+            data = minio_client.get_object(MINIO_BUCKET_NAME, original_object_name)
+            
+            # 判斷一下 Content-Type，如果是圖片就回傳，不是就回傳預設圖或原檔
+            media_type = asset.file_type or "application/octet-stream"
+            return StreamingResponse(data, media_type=media_type)
+            
+    except Exception as e:
+        logger.error(f"讀取縮圖失敗: {e}")
+        # 如果真的都讀不到，回傳 404 或者一張預設的 "No Image" 圖片
+        # 這裡簡單回 404，前端 img onerror 會處理
+        raise HTTPException(status_code=404, detail="無法讀取影像")
     
 # [新增] API: 匯出稽核日誌為 CSV (FR-6.2)
 @app.get("/admin/audit-logs/export")
