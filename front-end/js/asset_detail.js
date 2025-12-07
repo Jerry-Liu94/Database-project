@@ -1,14 +1,148 @@
 /* js/asset_detail.js */
+import { API_BASE_URL, api } from './config.js';
+
+// 從網址取得 ID (例如 asset_detail.html?id=5)
+const urlParams = new URLSearchParams(window.location.search);
+const assetId = urlParams.get('id');
+
+// --- 初始化 ---
+document.addEventListener('DOMContentLoaded', () => {
+    api.checkLogin();
+
+    if (!assetId) {
+        alert("無效的資產 ID");
+        window.location.href = "index.html";
+        return;
+    }
+
+    loadAssetDetail();
+    
+    // 下載按鈕監聽 (Dropdown Menu 裡的下載選項)
+    const menuOptions = document.querySelectorAll('.menu-option');
+    menuOptions.forEach(opt => {
+        if (opt.innerText.includes("下載")) {
+            opt.onclick = downloadAsset;
+        }
+    });
+});
+
+// --- API: 載入資產詳情 ---
+async function loadAssetDetail() {
+    try {
+        // 因為後端目前沒有單一讀取 /assets/{id} 的 API，我們先抓全部再篩選
+        const response = await fetch(`${API_BASE_URL}/assets/`, {
+            method: 'GET',
+            headers: api.getHeaders()
+        });
+
+        if (!response.ok) throw new Error("資料讀取失敗");
+
+        const assets = await response.json();
+        // 找到符合 ID 的資產
+        const asset = assets.find(a => a.asset_id == assetId);
+
+        if (!asset) {
+            alert("找不到此資產");
+            window.location.href = "index.html";
+            return;
+        }
+
+        renderDetail(asset);
+
+    } catch (error) {
+        console.error(error);
+        alert("載入失敗: " + error.message);
+    }
+}
+
+// --- UI: 渲染詳情 ---
+function renderDetail(asset) {
+    document.getElementById('display-filename').innerText = asset.filename;
+    document.getElementById('display-id').innerText = `ID: ${asset.asset_id}`;
+    
+    // 假設 asset.uploader 存在 (Schema 有定義)
+    const uploaderName = asset.uploader ? asset.uploader.email : "Unknown";
+    const fileSize = asset.latest_version ? formatBytes(asset.metadata_info?.filesize || 0) : "--";
+    const resolution = asset.metadata_info?.resolution || "--";
+
+    // 填入 info-row (依據 HTML 結構順序: 大小, 解析度, 上傳者)
+    const infoValues = document.querySelectorAll('.info-value');
+    if (infoValues.length >= 3) {
+        infoValues[0].innerText = fileSize;   // 檔案大小
+        infoValues[1].innerText = resolution; // 解析度
+        infoValues[2].innerText = uploaderName; // 上傳者
+    }
+
+    // 標籤顯示 (如果有 display-tags ID)
+    const tagsDisplay = document.getElementById('display-tags');
+    if (tagsDisplay) {
+        // 這裡暫時用檔名或類型當標籤，若後端有回傳 tags 陣列則改用 tags
+        tagsDisplay.innerText = `#${asset.file_type || '一般'}`;
+    }
+
+    // 預覽圖片
+    const previewBox = document.querySelector('.preview-box');
+    if (asset.thumbnail_url) {
+        // 使用 onerror 處理圖片載入失敗的情況
+        previewBox.innerHTML = `<img src="${asset.thumbnail_url}" style="max-width:100%; max-height:100%; object-fit:contain;" onerror="this.src='static/image/upload_grey.png'">`;
+    }
+}
+
+// --- Helper: 檔案大小格式化 ---
+function formatBytes(bytes, decimals = 2) {
+    if (!+bytes) return '0 Bytes';
+    const k = 1024;
+    const dm = decimals < 0 ? 0 : decimals;
+    const sizes = ['Bytes', 'KB', 'MB', 'GB', 'TB'];
+    const i = Math.floor(Math.log(bytes) / Math.log(k));
+    return `${parseFloat((bytes / Math.pow(k, i)).toFixed(dm))} ${sizes[i]}`;
+}
+
+// --- API: 下載檔案 ---
+function downloadAsset() {
+    // 使用 fetch + blob 下載，以帶入 Token
+    fetch(`${API_BASE_URL}/assets/${assetId}/download`, {
+        headers: api.getHeaders()
+    })
+    .then(res => {
+        if(!res.ok) throw new Error("下載失敗");
+        return res.blob();
+    })
+    .then(blob => {
+        const url = window.URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        // 嘗試從檔名欄位取得名稱
+        const filename = document.getElementById('display-filename').innerText || 'download';
+        a.download = filename;
+        document.body.appendChild(a);
+        a.click();
+        window.URL.revokeObjectURL(url);
+    })
+    .catch(err => alert(err.message));
+}
+
+// ==========================================
+// UI 互動邏輯 (Modals, Version Select etc.)
+// ==========================================
 
 // 1. 版本切換邏輯
-function selectVersion(clickedBtn) {
-    const allBtns = document.querySelectorAll('.version-btn');
-    allBtns.forEach(btn => {
-        btn.classList.remove('active');
-        btn.classList.add('inactive');
-    });
-    clickedBtn.classList.remove('inactive');
-    clickedBtn.classList.add('active');
+window.selectVersion = function(clickedBtn) {
+    const allBtns = Array.from(document.querySelectorAll('.version-btn'));
+    const index = allBtns.indexOf(clickedBtn);
+
+    // 如果點擊的是最新的 (index 0) -> 直接切換 active 樣式
+    if (index === 0) {
+        allBtns.forEach(btn => {
+            btn.classList.remove('active');
+            btn.classList.add('inactive');
+        });
+        clickedBtn.classList.remove('inactive');
+        clickedBtn.classList.add('active');
+    } else {
+        // 如果是舊版本 -> 開啟還原確認窗 (Restore Logic)
+        openRestoreModal(clickedBtn);
+    }
 }
 
 // 2. 通用 UI (Toast 提示)
@@ -29,9 +163,7 @@ if(menuTrigger) {
     document.addEventListener('click', (e) => { if (!dropdownMenu.contains(e.target) && e.target !== menuTrigger) dropdownMenu.classList.remove('show'); });
 }
 
-// 4. (已移除愛心收藏功能)
-
-// 5. 分享彈窗
+// 4. 分享彈窗
 const shareOption = document.getElementById('share-option');
 const shareModal = document.getElementById('share-modal');
 const closeShareX = document.getElementById('close-share-x');
@@ -43,7 +175,7 @@ if(shareOption) {
     if(shareModal) shareModal.addEventListener('click', (e) => { if (e.target === shareModal) closeShare(); });
 }
 
-// 6. 編輯彈窗
+// 5. 編輯彈窗
 const editOption = document.getElementById('menu-edit-btn');
 const editModal = document.getElementById('edit-modal');
 const closeEditX = document.getElementById('close-edit-x');
@@ -81,7 +213,7 @@ if(editOption) {
     });
 }
 
-// 7. 上傳新版本 (New Version Modal - 頁面專屬功能)
+// 6. 上傳新版本 (API Version Upload)
 const addVersionBtn = document.getElementById('add-version-btn');
 const versionModal = document.getElementById('version-modal');
 const closeVersionX = document.getElementById('close-version-x');
@@ -127,170 +259,119 @@ if(addVersionBtn) {
         vFileList.style.display = 'none';
         vFileList.innerHTML = '';
         vFileInput.value = '';
+        saveVersionBtn.innerText = "上傳";
+        saveVersionBtn.disabled = false;
     }
 
-    if(saveVersionBtn) saveVersionBtn.addEventListener('click', () => {
-        if (!vDropZone.classList.contains('has-file')) return;
+    // [API 上傳邏輯]
+    if(saveVersionBtn) {
+        // Clone node to clear old listeners
+        const newSaveBtn = saveVersionBtn.cloneNode(true);
+        saveVersionBtn.parentNode.replaceChild(newSaveBtn, saveVersionBtn);
 
-        // 1. 切換為灰色實心勾勾
-        const icon = vFileList.querySelector('.status-icon');
-        if (icon) icon.src = 'static/image/checkmark_fill_grey.png';
+        newSaveBtn.addEventListener('click', async () => {
+            if (!vDropZone.classList.contains('has-file') || vFileInput.files.length === 0) return;
 
-        // 2. 新增版本邏輯
-        const today = new Date();
-        const dateStr = today.getFullYear() + '.' + (today.getMonth()+1).toString().padStart(2, '0') + '.' + today.getDate().toString().padStart(2, '0');
-        const count = document.querySelectorAll('.version-btn').length + 1;
-        const newVerName = "Version_" + count;
+            newSaveBtn.innerText = "上傳中...";
+            newSaveBtn.disabled = true;
 
-        const newBtn = document.createElement('div');
-        newBtn.className = 'version-btn inactive';
-        newBtn.onclick = function() { selectVersion(this); };
-        newBtn.innerHTML = `<span>${dateStr}</span><span>${newVerName}</span>`;
+            const file = vFileInput.files[0];
+            const formData = new FormData();
+            formData.append("file", file);
 
-        if(versionScrollList) versionScrollList.insertBefore(newBtn, versionScrollList.firstChild);
+            try {
+                // 呼叫後端 API
+                const res = await fetch(`${API_BASE_URL}/assets/${assetId}/versions`, {
+                    method: 'POST',
+                    headers: api.getHeaders(true),
+                    body: formData
+                });
 
-        setTimeout(() => {
-            closeVersion();
-            showToast('新版本上傳成功！');
-            selectVersion(newBtn);
-        }, 600);
-    });
+                if(!res.ok) throw new Error("版本上傳失敗");
 
+                // 成功後更新 UI
+                const icon = vFileList.querySelector('.status-icon');
+                if (icon) icon.src = 'static/image/checkmark_fill_grey.png';
+
+                // 模擬新增 UI 列表 (實際上重整頁面會更準確)
+                const today = new Date();
+                const dateStr = today.getFullYear() + '.' + (today.getMonth()+1).toString().padStart(2, '0') + '.' + today.getDate().toString().padStart(2, '0');
+                const newVerName = "New Version"; 
+
+                const newBtn = document.createElement('div');
+                newBtn.className = 'version-btn active';
+                // 讓新版本點擊也能觸發 selectVersion
+                newBtn.onclick = function() { 
+                    // 手動呼叫全域的 selectVersion
+                    window.selectVersion(this); 
+                };
+                newBtn.innerHTML = `<span>${dateStr}</span><span>${newVerName}</span>`;
+
+                if(versionScrollList) {
+                    // 把其他按鈕設為 inactive
+                    document.querySelectorAll('.version-btn').forEach(btn => {
+                        btn.classList.remove('active');
+                        btn.classList.add('inactive');
+                    });
+                    versionScrollList.insertBefore(newBtn, versionScrollList.firstChild);
+                }
+
+                setTimeout(() => {
+                    closeVersion();
+                    showToast('新版本上傳成功！');
+                    // 重新載入以顯示最新狀態
+                    setTimeout(() => location.reload(), 500); 
+                }, 600);
+
+            } catch (error) {
+                alert("錯誤: " + error.message);
+                newSaveBtn.innerText = "上傳";
+                newSaveBtn.disabled = false;
+            }
+        });
+    }
+
+    // Drag & Drop
     vDropZone.addEventListener('dragover', (e) => { e.preventDefault(); vDropZone.style.borderColor = '#666'; });
     vDropZone.addEventListener('dragleave', (e) => { e.preventDefault(); vDropZone.style.borderColor = 'rgba(142, 142, 142, 1)'; });
     vDropZone.addEventListener('drop', (e) => { 
         e.preventDefault(); 
         vDropZone.style.borderColor = 'rgba(142, 142, 142, 1)'; 
-        if (e.dataTransfer.files.length > 0) showVersionFile(e.dataTransfer.files[0].name); 
-    });
-}
-
-// ==========================================
-// 8. 全域功能：新增資產彈窗 (Global Upload Asset) - [新增部分]
-// ==========================================
-const addBtn = document.getElementById('add-btn');
-const modal = document.getElementById('upload-modal');
-const closeX = document.getElementById('close-modal-x');
-const cancelBtn = document.getElementById('cancel-btn');
-const uploadBtn = document.getElementById('upload-btn-action');
-
-// 使用全域的 drop-zone ID (注意：這裡用的是 upload-modal 裡的 drop-zone，跟版本上傳的不同)
-const dropZone = document.getElementById('drop-zone');
-const fileInput = document.getElementById('file-input');
-const emptyState = document.getElementById('empty-state');
-const fileListContainer = document.getElementById('file-list-container');
-const modalButtons = document.querySelector('.modal-buttons'); // 這裡抓取 upload-modal 內的按鈕區
-const successMsg = document.getElementById('success-msg');
-
-if (addBtn) {
-    addBtn.addEventListener('click', () => { modal.style.display = 'flex'; resetGlobalFileState(); });
-    
-    function closeGlobalModal() { modal.style.display = 'none'; }
-    if(closeX) closeX.addEventListener('click', closeGlobalModal);
-    if(cancelBtn) cancelBtn.addEventListener('click', closeGlobalModal);
-    if(modal) modal.addEventListener('click', (e) => { if(e.target === modal) closeGlobalModal(); });
-
-    dropZone.addEventListener('click', () => { 
-        // 只有當按鈕還在顯示時(未上傳成功)，才允許點擊選擇檔案
-        if(modalButtons.style.display !== 'none') fileInput.click(); 
-    });
-    
-    fileInput.addEventListener('change', (e) => { if (e.target.files.length > 0) handleGlobalFiles(Array.from(e.target.files)); });
-
-    function handleGlobalFiles(files) {
-        if (!dropZone.classList.contains('has-file')) {
-            dropZone.classList.add('has-file');
-            emptyState.style.display = 'none';
-            fileListContainer.style.display = 'block';
-        }
-        files.forEach(file => {
-            const item = document.createElement('div');
-            item.className = 'file-list-item';
-            // 使用黑色空心勾勾
-            item.innerHTML = `<div class="file-info-left"><img src="static/image/checkmark_black.png" class="check-icon status-icon"><span class="file-name-text">${file.name}</span></div>`;
-            fileListContainer.appendChild(item);
-        });
-    }
-
-    if(uploadBtn) uploadBtn.addEventListener('click', () => {
-        const rows = document.querySelectorAll('#file-list-container .file-list-item');
-        rows.forEach(row => {
-            if (!row.querySelector('.ai-tag')) {
-                const tagSpan = document.createElement('span'); tagSpan.className = 'ai-tag'; tagSpan.innerText = 'AI TAG[1]'; row.appendChild(tagSpan);
-            }
-            // 使用黑色實心勾勾
-            const icon = row.querySelector('.status-icon'); if (icon) icon.src = 'static/image/checkmark_fill_black.png';
-        });
-        
-        // 隱藏按鈕，顯示成功訊息
-        if(modalButtons) modalButtons.style.display = 'none';
-        if(successMsg) successMsg.style.display = 'block';
-        
-        // 1.5秒後自動關閉
-        setTimeout(() => { closeGlobalModal(); }, 1500);
-    });
-
-    function resetGlobalFileState() {
-        dropZone.classList.remove('has-file'); 
-        emptyState.style.display = 'flex'; 
-        fileListContainer.style.display = 'none'; 
-        fileListContainer.innerHTML = ''; 
-        fileInput.value = '';
-        if(modalButtons) modalButtons.style.display = 'flex'; 
-        if(successMsg) successMsg.style.display = 'none';
-    }
-    
-    // 拖曳功能
-    dropZone.addEventListener('dragover', (e) => { e.preventDefault(); dropZone.style.borderColor = '#666'; });
-    dropZone.addEventListener('dragleave', (e) => { e.preventDefault(); dropZone.style.borderColor = 'rgba(142, 142, 142, 1)'; });
-    dropZone.addEventListener('drop', (e) => { 
-        e.preventDefault(); 
-        dropZone.style.borderColor = 'rgba(142, 142, 142, 1)'; 
-        if (e.dataTransfer.files.length > 0 && (!modalButtons || modalButtons.style.display !== 'none')) {
-            handleGlobalFiles(Array.from(e.dataTransfer.files));
+        if (e.dataTransfer.files.length > 0) {
+            vFileInput.files = e.dataTransfer.files;
+            showVersionFile(e.dataTransfer.files[0].name); 
         }
     });
 }
 
-// 9. 版本還原邏輯 (Restore Version)
-const restoreModal = document.getElementById('restore-modal');
+// 7. 全域新增檔案 (Header Add Button) - [新增功能]
+const globalAddBtn = document.getElementById('add-btn');
+const globalUploadModal = document.getElementById('upload-modal'); // 假設 asset_detail.html 也有這個 modal
+// 如果 asset_detail.html 沒有 upload-modal，這段不會執行，不會報錯
+
+if (globalAddBtn && globalUploadModal) {
+    // 這裡我們直接導回首頁，或者你可以複製 index.js 的上傳邏輯過來
+    // 最簡單的方式：讓使用者回首頁上傳
+    globalAddBtn.addEventListener('click', () => {
+        window.location.href = "index.html"; 
+    });
+}
+
+// 8. 版本還原邏輯 (Restore)
+const restoreModal = document.getElementById('restore-modal'); // 需確認 HTML 是否有此元素
 const confirmRestoreBtn = document.getElementById('confirm-restore-btn');
 const cancelRestoreBtn = document.getElementById('cancel-restore-btn');
 const restoreVerNameSpan = document.getElementById('restore-ver-name');
 const newVerNameSpan = document.getElementById('new-ver-name');
-let targetRestoreBtn = null;
 
-// 取代 selectVersion 的行為：舊版本點擊時觸發彈窗
-const _originalSelectVersion = selectVersion; // 保存舊邏輯 (其實上面已經定義了，這裡重新綁定邏輯比較安全)
+function openRestoreModal(clickedBtn) {
+    if (!restoreModal) return; // 如果沒有 modal HTML 就不執行
 
-// 我們覆寫 selectVersion，讓它支援彈窗判斷
-window.selectVersion = function(clickedBtn) {
-    const allBtns = Array.from(document.querySelectorAll('.version-btn'));
-    const index = allBtns.indexOf(clickedBtn);
+    const oldVerName = clickedBtn.querySelectorAll('span')[1].innerText;
+    if(restoreVerNameSpan) restoreVerNameSpan.innerText = oldVerName;
+    if(newVerNameSpan) newVerNameSpan.innerText = "New Version";
 
-    // 如果點擊的是最新的 (index 0) -> 直接切換
-    if (index === 0) {
-        // 呼叫原本的切換樣式邏輯
-        allBtns.forEach(btn => {
-            btn.classList.remove('active');
-            btn.classList.add('inactive');
-        });
-        clickedBtn.classList.remove('inactive');
-        clickedBtn.classList.add('active');
-    } else {
-        // 如果是舊版本 -> 開啟還原確認窗
-        targetRestoreBtn = clickedBtn;
-        
-        // 抓取版本名稱 (假設結構是 <span>Date</span><span>Name</span>)
-        const oldVerName = clickedBtn.querySelectorAll('span')[1].innerText;
-        const nextVerNum = allBtns.length + 1;
-        const nextVerName = "Version_" + nextVerNum;
-
-        if(restoreVerNameSpan) restoreVerNameSpan.innerText = oldVerName;
-        if(newVerNameSpan) newVerNameSpan.innerText = nextVerName;
-
-        if(restoreModal) restoreModal.style.display = 'flex';
-    }
+    restoreModal.style.display = 'flex';
 }
 
 if(cancelRestoreBtn) {
@@ -301,28 +382,9 @@ if(cancelRestoreBtn) {
 
 if(confirmRestoreBtn) {
     confirmRestoreBtn.addEventListener('click', () => {
-        const today = new Date();
-        const dateStr = today.getFullYear() + '.' + (today.getMonth()+1).toString().padStart(2, '0') + '.' + today.getDate().toString().padStart(2, '0');
-        const count = document.querySelectorAll('.version-btn').length + 1;
-        const newVerName = "Version_" + count;
-
-        const newBtn = document.createElement('div');
-        newBtn.className = 'version-btn inactive';
-        newBtn.onclick = function() { selectVersion(this); };
-        newBtn.innerHTML = `<span>${dateStr}</span><span>${newVerName}</span>`;
-
-        if(versionScrollList) versionScrollList.insertBefore(newBtn, versionScrollList.firstChild);
-
+        // 這裡暫時只做 UI 效果，因為後端還沒提供 Restore API
         if(restoreModal) restoreModal.style.display = 'none';
-        showToast('已還原並建立新版本！');
-        
-        // 選取最新的
-        const allBtns = document.querySelectorAll('.version-btn');
-        allBtns.forEach(btn => {
-            btn.classList.remove('active');
-            btn.classList.add('inactive');
-        });
-        newBtn.classList.remove('inactive');
-        newBtn.classList.add('active');
+        showToast('已還原並建立新版本！(模擬)');
+        setTimeout(() => location.reload(), 1000);
     });
 }
