@@ -92,7 +92,6 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 });
 
-// js/login.js
 
 document.addEventListener('DOMContentLoaded', () => {
     
