@@ -71,15 +71,19 @@
                         <div class="info-group">
                             <div class="info-label">職稱</div>
                             <div class="info-value info-editable">
-                                <span></span> <img src="static/image/edit_black.png" alt="Edit Title" class="edit-icon info-edit-icon">
+                                <span id="user-title"></span> <img src="static/image/edit_black.png" alt="Edit Title" class="edit-icon info-edit-icon">
                             </div>
                         </div>
                         <div class="info-group">
                             <div class="info-label">權限</div>
                             <div class="info-value info-editable">
-                                <span>Viewer</span>
+                                <span id="user-role"></span>
                             </div>
                         </div>
+                    </div>
+
+                    <div class="card-footer-action">
+                        <button class="btn-logout">登出</button>
                     </div>
                 </div>
 
@@ -141,6 +145,20 @@
             <div class="success-message" id="success-msg">上傳成功！AI標籤標記完成</div>
         </div>
     </div>
+
+    <script>
+        const userData = {
+            title: "鴨王", 
+            role: "Admin"          
+        };
+
+        function loadUserProfile() {
+            document.getElementById('user-title').textContent = userData.title || '未設定';
+            document.getElementById('user-role').textContent = userData.role || 'N/A';
+        }
+
+        document.addEventListener('DOMContentLoaded', loadUserProfile);
+    </script>
 
     <script type="module" src="js/profile.js"></script>
 </body>

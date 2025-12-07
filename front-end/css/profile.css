@@ -30,6 +30,37 @@
     grid-row: 1 / span 2; 
 }
 
+/* 登出按鈕容器 (放在卡片底部) */
+.card-footer-action {
+    margin-top: auto; /* 關鍵：將此區塊推到底部，佔用所有剩餘空間 */
+    padding-top: 20px;
+    border-top: 1px solid #E0E0E0;
+    margin-left: -50px; /* 為了讓按鈕滿寬，抵銷卡片的 padding */
+    margin-right: -50px;
+    padding-left: 50px;
+    padding-right: 50px;
+    padding-bottom: 0;
+}
+
+/* 登出按鈕 (.btn-logout) 樣式 */
+.btn-logout {
+    width: 100%;
+    padding: 12px;
+    background-color: #f34e42; /* 顯眼的紅色 */
+    color: white;
+    border: none;
+    border-radius: 12px;
+    cursor: pointer;
+    font-size: 1.1rem;
+    font-weight: 700;
+    transition: background-color 0.2s;
+    margin-top: 10px;
+}
+
+.btn-logout:hover {
+    background-color: #d32f2f;
+}
+
 /* 通用卡片 (.profile-card) 樣式 */
 .profile-card {
     background-color: rgba(255, 255, 255, 0.9);
