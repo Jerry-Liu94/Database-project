@@ -95,13 +95,61 @@
     </div>
 
     <div class="modal-overlay" id="edit-modal">
-        <div class="modal-box-common">
+        <div class="modal-box-common" style="max-height: 90vh; overflow-y: auto;">
             <span class="close-modal-x" id="close-edit-x">&times;</span>
             <div class="edit-title">編輯資訊</div>
+
             <div class="form-group"><label class="form-label">檔名</label><input type="text" class="edit-input" id="edit-filename-input"></div>
-            <div class="form-group"><label class="form-label">ID</label><input type="text" class="edit-input" id="edit-id-input"></div>
+            <div class="form-group"><label class="form-label">ID</label><input type="text" class="edit-input" id="edit-id-input" disabled></div>
             <div class="form-group"><label class="form-label">標籤</label><input type="text" class="edit-input" id="edit-tags-input"></div>
-            <div class="modal-buttons"><button class="btn-action btn-save" id="save-edit-btn">儲存</button><button class="btn-action btn-cancel" id="cancel-edit-btn">取消</button></div>
+
+            <hr style="border: 1px solid #eee; margin: 20px 0;">
+
+            <div class="edit-title" style="font-size: 16px; margin-top: 0;">影像處理 (產生新版本)</div>
+            <div style="background: #f9f9f9; padding: 15px; border-radius: 8px; margin-bottom: 20px;">
+                
+                <div class="form-group">
+                    <label class="form-label">選擇操作</label>
+                    <select class="edit-input" id="img-process-select" style="cursor: pointer;">
+                        <option value="">-- 請選擇 --</option>
+                        <option value="grayscale">轉為黑白</option>
+                        <option value="blur">模糊處理</option>
+                        <option value="rotate">旋轉圖片</option>
+                        <option value="resize">調整大小</option>
+                    </select>
+                </div>
+
+                <div id="process-rotate-params" class="process-params" style="display: none;">
+                    <div class="form-group">
+                        <label class="form-label">旋轉角度 (順時針)</label>
+                        <select class="edit-input" id="rotate-angle">
+                            <option value="90">90 度</option>
+                            <option value="180">180 度</option>
+                            <option value="270">270 度</option>
+                        </select>
+                    </div>
+                </div>
+
+                <div id="process-resize-params" class="process-params" style="display: none;">
+                    <div style="display: flex; gap: 10px;">
+                        <div class="form-group" style="flex: 1;">
+                            <label class="form-label">寬度 (px)</label>
+                            <input type="number" class="edit-input" id="resize-width" placeholder="例如: 800">
+                        </div>
+                        <div class="form-group" style="flex: 1;">
+                            <label class="form-label">高度 (px)</label>
+                            <input type="number" class="edit-input" id="resize-height" placeholder="例如: 600">
+                        </div>
+                    </div>
+                    <p style="font-size: 12px; color: #666; margin-top: -10px;">注意：將強制變形為指定尺寸</p>
+                </div>
+
+                <button class="btn-action btn-save" id="btn-process-image" style="width: 100%; margin-top: 10px; background-color: #555;" disabled>執行影像處理</button>
+            </div>
+            <div class="modal-buttons">
+                <button class="btn-action btn-save" id="save-edit-btn">儲存資訊</button>
+                <button class="btn-action btn-cancel" id="cancel-edit-btn">取消</button>
+            </div>
         </div>
     </div>
 

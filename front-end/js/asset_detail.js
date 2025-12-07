@@ -388,3 +388,106 @@ if(confirmRestoreBtn) {
         setTimeout(() => location.reload(), 1000);
     });
 }
+
+// ==========================================
+// [新增功能] 影像編輯邏輯
+// ==========================================
+document.addEventListener('DOMContentLoaded', () => {
+    const processSelect = document.getElementById('img-process-select');
+    const rotateParams = document.getElementById('process-rotate-params');
+    const resizeParams = document.getElementById('process-resize-params');
+    const processBtn = document.getElementById('btn-process-image');
+
+    if (!processSelect || !processBtn) return; // 如果頁面沒這些元素就不執行
+
+    // 1. 監聽下拉選單：切換顯示對應的參數輸入框
+    processSelect.addEventListener('change', (e) => {
+        const operation = e.target.value;
+        
+        // 先隱藏所有參數區
+        document.querySelectorAll('.process-params').forEach(el => el.style.display = 'none');
+        
+        // 預設狀態 (未選擇時)：按鈕無效、灰色背景
+        processBtn.disabled = true;
+        processBtn.style.backgroundColor = "#ccc"; // 改淺一點的灰，代表無效
+        processBtn.style.color = "#666"; // 文字灰色
+        processBtn.style.cursor = "not-allowed";
+
+        // 如果有選擇操作
+        if (operation) {
+            // 開啟對應參數區
+            if (operation === 'rotate') {
+                rotateParams.style.display = 'block';
+            } else if (operation === 'resize') {
+                resizeParams.style.display = 'block';
+            }
+
+            // 啟用按鈕：深色背景、白色文字
+            processBtn.disabled = false;
+            processBtn.style.backgroundColor = "#333"; 
+            processBtn.style.color = "#fff"; // ★★★ 關鍵：加上這行，字才會變白 ★★★
+            processBtn.style.cursor = "pointer";
+        }
+    });
+
+    // 2. 監聽執行按鈕：呼叫後端 API
+    processBtn.addEventListener('click', async () => {
+        const operation = processSelect.value;
+        if (!operation) return;
+
+        // 準備 Request Body
+        const requestBody = {
+            operation: operation,
+            params: {}
+        };
+
+        // 根據操作填入參數
+        if (operation === 'rotate') {
+            const angle = document.getElementById('rotate-angle').value;
+            requestBody.params.angle = parseInt(angle);
+        } else if (operation === 'resize') {
+            const w = document.getElementById('resize-width').value;
+            const h = document.getElementById('resize-height').value;
+            if (!w || !h) {
+                alert("請輸入寬度和高度");
+                return;
+            }
+            requestBody.params.width = parseInt(w);
+            requestBody.params.height = parseInt(h);
+        }
+
+        // UI 更新
+        processBtn.innerText = "處理中...";
+        processBtn.disabled = true;
+
+        try {
+            // 呼叫後端 API
+            const res = await fetch(`${API_BASE_URL}/assets/${assetId}/process`, {
+                method: 'POST',
+                headers: api.getHeaders(), // 自動帶 Token 和 Content-Type: application/json
+                body: JSON.stringify(requestBody)
+            });
+
+            const data = await res.json();
+
+            if (!res.ok) {
+                throw new Error(data.detail || "影像處理失敗");
+            }
+
+            // 成功！關閉彈窗並重新整理頁面
+            document.getElementById('edit-modal').style.display = 'none';
+            showToast("影像處理成功！已建立新版本。");
+            
+            // 等 toast 顯示一下再重整
+            setTimeout(() => {
+                window.location.reload();
+            }, 1500);
+
+        } catch (error) {
+            console.error(error);
+            alert("錯誤: " + error.message);
+            processBtn.innerText = "執行影像處理";
+            processBtn.disabled = false;
+        }
+    });
+});
