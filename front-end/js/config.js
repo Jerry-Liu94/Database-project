@@ -1,6 +1,5 @@
 // js/config.js
 
-// 🔴 請將這裡改成後端給你的正確 IP，例如 "http://123.45.67.89:8000"
 // 如果網域生效了，再改回 "https://redantdam.indiechild.xyz"
 export const API_BASE_URL = "https://redantdam.indiechild.xyz"; 
 
