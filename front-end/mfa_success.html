@@ -1,0 +1,36 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Login Success</title>
+    <link rel="stylesheet" href="css/style.css">
+</head>
+<body class="mfa-body">
+
+    <div class="mfa-header">
+        <div class="system-title">DAM SYSTEM</div>
+    </div>
+
+    <div class="mfa-content">
+        <div class="success-card">
+            <div class="icon-circle">
+                <img src="static/image/check_green.png" alt="Success" class="check-img">
+            </div>
+            <div class="success-text">登入成功！</div>
+        </div>
+    </div>
+
+    <div class="mfa-footer"></div>
+
+    <script>
+        // 頁面載入後，等待 2 秒自動跳轉到首頁
+        window.onload = function() {
+            setTimeout(function() {
+                window.location.href = 'index.html';
+            }, 2000); 
+        };
+    </script>
+
+</body>
+</html>
