@@ -48,60 +48,12 @@
         </aside>
 
         <main>
-            <div class="section-header" id="header-marketing">Marketing Assets</div>
-            <div class="content-row" id="row-marketing">
-                <a href="asset_detail.html" class="card" data-category="Marketing" data-tags="白襪體育生" data-favorite="true">
-                    <img src="static/image/heart_fill_black.png" class="favorite-btn" onclick="toggleFavorite(event, this)">
-                    <div class="card-title">活動海報</div>
-                    <div class="card-tag-display">#白襪體育生</div>
-                    <div class="card-version">v.2</div>
-                </a>
-                <a href="asset_detail.html" class="card" data-category="Marketing" data-tags="白襪體育生" data-favorite="false">
-                    <img src="static/image/heart_black.png" class="favorite-btn" onclick="toggleFavorite(event, this)">
-                    <div class="card-title">廣告橫幅</div>
-                    <div class="card-tag-display">#白襪體育生</div>
-                    <div class="card-version">v.1</div>
-                </a>
-                <a href="asset_detail.html" class="card" data-category="Marketing" data-tags="白襪體育生" data-favorite="false">
-                    <img src="static/image/heart_black.png" class="favorite-btn" onclick="toggleFavorite(event, this)">
-                    <div class="card-title">行銷簡報</div>
-                    <div class="card-tag-display">#白襪體育生</div>
-                    <div class="card-version">v.3</div>
-                </a>
-            </div>
-
-            <div class="section-header" id="header-social">Social Media</div>
-            <div class="content-row" id="row-social">
-                <a href="asset_detail.html" class="card" data-category="Social Media" data-tags="痘痘那個" data-favorite="true">
-                    <img src="static/image/heart_fill_black.png" class="favorite-btn" onclick="toggleFavorite(event, this)">
-                    <div class="card-title">IG 貼文</div>
-                    <div class="card-tag-display">#痘痘那個</div>
-                    <div class="card-version">v.1</div>
-                </a>
-                <a href="asset_detail.html" class="card" data-category="Social Media" data-tags="痘痘那個" data-favorite="false">
-                    <img src="static/image/heart_black.png" class="favorite-btn" onclick="toggleFavorite(event, this)">
-                    <div class="card-title">FB 封面</div>
-                    <div class="card-tag-display">#痘痘那個</div>
-                    <div class="card-version">v.2</div>
-                </a>
-            </div>
+            <div class="section-header">所有資產列表</div>
+    
+            <div class="content-row" id="all-assets-container" style="flex-wrap: wrap; gap: 20px;">
+                </div>
             
-            <div class="section-header" id="header-internal">Internal Docs</div>
-            <div class="content-row" id="row-internal">
-                <a href="asset_detail.html" class="card" data-category="Internal Docs" data-tags="排球少年" data-favorite="false">
-                    <img src="static/image/heart_black.png" class="favorite-btn" onclick="toggleFavorite(event, this)">
-                    <div class="card-title">員工手冊</div>
-                    <div class="card-tag-display">#排球少年</div>
-                    <div class="card-version">v.1</div>
-                </a>
-                <a href="asset_detail.html" class="card" data-category="Internal Docs" data-tags="排球少年" data-favorite="true">
-                    <img src="static/image/heart_fill_black.png" class="favorite-btn" onclick="toggleFavorite(event, this)">
-                    <div class="card-title">會議記錄</div>
-                    <div class="card-tag-display">#排球少年</div>
-                    <div class="card-version">v.5</div>
-                </a>
-            </div>
-        </main>
+            </main>
     </div>
 
     <input type="file" id="file-input" style="display: none;" multiple>
@@ -109,10 +61,16 @@
         <div class="modal-box">
             <span class="close-modal-x" id="close-modal-x">&times;</span>
             <div class="drop-zone" id="drop-zone">
-                <div class="empty-state-content" id="empty-state"><img src="static/image/upload_grey.png" alt="Folder" class="folder-icon"><div class="drop-text">拖曳檔案至此</div></div>
+                <div class="empty-state-content" id="empty-state">
+                    <img src="static/image/upload_grey.png" alt="Folder" class="folder-icon">
+                    <div class="drop-text">拖曳檔案至此</div>
+                </div>
                 <div id="file-list-container"></div>
             </div>
-            <div class="modal-buttons"><button class="btn-modal btn-upload" id="upload-btn-action">上傳</button><button class="btn-modal btn-cancel" id="cancel-btn">取消</button></div>
+            <div class="modal-buttons">
+                <button class="btn-modal btn-upload" id="upload-btn-action">上傳</button>
+                <button class="btn-modal btn-cancel" id="cancel-btn">取消</button>
+            </div>
             <div class="success-message" id="success-msg">上傳成功！AI標籤標記完成</div>
         </div>
     </div>

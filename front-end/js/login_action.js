@@ -39,7 +39,6 @@ document.addEventListener('DOMContentLoaded', () => {
                 localStorage.setItem('redant_token', data.access_token);
                 
                 // 2. 跳轉到首頁
-                alert("登入成功！");
                 window.location.href = "success.html";
 
             } catch (error) {
