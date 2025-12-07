@@ -544,6 +544,22 @@ def login_for_access_token(
     )
     return {"access_token": access_token, "token_type": "bearer"}
 
+# [新增] 登出 API (主要用途是記錄稽核日誌)
+@app.post("/users/me/logout")
+def logout(
+    current_user: models.User = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    # 1. 寫入稽核日誌
+    new_log = models.AuditLog(
+        user_id=current_user.user_id,
+        action_type="LOGOUT"
+    )
+    db.add(new_log)
+    db.commit()
+    
+    return {"message": "已記錄登出事件"}
+
 # [修改] 搜尋資產 API (對應 FR-3.1)
 # 支援網址參數: ?filename=xxx&file_type=yyy
 # [修改] 搜尋資產 API (支援 檔名、類型、標籤)
@@ -1137,6 +1153,8 @@ def export_audit_logs(
         media_type="text/csv",
         headers={"Content-Disposition": f"attachment; filename={filename}"}
     )
+    
+ 
     
 # [新增] API: 批次上傳 (FR-2.2)
 # 允許一次上傳多個檔案，並回傳成功建立的資產列表
