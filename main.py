@@ -503,11 +503,15 @@ def download_asset(asset_id: int, db: Session = Depends(get_db)):
         raise HTTPException(status_code=500, detail=f"MinIO 讀取失敗: {e}")
     
 @app.post("/token", response_model=schemas.Token)
-def login_for_access_token(form_data: OAuth2PasswordRequestForm = Depends(), db: Session = Depends(get_db)):
+def login_for_access_token(
+    form_data: OAuth2PasswordRequestForm = Depends(),
+    otp: Optional[str] = Form(None), 
+    db: Session = Depends(get_db)
+):
     # 1. 找使用者
     user = db.query(models.User).filter(models.User.email == form_data.username).first()
     
-    # 2. 驗證密碼 (使用 security.py 的功能)
+    # 2. 驗證密碼
     if not user or not security.verify_password(form_data.password, user.password_hash):
         raise HTTPException(
             status_code=401,
@@ -515,7 +519,25 @@ def login_for_access_token(form_data: OAuth2PasswordRequestForm = Depends(), db:
             headers={"WWW-Authenticate": "Bearer"},
         )
     
-    # 3. 發放 Token
+    # 3. [關鍵邏輯] 檢查 MFA
+    if user.mfa_secret:
+        # 如果使用者有綁定 MFA，但這次請求沒有附帶 OTP
+        if not otp:
+            # 回傳 403 Forbidden，並在 detail 帶上特殊字串，讓前端知道要跳出輸入框
+            raise HTTPException(
+                status_code=403, 
+                detail="MFA_REQUIRED"  # <--- 前端會辨識這個字串
+            )
+        
+        # 如果有附帶 OTP，則進行驗證
+        totp = pyotp.TOTP(user.mfa_secret)
+        if not totp.verify(otp):
+            raise HTTPException(
+                status_code=400, 
+                detail="MFA 驗證碼錯誤或已過期"
+            )
+    
+    # 4. 全部通過，發放 Token
     access_token_expires = timedelta(minutes=security.ACCESS_TOKEN_EXPIRE_MINUTES)
     access_token = security.create_access_token(
         data={"sub": user.email}, expires_delta=access_token_expires
