@@ -9,11 +9,11 @@
     -webkit-tap-highlight-color: transparent; 
 }
 
-/* 關鍵修正：確保 HTML 和 Body 都是 100% 高度 */
+/* 關鍵修正：使用 100% 確保填滿，避免移動端或縮放時出現黑邊 */
 html, body {
     height: 100%;
     width: 100%;
-    overflow: hidden; /* 防止視窗出現捲軸，內容捲動由內部容器處理 */
+    overflow: hidden; 
     background-color: #000;
 }
 
@@ -44,12 +44,10 @@ header {
 .icon-btn-img { width: 24px; height: 24px; cursor: pointer; object-fit: contain; display: block; }
 
 /* --- Main Layout Containers --- */
-/* 關鍵修正：flex: 1 確保填滿 header 剩下的高度 */
 .main-container, .detail-container { 
     display: flex; 
-    flex: 1; 
+    flex: 1; /* 自動填滿剩餘高度 */
     width: 100%;
-    height: 100%; /* 雙重確保 */
     overflow: hidden; 
 }
 
@@ -87,6 +85,8 @@ aside { width: 260px; background-color: rgba(193, 193, 193, 1); display: flex; f
 /* --- Main Content (Dashboard) --- */
 main { flex: 1; background-color: rgba(7, 35, 125, 1); padding: 30px 40px; overflow-y: auto; overflow-x: hidden; }
 .section-header { color: #fff; font-size: 1.25rem; margin-bottom: 12px; font-weight: 700; letter-spacing: 1px; }
+
+/* 舊的 Row Layout (保留相容性) */
 .content-row { background-color: rgba(255, 255, 255, 0.25); border-radius: 12px; padding: 20px; margin-bottom: 30px; display: flex; align-items: center; height: 220px; overflow-x: auto; overflow-y: hidden; gap: 20px; scroll-behavior: smooth; transition: opacity 0.3s; }
 .content-row.hidden { display: none; }
 .content-row::-webkit-scrollbar { height: 8px; }
@@ -94,11 +94,27 @@ main { flex: 1; background-color: rgba(7, 35, 125, 1); padding: 30px 40px; overf
 .content-row::-webkit-scrollbar-thumb { background-color: rgba(255, 255, 255, 0.4); border-radius: 10px; border: 1px solid rgba(255,255,255,0.1); }
 .content-row::-webkit-scrollbar-thumb:hover { background-color: rgba(255, 255, 255, 0.7); }
 
+/* [新增] Grid Layout (首頁改版用) */
+.assets-grid {
+    /* 若需要背景可加: background-color: rgba(255, 255, 255, 0.1); */
+    padding: 10px 0;
+    margin-bottom: 30px;
+    display: flex;
+    flex-wrap: wrap; /* 自動換行 */
+    gap: 25px;       /* 間距 */
+    align-items: flex-start;
+    min-height: 200px;
+}
+
+/* --- Card (Dashboard) --- */
 .card { background-color: #fff; width: 150px; height: 150px; border-radius: 16px; padding: 16px; position: relative; display: flex; flex-direction: column; justify-content: flex-start; box-shadow: 0 4px 10px rgba(0,0,0,0.15); flex-shrink: 0; transition: transform 0.2s; cursor: pointer; text-decoration: none; }
 .card:hover { transform: scale(1.03); }
 .card.hidden { display: none !important; }
+
+/* Dashboard 愛心按鈕 */
 .favorite-btn { position: absolute; top: 10px; right: 10px; width: 20px; height: 20px; cursor: pointer; z-index: 10; transition: transform 0.2s; }
 .favorite-btn:hover { transform: scale(1.2); }
+
 .card-title { color: #777; font-size: 1.1rem; font-weight: 600; text-align: center; margin-top: 15px; margin-bottom: auto; }
 .card-tag-display { background-color: #f0f0f0; color: #888; font-size: 0.75rem; padding: 4px 10px; border-radius: 12px; align-self: center; margin-bottom: 8px; font-weight: 500; max-width: 100%; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .card-version { color: #999; align-self: flex-end; font-weight: 700; font-size: 1.2rem; }
@@ -113,20 +129,18 @@ main { flex: 1; background-color: rgba(7, 35, 125, 1); padding: 30px 40px; overf
 
 .info-panel { width: 400px; background-color: #fff; border-radius: 20px; padding: 40px 35px; display: flex; flex-direction: column; box-shadow: 0 10px 30px rgba(0,0,0,0.2); position: relative; overflow-y: hidden; }
 
-/* 新增：右上角功能按鈕容器 (解決對齊問題) */
+/* [新增] 右上角功能按鈕容器 (詳細頁對齊用) */
 .panel-header-actions {
     position: absolute;
     top: 35px;
     right: 35px;
     display: flex;
     align-items: center;
-    gap: 20px; /* 圖示之間的間距 */
+    gap: 20px; 
     z-index: 20;
 }
-
-/* 讓裡面的圖示移除絕對定位，改由 flex 控制 */
 .list-icon, .detail-heart-btn {
-    position: static; /* 取消 absolute */
+    position: static; /* 讓 flex 控制位置 */
     width: 22px;
     height: auto;
     object-fit: contain;
@@ -134,10 +148,10 @@ main { flex: 1; background-color: rgba(7, 35, 125, 1); padding: 30px 40px; overf
     opacity: 0.8;
     transition: transform 0.2s;
 }
-.list-icon:hover, .detail-heart-btn:hover {
-    transform: scale(1.1);
-    opacity: 1;
-}
+.list-icon:hover, .detail-heart-btn:hover { transform: scale(1.1); opacity: 1; }
+
+/* 原本的絕對定位 (作為備用，若沒用到 .panel-header-actions) */
+/* .list-icon { position: absolute; top: 35px; right: 35px; ... } */
 
 .file-title { color: rgba(7, 35, 125, 1); font-size: 1.5rem; font-weight: 800; text-align: center; margin-bottom: 5px; margin-top: 10px; }
 .file-id { color: #999; font-size: 1rem; text-align: center; margin-bottom: 35px; font-weight: 600; }
@@ -193,7 +207,7 @@ main { flex: 1; background-color: rgba(7, 35, 125, 1); padding: 30px 40px; overf
 .btn-save, .btn-upload { background-color: #D2E3FC; color: #333; }
 .btn-cancel { background-color: #F9E8BD; color: #333; }
 
-/* 關鍵修正：將提示層級設為最高 (大於 modal overlay 的 1000) */
+/* 成功提示 Toast */
 .success-message { display: none; color: rgba(7, 35, 125, 1); font-size: 1.4rem; font-weight: 700; text-align: center; margin-top: 10px; animation: fadeInOverlay 0.5s ease; }
 .success-toast { 
     position: absolute; 
@@ -207,14 +221,13 @@ main { flex: 1; background-color: rgba(7, 35, 125, 1); padding: 30px 40px; overf
     font-weight: 600; 
     display: none; 
     animation: fadeUp 0.3s ease-out; 
-    z-index: 9999; /* 設為最高層級 */
+    z-index: 9999; 
 }
 @keyframes fadeUp { from { opacity: 0; transform: translate(-50%, 20px); } to { opacity: 1; transform: translate(-50%, 0); } }
 
-/* Restore Message */
 .restore-message { font-size: 1.25rem; font-weight: 700; color: #333; line-height: 1.6; margin-bottom: 30px; }
 
-/* Modal Elements */
+/* Form Elements */
 .edit-title { text-align: center; font-size: 1.5rem; font-weight: 800; color: rgba(7, 35, 125, 1); margin-bottom: 25px; margin-top: 20px; }
 .form-group { display: flex; align-items: center; margin-bottom: 20px; }
 .form-label { width: 80px; font-size: 1.1rem; font-weight: 700; color: #333; text-align: right; margin-right: 20px; }
@@ -231,7 +244,18 @@ main { flex: 1; background-color: rgba(7, 35, 125, 1); padding: 30px 40px; overf
 .date-input { min-width: 160px; padding: 7px 20px; color: #333; }
 .date-input::-webkit-calendar-picker-indicator { cursor: pointer; opacity: 0.6; }
 
-.drop-zone { flex: 1; background-color: rgba(235, 235, 235, 1); border: 3px dashed rgba(142, 142, 142, 1); border-radius: 16px; margin-bottom: 10px; margin-top: 35px; min-height: 250px; max-height: 300px; display: flex; flex-direction: column; justify-content: center; align-items: center; cursor: pointer; position: relative; overflow: hidden; transition: border-color 0.2s; }
+/* 拖曳區 */
+.drop-zone { 
+    flex: 1; 
+    background-color: rgba(235, 235, 235, 1); 
+    border: 3px dashed rgba(142, 142, 142, 1); 
+    border-radius: 16px; 
+    margin-bottom: 10px; 
+    margin-top: 35px; /* 避開 X */
+    min-height: 250px; 
+    max-height: 300px;
+    display: flex; flex-direction: column; justify-content: center; align-items: center; cursor: pointer; position: relative; overflow: hidden; transition: border-color 0.2s; 
+}
 .drop-zone:hover { border-color: #666; }
 .drop-zone.has-file { justify-content: flex-start; align-items: stretch; padding-top: 0; }
 .empty-state-content { display: flex; flex-direction: column; align-items: center; justify-content: center; width: 100%; height: 100%; }
@@ -266,97 +290,18 @@ main { flex: 1; background-color: rgba(7, 35, 125, 1); padding: 30px 40px; overf
 /* ========================================= */
 /* --- MFA Success Page (登入成功頁面) --- */
 /* ========================================= */
+body.mfa-body { background-color: #fff; display: flex; flex-direction: column; margin: 0; overflow: hidden; }
+.mfa-header { background-color: rgba(7, 35, 125, 1); height: 160px; width: 100%; display: flex; justify-content: center; align-items: center; flex-shrink: 0; }
+.system-title { color: white; font-size: 2.8rem; font-weight: 800; letter-spacing: 1px; }
+.mfa-content { flex: 1; display: flex; justify-content: center; align-items: center; background-color: #fff; }
+.success-card { background-color: #D9D9D9; width: 280px; height: 340px; border-radius: 20px; display: flex; flex-direction: column; justify-content: center; align-items: center; box-shadow: 0 4px 15px rgba(0,0,0,0.1); animation: popIn 0.5s cubic-bezier(0.16, 1, 0.3, 1); }
+.icon-circle { width: 90px; height: 90px; background-color: #fff; border-radius: 50%; display: flex; justify-content: center; align-items: center; margin-bottom: 30px; box-shadow: 0 2px 8px rgba(0,0,0,0.05); position: relative; }
+.success-text { font-size: 1.6rem; font-weight: 700; color: #888; letter-spacing: 1px; }
+.mfa-footer { background-color: rgba(7, 35, 125, 1); height: 100px; width: 100%; flex-shrink: 0; }
 
-/* 覆寫全域設定：此頁面背景為白色 */
-body.mfa-body {
-    background-color: #fff;
-    /* 確保此頁面也是彈性佈局 */
-    display: flex;
-    flex-direction: column;
-    margin: 0;
-    overflow: hidden;
-}
-
-/* 頂部深藍色區塊 */
-.mfa-header {
-    background-color: rgba(7, 35, 125, 1);
-    height: 160px;
-    width: 100%;
-    display: flex;
-    justify-content: center;
-    align-items: center;
-    flex-shrink: 0;
-}
-
-.system-title {
-    color: white;
-    font-size: 2.8rem;
-    font-weight: 800;
-    letter-spacing: 1px;
-}
-
-/* 中間內容區 */
-.mfa-content {
-    flex: 1;
-    display: flex;
-    justify-content: center;
-    align-items: center;
-    background-color: #fff;
-}
-
-/* 灰色卡片 */
-.success-card {
-    background-color: #D9D9D9;
-    width: 280px;
-    height: 340px;
-    border-radius: 20px;
-    display: flex;
-    flex-direction: column;
-    justify-content: center;
-    align-items: center;
-    box-shadow: 0 4px 15px rgba(0,0,0,0.1);
-    /* 進場動畫 */
-    animation: popIn 0.5s cubic-bezier(0.16, 1, 0.3, 1);
-}
-
-/* 白色圓形底圖 */
-.icon-circle {
-    width: 90px;
-    height: 90px;
-    background-color: #fff;
-    border-radius: 50%;
-    display: flex;
-    justify-content: center;
-    align-items: center;
-    margin-bottom: 30px;
-    box-shadow: 0 2px 8px rgba(0,0,0,0.05);
-}
-
-/* 綠色勾勾圖片 */
-.check-img {
-    width: 45px;
-    height: 45px;
-    object-fit: contain;
-}
-
-/* 成功文字 */
-.success-text {
-    font-size: 1.6rem;
-    font-weight: 700;
-    color: #888;
-    letter-spacing: 1px;
-}
-
-/* 底部深藍色區塊 */
-.mfa-footer {
-    background-color: rgba(7, 35, 125, 1);
-    height: 100px;
-    width: 100%;
-    flex-shrink: 0;
-}
-
-/* 動畫定義 */
-@keyframes popIn {
-    0% { opacity: 0; transform: scale(0.8); }
-    100% { opacity: 1; transform: scale(1); }
-}
+/* SVG Animation for Checkmark */
+.check-svg { width: 50px; height: 50px; display: block; animation: stroke 0.6s cubic-bezier(0.65, 0, 0.45, 1) 0.2s forwards; }
+.checkmark-circle { fill: none; stroke-width: 3; stroke: #28a745; stroke-miterlimit: 10; opacity: 0; animation: fadeCircle 0.3s ease-in-out 0.2s forwards; }
+.checkmark-check { transform-origin: 50% 50%; stroke-width: 4; stroke-dasharray: 48; stroke-dashoffset: 48; stroke: #28a745; stroke-linecap: round; stroke-linejoin: round; }
+@keyframes stroke { 100% { stroke-dashoffset: 0; } }
+@keyframes fadeCircle { 100% { opacity: 1; } }

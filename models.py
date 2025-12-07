@@ -66,7 +66,7 @@ class Asset(Base):
 class Version(Base):
     __tablename__ = "version"
     version_id = Column(BigInteger, primary_key=True, index=True)
-    asset_id = Column(BigInteger, ForeignKey("asset.asset_id"), nullable=False)
+    asset_id = Column(BigInteger, ForeignKey("asset.asset_id", ondelete="CASCADE"), nullable=False)
     version_number = Column(Integer, nullable=False, default=1)
     storage_path = Column(String(1024), nullable=False) # 這裡存 NoSQL/S3 路徑
     created_at = Column(TIMESTAMP, server_default=func.now())
@@ -76,7 +76,7 @@ class Version(Base):
 # 7. 元數據 (Metadata) [cite: 107]
 class Metadata(Base):
     __tablename__ = "metadata"
-    asset_id = Column(BigInteger, ForeignKey("asset.asset_id"), primary_key=True)
+    asset_id = Column(BigInteger, ForeignKey("asset.asset_id", ondelete="CASCADE"), primary_key=True)
     filesize = Column(BigInteger)
     resolution = Column(String(50))
     duration = Column(String(50)) # 若是影片才有
@@ -90,12 +90,10 @@ class AuditLog(Base):
     __tablename__ = "audit_log"
     log_id = Column(BigInteger, primary_key=True, index=True)
     user_id = Column(BigInteger, ForeignKey("user.user_id"), nullable=True)
-    asset_id = Column(BigInteger, ForeignKey("asset.asset_id"), nullable=True)
+    asset_id = Column(BigInteger, ForeignKey("asset.asset_id", ondelete="SET NULL"), nullable=True)
     action_type = Column(String(100), nullable=False) # 例如: "UPLOAD", "DOWNLOAD", "DELETE"
     action_timestamp = Column(TIMESTAMP, server_default=func.now())
     is_tampered = Column(Boolean, default=False)
-    
-# models.py (加在最下面)
 
 # 9. 分享連結主表 (Share Link)
 class ShareLink(Base):
@@ -112,8 +110,8 @@ class ShareLink(Base):
 # 10. 分享連結與資產關聯表 (Share Asset - Many to Many)
 class ShareAsset(Base):
     __tablename__ = "share_asset"
-    link_id = Column(BigInteger, ForeignKey("share_link.link_id"), primary_key=True)
-    asset_id = Column(BigInteger, ForeignKey("asset.asset_id"), primary_key=True)
+    link_id = Column(BigInteger, ForeignKey("share_link.link_id", ondelete="CASCADE"), primary_key=True)
+    asset_id = Column(BigInteger, ForeignKey("asset.asset_id", ondelete="CASCADE"), primary_key=True)
 
     link = relationship("ShareLink", back_populates="shared_assets")
     asset = relationship("Asset")
@@ -154,9 +152,8 @@ class Category(Base):
 # 14. 資產分類關聯表 (Asset_Category) [cite: 129]
 class AssetCategory(Base):
     __tablename__ = "asset_category"
-    asset_id = Column(BigInteger, ForeignKey("asset.asset_id"), primary_key=True)
-    category_id = Column(Integer, ForeignKey("category.category_id"), primary_key=True)
-
+    asset_id = Column(BigInteger, ForeignKey("asset.asset_id", ondelete="CASCADE"), primary_key=True)
+    category_id = Column(Integer, ForeignKey("category.category_id", ondelete="CASCADE"), primary_key=True)
 # 15. 標籤表 (Tag) [cite: 141]
 class Tag(Base):
     __tablename__ = "tag"
@@ -167,14 +164,14 @@ class Tag(Base):
 # 16. 資產標籤關聯表 (Asset_Tag) [cite: 147]
 class AssetTag(Base):
     __tablename__ = "asset_tag"
-    asset_id = Column(BigInteger, ForeignKey("asset.asset_id"), primary_key=True)
-    tag_id = Column(Integer, ForeignKey("tag.tag_id"), primary_key=True)
+    asset_id = Column(BigInteger, ForeignKey("asset.asset_id", ondelete="CASCADE"), primary_key=True)
+    tag_id = Column(Integer, ForeignKey("tag.tag_id", ondelete="CASCADE"), primary_key=True)
 
 # 17. 註解/留言表 (Comment) [cite: 159]
 class Comment(Base):
     __tablename__ = "comment"
     comment_id = Column(BigInteger, primary_key=True, index=True)
-    asset_id = Column(BigInteger, ForeignKey("asset.asset_id"), nullable=False)
+    asset_id = Column(BigInteger, ForeignKey("asset.asset_id", ondelete="CASCADE"), nullable=False)
     user_id = Column(BigInteger, ForeignKey("user.user_id"), nullable=False)
     content = Column(Text, nullable=False)
     target_info = Column(String(255), nullable=True) # 用於標記影片時間軸或圖片區域
