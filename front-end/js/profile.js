@@ -76,7 +76,7 @@ function setupEventListeners() {
                 // 使用者想開啟 MFA
                 if (confirm("您確定要啟用多因素認證嗎？這將需要您使用 Google Authenticator 掃描 QR Code。")) {
                     try {
-                        // 呼叫後端產生 Secret
+                        // 1. 先呼叫後端產生 Secret (這步很重要，不然資料庫沒資料，產生不出 QR Code)
                         const res = await fetch(`${API_BASE_URL}/users/me/mfa/generate`, {
                             method: 'GET',
                             headers: api.getHeaders()
@@ -84,20 +84,8 @@ function setupEventListeners() {
                         
                         if(!res.ok) throw new Error("無法產生 MFA 金鑰");
                         
-                        const data = await res.json();
-                        
-                        // 這裡有兩個選擇：
-                        // A. 跳轉到一個專門顯示 QR Code 的頁面
-                        // B. 直接在 profile 頁面彈出 QR Code (比較複雜)
-                        
-                        // 我們先簡單做：跳轉去驗證頁面，並把 secret 帶過去(或是後端已經存了)
-                        // 其實更好的流程是：跳出 Modal 顯示 data.otp_uri 轉成的 QR Code
-                        
-                        alert("MFA 金鑰已產生！請前往驗證頁面進行綁定。");
-                        
-                        // 為了簡單演示，我們先假設產生後就跳轉去輸入驗證碼
-                        // 你可能需要一個中間頁來顯示 QR Code，這裡先用 autho.html
-                        window.location.href = "autho.html"; 
+                        // 2. 成功後，不需要在這裡 alert，直接跳轉去掃描頁面
+                        window.location.href = "mfa.html"; 
 
                     } catch (err) {
                         alert(err.message);
