@@ -371,3 +371,40 @@ function closeNotification() {
 
 if (closeNotifyBtn) closeNotifyBtn.addEventListener('click', closeNotification);
 if (notifyOverlay) notifyOverlay.addEventListener('click', closeNotification);
+
+window.toggleFavorite = function(event, btn) {
+    event.preventDefault(); 
+    event.stopPropagation(); 
+
+    const card = btn.closest('.card');
+    // 取得目前的狀態
+    const isFav = card.getAttribute('data-favorite') === 'true';
+    
+    // 取得原本的連結 href
+    let currentHref = card.getAttribute('href');
+    // 建立 URL 物件方便操作參數
+    // 注意：因為 href 可能是相對路徑，這裡用 dummy host 輔助解析
+    let url = new URL(currentHref, window.location.origin);
+    
+    if (isFav) {
+        // 取消收藏
+        card.setAttribute('data-favorite', 'false');
+        btn.src = 'static/image/heart_black.png';
+        // 更新連結參數 fav=false
+        url.searchParams.set('fav', 'false');
+    } else {
+        // 加入收藏
+        card.setAttribute('data-favorite', 'true');
+        btn.src = 'static/image/heart_fill_black.png';
+        // 更新連結參數 fav=true
+        url.searchParams.set('fav', 'true');
+    }
+
+    // 將更新後的網址寫回 href
+    // 因為 new URL 會產生絕對路徑，我們取 pathname + search 變回相對路徑
+    const newPath = url.pathname + url.search;
+    // 這裡要小心，原本是 asset_detail.html?id=...，我們把新的參數寫回去
+    card.setAttribute('href', newPath);
+
+    if (showFavoritesOnly) applyFilter();
+}
