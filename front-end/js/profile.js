@@ -88,20 +88,38 @@ async function loadUserProfile() {
 
 // --- 渲染畫面 ---
 function renderProfile(user) {
-    // 填入名字與 Email
     const nameEl = document.querySelector('.user-name');
     const emailEl = document.querySelector('.user-email');
-    
     if (nameEl) nameEl.innerText = user.user_name || "未設定";
     if (emailEl) emailEl.innerText = user.email;
 
-    // ★★★ 修改這裡：直接填入數字 ID ★★★
     const roleEl = document.getElementById('user-role'); 
-    
     if (roleEl) {
-        // 直接顯示 user.role_id (例如 1, 2)
-        // 如果沒有值，顯示 "N/A"
         roleEl.innerText = user.role_id !== undefined ? user.role_id : "N/A";
+    }
+
+    // ★★★ 新增這段：處理 MFA 開關狀態 ★★★
+    const mfaToggle = document.getElementById('mfa-toggle');
+    const mfaTooltip = document.querySelector('.mfa-tooltip'); // "已啟用" 的文字
+
+    if (mfaToggle) {
+        if (user.is_mfa_enabled) {
+            // 狀態 1: 已開啟 MFA
+            mfaToggle.checked = true;      // 勾選開關 (變綠色)
+            mfaToggle.disabled = true;     // 鎖定 (不讓使用者隨意關掉)
+            
+            // 顯示「已啟用」文字
+            if (mfaTooltip) mfaTooltip.style.display = 'inline-block';
+            
+            // 額外樣式：讓開關看起來是鎖定狀態
+            mfaToggle.parentElement.classList.add('is-locked');
+        } else {
+            // 狀態 2: 未開啟
+            mfaToggle.checked = false;
+            mfaToggle.disabled = false;
+            if (mfaTooltip) mfaTooltip.style.display = 'none';
+            mfaToggle.parentElement.classList.remove('is-locked');
+        }
     }
 }
 
