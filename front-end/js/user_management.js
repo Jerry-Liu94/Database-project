@@ -33,24 +33,25 @@ function renderUserTable(users) {
     tbody.innerHTML = ''; 
 
     users.forEach(user => {
-        // 判斷該選哪一個 Role (只剩 Admin 跟 User)
+        // 判斷該選哪一個 Role
         const isSelected = (val) => user.role_id === val ? 'selected' : '';
 
         const tr = document.createElement('tr');
         tr.className = 'data-row';
         
-        // 這裡對應 HTML 的標題順序：ID, 姓名, 角色, Email, 操作
-        // 已經移除了 狀態、最近登入、Viewer選項、停用按鈕
         tr.innerHTML = `
             <td data-label="ID">#${user.user_id}</td>
             <td data-label="姓名">${user.user_name || '未設定'}</td>
             <td data-label="角色">
-                <select class="role-select">
+                <select class="role-select" data-userid="${user.user_id}">
                     <option value="1" ${isSelected(1)}>Admin</option>
                     <option value="2" ${isSelected(2)}>User</option>
                 </select>
             </td>
             <td data-label="Email">${user.email}</td>
+            <td data-label="最近登入" style="font-size: 0.9rem; color: #666;">
+                ${formatDate(user.last_login)}
+            </td>
             <td data-label="操作">
                 <div class="action-icons">
                     <button class="action-icon delete-btn" title="刪除使用者">
@@ -60,13 +61,54 @@ function renderUserTable(users) {
             </td>
         `;
         
+        // 1. 綁定刪除按鈕
         const deleteBtn = tr.querySelector('.delete-btn');
         deleteBtn.addEventListener('click', () => {
             openConfirmModal(user.user_id, user.user_name);
         });
 
+        // 2. ★★★ 新增：綁定角色切換事件 ★★★
+        const roleSelect = tr.querySelector('.role-select');
+        roleSelect.addEventListener('change', async (e) => {
+            const newRoleId = e.target.value;
+            const targetId = e.target.getAttribute('data-userid');
+            
+            // 暫時鎖定選單避免重複操作
+            roleSelect.disabled = true;
+
+            try {
+                const response = await fetch(`${API_BASE_URL}/admin/users/${targetId}/role`, {
+                    method: 'PATCH',
+                    headers: api.getHeaders(),
+                    body: JSON.stringify({ role_id: parseInt(newRoleId) })
+                });
+
+                const result = await response.json();
+
+                if (!response.ok) {
+                    throw new Error(result.detail || "更新失敗");
+                }
+
+                alert("✅ " + result.message);
+
+            } catch (error) {
+                alert("❌ 錯誤: " + error.message);
+                // 失敗時，重新整理頁面以恢復原本的選項 (避免畫面跟資料庫不同步)
+                loadUsers(); 
+            } finally {
+                roleSelect.disabled = false;
+            }
+        });
+
         tbody.appendChild(tr);
     });
+}
+
+// 輔助函式：格式化時間 (如果你的代碼裡還沒有這個)
+function formatDate(isoString) {
+    if (!isoString) return "--";
+    const date = new Date(isoString);
+    return date.toLocaleString('zh-TW', { hour12: false });
 }
 
 // --- 彈窗與刪除邏輯 (維持不變) ---
