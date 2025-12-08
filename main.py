@@ -76,10 +76,13 @@ def read_root():
 # --- MinIO 設定 ---
 # 開發時連 localhost:9000 (透過 SSH 隧道)
 # 部署到 Ubuntu 後，這行通常不用改 (因為也是 localhost:9000) 或改成 minio 容器名
-MINIO_ENDPOINT = os.getenv("MINIO_ENDPOINT", "127.0.0.1:9000")
-MINIO_ACCESS_KEY = os.getenv("MINIO_ACCESS_KEY", "admin")
-MINIO_SECRET_KEY = os.getenv("MINIO_SECRET_KEY", "password123")
-MINIO_BUCKET_NAME = os.getenv("MINIO_BUCKET_NAME", "redant-assets")
+MINIO_ENDPOINT = os.getenv("MINIO_ENDPOINT")
+MINIO_ACCESS_KEY = os.getenv("MINIO_ACCESS_KEY")
+MINIO_SECRET_KEY = os.getenv("MINIO_SECRET_KEY")
+MINIO_BUCKET_NAME = os.getenv("MINIO_BUCKET_NAME")
+
+if not all([MINIO_ENDPOINT, MINIO_ACCESS_KEY, MINIO_SECRET_KEY, MINIO_BUCKET_NAME]):
+    raise ValueError("❌ 錯誤：MinIO 環境變數未設定完全！請檢查 .env 檔案。")   
 
 # 初始化 Client
 minio_client = Minio(
