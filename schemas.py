@@ -17,6 +17,7 @@ class UserOut(BaseModel):
     user_id: int
     email: str
     user_name: str
+    role_id : int
     # 這裡不寫 password_hash，這樣回傳時就會自動過濾掉
 
     class Config:
@@ -36,6 +37,8 @@ class AssetOut(BaseModel):
     latest_version: Optional[VersionOut] = None
     uploader: Optional[UserOut] = None
 
+    tags: List["TagOut"] = []  # 預設是空清單
+    
     class Config:
         from_attributes = True
         
