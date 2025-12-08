@@ -474,7 +474,12 @@ def create_asset(
 # 2. 下載資產 API (MinIO 版)
 # ==========================================
 @app.get("/assets/{asset_id}/download")
-def download_asset(asset_id: int, db: Session = Depends(get_db)):
+def download_asset(
+    asset_id: int, 
+    # [🔥 補上這行] 強制檢查登入
+    current_user: models.User = Depends(get_current_user), 
+    db: Session = Depends(get_db)
+):
     # 1. 查詢資產與最新版本
     asset = db.query(models.Asset).filter(models.Asset.asset_id == asset_id).first()
     
