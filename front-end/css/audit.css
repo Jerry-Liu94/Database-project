@@ -1,4 +1,21 @@
 /* --- Audit Log 頁面專屬樣式 --- */
+.header-title {
+    /* 確保其佔據中央空間 */
+    flex-grow: 1; 
+    
+    /* 樣式設定 */
+    color: #ffffff; /* 白色文字 */
+    font-size: 2.5rem; /* 較大的字體 */
+    font-weight: 700; 
+    
+    /* 文本對齊：讓標題置於中央 */
+    text-align: center;
+    
+    /* 確保其與 Header 的高度一致 */
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
 
 /* 主要內容區域 (.audit-main.full-width-layout) 樣式 */
 .audit-main.full-width-layout {
