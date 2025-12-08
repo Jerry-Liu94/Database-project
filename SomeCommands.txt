@@ -32,3 +32,12 @@ mac
 deactivate
 
 網站:http://127.0.0.1:8000/docs
+
+# 1. 停止服務
+sudo systemctl stop redant
+
+# 2. 確認沒有殘留的 Python 程序 (如果有的話，用 kill 殺掉)
+ps aux | grep uvicorn
+
+# 3. 啟動服務
+sudo systemctl start redant
