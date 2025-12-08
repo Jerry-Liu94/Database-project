@@ -85,6 +85,31 @@
     background-color: #ffe28d;
 }
 
+.audit-log-btn {
+/* 將連結行為模擬成按鈕 */
+    text-decoration: none; 
+    display: inline-flex; 
+    justify-content: center;
+    align-items: center;
+
+    /* 樣式：白色背景、深藍色文字，作為次要操作 */
+    background-color: #ffffff; 
+    color: rgba(7, 35, 125, 1); 
+    font-size: 1rem;
+    font-weight: 700;
+    padding: 12px 30px;
+    border: none;
+    border-radius: 24px; 
+    cursor: pointer;
+    transition: background-color 0.2s, transform 0.1s;
+    height: 48px;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+    margin-right: 0; 
+}
+/* 稽核日誌按鈕 Hover 效果 */
+.audit-log-btn:hover {
+    background-color: #f0f0f0;
+}
 
 /* --- 表格容器 (.audit-content-container) 樣式 --- */
 .audit-content-container {
@@ -164,6 +189,8 @@
     background-color: #e6f7ff; 
     cursor: default;
 }
+
+
 
 /* --- 角色徽章 (.role-badge) 樣式 --- */
 .role-badge {

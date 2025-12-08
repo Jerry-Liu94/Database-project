@@ -20,8 +20,15 @@
     box-shadow: none;
     flex-shrink: 0; 
     margin-bottom: 20px; 
-    gap: 15px; 
+    gap: 15px;
 }
+
+/* 空間推進器 (.space-pusher) 樣式 */
+.space-pusher {
+    flex-grow: 1;
+    min-width: 20px;
+}
+
 
 /* 篩選群組 (.filter-group) 樣式 */
 .filter-group {
@@ -32,6 +39,7 @@
     overflow: hidden; 
     box-shadow: none; 
     position: relative; 
+    flex-shrink: 0;
 }
 
 /* 篩選標籤 (.filter-label) 樣式 */
@@ -92,29 +100,59 @@
     appearance: textfield;
 }
 
-/* 查詢按鈕 (.search-btn) 樣式 */
-.search-btn {
+/* 操作按鈕群組 (.action-buttons-group) 佈局 */
+.action-buttons-group {
+    display: flex;
+    align-items: center;
+    flex-shrink: 0;
+    gap: 20px;
+}
+
+/* 匯出 CSV 報表按鈕 (.export-csv-btn) 樣式 */
+.export-csv-btn {
     background-color: #F9E8BD; 
     color: #333;
-    font-size: 1.2rem;
+    font-size: 1rem;
     font-weight: 700;
-    padding: 10px 30px;
+    padding: 12px 30px;
     border: none;
     border-radius: 24px; 
     cursor: pointer;
     transition: background-color 0.2s, transform 0.1s;
-    height: 48px; 
-    margin-left: auto; 
+    height: 48px;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
 }
-/* 查詢按鈕 Hover 效果 */
-.search-btn:hover {
+/* 匯出 CSV 按鈕 Hover 效果 */
+.export-csv-btn:hover {
     background-color: #ffe28d;
 }
-/* 查詢按鈕 Active 效果 */
-.search-btn:active {
-    transform: translateY(1px);
+
+
+/* 用戶管理按鈕 (.user-management-btn) 樣式 */
+.user-management-btn {
+    text-decoration: none; 
+    display: inline-flex; 
+    justify-content: center;
+    align-items: center;
+
+    background-color: #ffffff; 
+    color: rgba(7, 35, 125, 1); 
+    font-size: 1rem;
+    font-weight: 700;
+    padding: 12px 30px;
+    border: none;
+    border-radius: 24px; 
+    cursor: pointer;
+    transition: background-color 0.2s, transform 0.1s;
+    height: 48px;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+    margin-right: 0; 
 }
 
+/* 用戶管理按鈕 Hover 效果 */
+.user-management-btn:hover {
+    background-color: #f0f0f0;
+}
 
 /* --- 表格容器 (.audit-content-container) 樣式 --- */
 .audit-content-container {
