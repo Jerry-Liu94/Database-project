@@ -118,9 +118,39 @@ function renderDetail(asset) {
 
     // 預覽圖片
     const previewBox = document.querySelector('.preview-box');
+    
+    // 清空預設的文字或舊內容
+    previewBox.innerHTML = '';
+
     if (asset.thumbnail_url) {
-        // 使用 onerror 處理圖片載入失敗的情況
-        previewBox.innerHTML = `<img src="${asset.thumbnail_url}" style="max-width:100%; max-height:100%; object-fit:contain;" onerror="this.src='static/image/upload_grey.png'">`;
+        // [關鍵修正] 根據檔案類型決定顯示方式
+        if (asset.file_type && asset.file_type.startsWith('video/')) {
+            // === 影片模式 ===
+            // 使用 download_url 作為影片來源 (因為這是串流)
+            previewBox.innerHTML = `
+                <video controls autoplay name="media" 
+                       style="max-width: 100%; max-height: 600px; border-radius: 8px; box-shadow: 0 4px 12px rgba(0,0,0,0.1);">
+                    <source src="${asset.download_url}" type="${asset.file_type}">
+                    您的瀏覽器不支援此影片格式。
+                </video>
+            `;
+        } else {
+            // === 圖片模式 (維持原樣) ===
+            // 使用 thumbnail_url 預覽，或者可以用 download_url 看大圖
+            // 這裡建議用 download_url 才能看清楚，thumbnail_url 用在列表就好
+            const imgUrl = asset.download_url || asset.thumbnail_url;
+            
+            previewBox.innerHTML = `
+                <img src="${imgUrl}" 
+                     style="max-width:100%; max-height:100%; object-fit:contain;" 
+                     onerror="this.src='static/image/upload_grey.png'">
+            `;
+        }
+    } else {
+        // 如果沒有縮圖也沒有檔案，顯示預設圖示
+        previewBox.innerHTML = `
+            <div class="preview-text">無預覽</div>
+        `;
     }
 }
 
