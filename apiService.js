@@ -1,9 +1,9 @@
 // apiService.js
-// ³o¬O§A­t³d²£¥XªºÀÉ®×¡A«eºİ¥u­n¤Ş¥Î³o­ÓÀÉ
+// é€™æ˜¯ä½ è² è²¬ç”¢å‡ºçš„æª”æ¡ˆï¼Œå‰ç«¯åªè¦å¼•ç”¨é€™å€‹æª”
 
-const API_BASE_URL = "http://127.0.0.1:8000"; // ¤§«á¤W½u¥i¥H§ï³o¸Ì
+const API_BASE_URL = "http://127.0.0.1:8000"; // ä¹‹å¾Œä¸Šç·šå¯ä»¥æ”¹é€™è£¡
 
-// ¤º³¡¤p¤u¨ã¡G¦Û°Ê®³ Token
+// å…§éƒ¨å°å·¥å…·ï¼šè‡ªå‹•æ‹¿ Token
 function getHeaders(isFileUpload = false) {
     const token = localStorage.getItem('access_token');
     const headers = {};
@@ -12,7 +12,7 @@ function getHeaders(isFileUpload = false) {
         headers['Authorization'] = `Bearer ${token}`;
     }
     
-    // ¦pªG¤£¬O¤W¶ÇÀÉ®×¡A¹w³]¥Î JSON¡F¤W¶ÇÀÉ®×®ÉÂsÄı¾¹·|¦Û°Ê³B²z Content-Type
+    // å¦‚æœä¸æ˜¯ä¸Šå‚³æª”æ¡ˆï¼Œé è¨­ç”¨ JSONï¼›ä¸Šå‚³æª”æ¡ˆæ™‚ç€è¦½å™¨æœƒè‡ªå‹•è™•ç† Content-Type
     if (!isFileUpload) {
         headers['Content-Type'] = 'application/json';
     }
@@ -22,12 +22,12 @@ function getHeaders(isFileUpload = false) {
 
 export const apiService = {
     /**
-     * µn¤J¥\¯à
-     * ª`·N¡G«áºİ­n¨D¥Î x-www-form-urlencoded ®æ¦¡
+     * ç™»å…¥åŠŸèƒ½
+     * æ³¨æ„ï¼šå¾Œç«¯è¦æ±‚ç”¨ x-www-form-urlencoded æ ¼å¼
      */
     async login(email, password) {
         const formData = new URLSearchParams();
-        formData.append('username', email); // «áºİ³W©w key ¥s username
+        formData.append('username', email); // å¾Œç«¯è¦å®š key å« username
         formData.append('password', password);
 
         const response = await fetch(`${API_BASE_URL}/token`, {
@@ -37,17 +37,17 @@ export const apiService = {
         });
 
         if (!response.ok) {
-            throw new Error('µn¤J¥¢±Ñ¡A½ĞÀË¬d±b¸¹±K½X');
+            throw new Error('ç™»å…¥å¤±æ•—ï¼Œè«‹æª¢æŸ¥å¸³è™Ÿå¯†ç¢¼');
         }
 
         const data = await response.json();
-        // À°«eºİ§â token ¦s°_¨Ó
+        // å¹«å‰ç«¯æŠŠ token å­˜èµ·ä¾†
         localStorage.setItem('access_token', data.access_token);
         return data;
     },
 
     /**
-     * ¨ú±o¨Ï¥ÎªÌ¦Cªí
+     * å–å¾—ä½¿ç”¨è€…åˆ—è¡¨
      */
     async getUsers() {
         const response = await fetch(`${API_BASE_URL}/users/`, {
@@ -58,28 +58,28 @@ export const apiService = {
     },
 
     /**
-     * ¤W¶Ç¸ê²£
-     * @param {File} fileObject - HTML input ®³¨ìªºÀÉ®×ª«¥ó
+     * ä¸Šå‚³è³‡ç”¢
+     * @param {File} fileObject - HTML input æ‹¿åˆ°çš„æª”æ¡ˆç‰©ä»¶
      */
     async uploadAsset(fileObject) {
         const formData = new FormData();
-        formData.append('file', fileObject); // «áºİ³W©w key ¥s file
+        formData.append('file', fileObject); // å¾Œç«¯è¦å®š key å« file
 
         const response = await fetch(`${API_BASE_URL}/assets/`, {
             method: 'POST',
-            headers: getHeaders(true), // true ¥Nªí¬O¤W¶Ç¡A¤£­n¤â°Ê³] Content-Type
+            headers: getHeaders(true), // true ä»£è¡¨æ˜¯ä¸Šå‚³ï¼Œä¸è¦æ‰‹å‹•è¨­ Content-Type
             body: formData
         });
         
         if (response.status === 403) {
-            throw new Error('Åv­­¤£¨¬¡G½Ğ½T»{±zªº±b¸¹¬O§_¦³¤W¶ÇÅv­­');
+            throw new Error('æ¬Šé™ä¸è¶³ï¼šè«‹ç¢ºèªæ‚¨çš„å¸³è™Ÿæ˜¯å¦æœ‰ä¸Šå‚³æ¬Šé™');
         }
 
         return response.json();
     },
 
     /**
-     * ¨ú±o¸ê²£¦Cªí (¤ä´©·j´M)
+     * å–å¾—è³‡ç”¢åˆ—è¡¨ (æ”¯æ´æœå°‹)
      */
     async getAssets(keyword = "") {
         let url = `${API_BASE_URL}/assets/`;

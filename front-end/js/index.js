@@ -58,11 +58,26 @@ function renderApiAssets(assets) {
 
     assets.forEach(asset => {
         const thumb = asset.thumbnail_url || 'static/image/upload_grey.png'; 
-        const categoryData = asset.category || "Marketing"; 
-        const tagsData = asset.filename; 
+        
+        // 1. 處理標籤資料 (給篩選用)
+        // 把所有標籤名稱串起來，例如 "貓咪,動物,可愛"
+        const tagsList = asset.tags ? asset.tags.map(t => t.tag_name).join(',') : "";
+        
+        // 2. 決定卡片上要顯示哪一個標籤 (顯示用)
+        // 如果有 AI 標籤，就顯示第一個；沒有就顯示 "No Tag"
+        let displayTag = "No Tag";
+        if (asset.tags && asset.tags.length > 0) {
+            displayTag = asset.tags[0].tag_name;
+        }
 
+        // 3. 產生 HTML
+        // 注意 data-tags 更新了，display 也更新了
         const cardHTML = `
-            <a href="asset_detail.html?id=${asset.asset_id}" class="card" data-category="${categoryData}" data-tags="${tagsData}" data-favorite="false">
+            <a href="asset_detail.html?id=${asset.asset_id}" class="card" 
+               data-category="Marketing" 
+               data-tags="${tagsList}" 
+               data-favorite="false">
+               
                 <img src="static/image/heart_black.png" class="favorite-btn" onclick="toggleFavorite(event, this)">
                 
                 <div class="card-img-container">
@@ -70,7 +85,9 @@ function renderApiAssets(assets) {
                 </div>
 
                 <div class="card-title">${asset.filename}</div>
-                <div class="card-tag-display">#${asset.file_type || 'AI Tag'}</div>
+                
+                <div class="card-tag-display">#${displayTag}</div>
+                
                 <div class="card-version">ID: ${asset.asset_id}</div>
             </a>
         `;

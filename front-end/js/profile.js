@@ -95,13 +95,13 @@ function renderProfile(user) {
     if (nameEl) nameEl.innerText = user.user_name || "未設定";
     if (emailEl) emailEl.innerText = user.email;
 
-    // 填入角色 (建議 HTML 加個 id="user-role" 會比較穩，這裡先維持原樣)
-    const roleEl = document.querySelectorAll('.info-value span')[1]; 
+    // ★★★ 修改這裡：直接填入數字 ID ★★★
+    const roleEl = document.getElementById('user-role'); 
+    
     if (roleEl) {
-        let roleName = "Viewer";
-        if (user.role_id === 1) roleName = "Admin";
-        if (user.role_id === 2) roleName = "User"; // 之前我們把 Role 2 改成 User 了
-        roleEl.innerText = roleName;
+        // 直接顯示 user.role_id (例如 1, 2)
+        // 如果沒有值，顯示 "N/A"
+        roleEl.innerText = user.role_id !== undefined ? user.role_id : "N/A";
     }
 }
 
