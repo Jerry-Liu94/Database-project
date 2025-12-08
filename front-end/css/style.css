@@ -101,35 +101,39 @@ main {
 
 /* [修改] 網格佈局 (Grid Layout) */
 .assets-grid {
+    /* 灰色半透明背景 */
     background-color: rgba(255, 255, 255, 0.1);
     border-radius: 16px; 
-    /* 減少 padding，讓卡片有更多空間可以變寬 */
-    padding: 20px; 
+    padding: 25px; /* 內距 */
     
     margin-bottom: 30px;
+    
+    /* 啟用網格佈局 */
     display: grid;
-    /* 強制一行顯示 6 個 */
-    grid-template-columns: repeat(6, 1fr);
-    /* 減少間距，讓卡片有更多空間變寬 */
-    gap: 15px;       
+    
+    /* [關鍵修改] 自動填滿欄位 */
+    /* auto-fill: 依據寬度自動計算一行能放幾個 */
+    /* minmax(200px, 1fr): 每張卡片最小 200px，若有剩餘空間則平均分配 */
+    grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+    
+    gap: 20px; /* 卡片間距 */
     align-items: flex-start;
+    
+    /* 確保有最小高度 */
     min-height: 200px;
 }
 
-/* [修改] 卡片樣式 */
+/* 卡片樣式 (確保寬度跟隨網格) */
 .card { 
     background-color: #fff; 
-    width: 100%; 
-    height: 300px; /* 稍微加高 */
+    width: 100%; /* 寬度佔滿網格單元 */
+    height: 280px; 
     border-radius: 16px; 
-    /* [關鍵] 增加上方 padding，讓愛心有獨立空間，不壓到圖片 */
-    padding: 12px;
-    padding-top: 45px; 
-    
+    padding: 15px; 
+    padding-top: 45px; /* 留給愛心的空間 */
     position: relative; 
     display: flex; 
     flex-direction: column; 
-    justify-content: flex-start; 
     box-shadow: 0 4px 10px rgba(0,0,0,0.15); 
     transition: transform 0.2s; 
     cursor: pointer; 
