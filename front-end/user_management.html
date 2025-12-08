@@ -37,22 +37,19 @@
                             <th>ID</th>
                             <th>姓名</th>
                             <th>角色</th>
-                            <th>狀態</th>
-                            <th>最近登入</th>
-                            <th>操作</th>
+                            <th>Email</th> <th>操作</th>
                         </tr>
                     </thead>
-                    <tbody>
-                        <tr class="data-row">
-                            <td data-label="ID">#1234</td>
-                            <td data-label="姓名">LSS</td>
-                            <td data-label="角色">
-                                <select class="role-select">
-                                    <option value="admin">Admin</option>
-                                    <option value="editor" selected>Editor</option>
-                                    <option value="viewer">Viewer</option>
+
+                    <div class="form-group">
+                        <label for="new-user-role">角色</label>
+                        <div class="role-select-wrapper">
+                            <select id="new-user-role" class="role-select-modal">
+                                <option value="1">Admin</option>
+                                <option value="2" selected>User</option>
                                 </select>
-                            </td>
+                        </div>
+                    </div>
                             <td data-label="狀態">Active</td>
                             <td data-label="最近登入">2025-11-26</td>
                             <td data-label="操作"> <div class="action-icons"> <button class="action-icon delete-btn" title="刪除使用者">
@@ -91,25 +88,35 @@
         <h3 class="modal-title">新增使用者</h3>
         
         <div class="form-group">
-            <label for="user-id">ID</label>
-            <input type="text" id="user-id" placeholder="自動生成 (可選)">
-        </div>
-        
-        <div class="form-group">
-            <label for="user-name">姓名</label>
-            <input type="text" id="user-name" placeholder="請輸入姓名">
+            <label for="new-user-name">姓名</label>
+            <input type="text" id="new-user-name" placeholder="請輸入姓名">
         </div>
 
         <div class="form-group">
-            <label for="user-role">角色</label>
+            <label for="new-user-email">Email</label>
+            <input type="email" id="new-user-email" placeholder="example@email.com">
+        </div>
+
+        <div class="form-group">
+            <label for="new-user-password">密碼</label>
+            <input type="password" id="new-user-password" placeholder="設定初始密碼">
+        </div>
+
+        <div class="form-group">
+            <label for="new-user-role">角色</label>
             <div class="role-select-wrapper">
-                <select id="user-role" class="role-select-modal">
-                    <option value="admin">Admin</option>
-                    <option value="editor" selected>Editor</option>
-                    <option value="viewer">Viewer</option>
+                <select id="new-user-role" class="role-select-modal">
+                    <option value="1">Admin</option>
+                    <option value="2" selected>User</option>
                 </select>
             </div>
         </div>
+        
+        <div class="modal-actions">
+            <button class="confirm-btn" id="modal-confirm-add">確認新增</button>
+            <button class="cancel-btn" id="modal-cancel-add">取消</button>
+        </div>
+    </div>
         
         <div class="modal-actions">
             <button class="confirm-btn">確認</button>
