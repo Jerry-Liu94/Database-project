@@ -181,12 +181,15 @@ window.selectVersion = function(clickedBtn) {
     }
 }
 
+// ==========================================
 // 2. 通用 UI (Toast 提示)
+// ==========================================
 const successToast = document.getElementById('success-toast');
 function showToast(msg) {
     if(successToast) {
         successToast.innerText = msg;
         successToast.style.display = 'block';
+        // 2秒後消失
         setTimeout(() => { successToast.style.display = 'none'; }, 2000);
     }
 }
@@ -197,6 +200,43 @@ const dropdownMenu = document.getElementById('dropdown-menu');
 if(menuTrigger) {
     menuTrigger.addEventListener('click', (e) => { e.stopPropagation(); dropdownMenu.classList.toggle('show'); });
     document.addEventListener('click', (e) => { if (!dropdownMenu.contains(e.target) && e.target !== menuTrigger) dropdownMenu.classList.remove('show'); });
+}
+
+// ==========================================
+// 4. 愛心收藏切換邏輯 (整合 Index 帶過來的狀態)
+// ==========================================
+const detailHeartBtn = document.getElementById('detail-heart-btn');
+let isFavorite = false;
+
+// [新增] 初始化：檢查網址參數是否有 fav=true
+function initFavoriteStatus() {
+    const urlParams = new URLSearchParams(window.location.search);
+    const favParam = urlParams.get('fav');
+
+    if (favParam === 'true') {
+        isFavorite = true;
+        if(detailHeartBtn) detailHeartBtn.src = 'static/image/heart_fill_black.png'; // 變更為實心黑
+    }
+}
+
+// 執行初始化
+initFavoriteStatus();
+
+// 點擊事件
+if (detailHeartBtn) {
+    detailHeartBtn.addEventListener('click', () => {
+        isFavorite = !isFavorite; // 切換狀態
+        
+        if (isFavorite) {
+            // 變成實心黑
+            detailHeartBtn.src = 'static/image/heart_fill_black.png';
+            showToast('已加入收藏'); // 跳出彈窗
+        } else {
+            // 變回空心黑
+            detailHeartBtn.src = 'static/image/heart_black.png';
+            showToast('已取消收藏'); // 跳出彈窗
+        }
+    });
 }
 
 // 4. 分享彈窗
