@@ -12,30 +12,29 @@
 /* 網格容器 (.profile-container) 佈局 */
 .profile-container {
     display: grid;
-    grid-template-columns: 1.2fr 1fr; /* 左欄稍寬，右欄稍窄 */
-    grid-template-rows: 1fr 1fr; /* 上下兩列高度均分 */
+    grid-template-columns: 1.2fr 1fr;
+    grid-template-rows: 1fr 1fr;
     
-    gap: 35px; /* 卡片間距 */
+    gap: 35px;
     width: 100%;
     max-width: 1200px; 
-    min-height: 700px; /* 確保有足夠的高度撐開 */
+    min-height: 700px;
     
     margin-top: 50px; 
     margin-bottom: 50px;
 }
 
 /* 左側資訊卡片 (.profile-info-card) 跨欄設定 */
-/* 讓個人資訊卡片跨越上下兩列，佔滿左側 */
 .profile-info-card {
     grid-row: 1 / span 2; 
 }
 
-/* 登出按鈕容器 (放在卡片底部) */
+/* 登出按鈕容器 (.card-footer-action) 樣式 */
 .card-footer-action {
-    margin-top: auto; /* 關鍵：將此區塊推到底部，佔用所有剩餘空間 */
+    margin-top: auto;
     padding-top: 20px;
     border-top: 1px solid #E0E0E0;
-    margin-left: -50px; /* 為了讓按鈕滿寬，抵銷卡片的 padding */
+    margin-left: -50px;
     margin-right: -50px;
     padding-left: 50px;
     padding-right: 50px;
@@ -46,7 +45,7 @@
 .btn-logout {
     width: 100%;
     padding: 12px;
-    background-color: #f34e42; /* 顯眼的紅色 */
+    background-color: #f34e42;
     color: white;
     border: none;
     border-radius: 12px;
@@ -72,10 +71,9 @@
 
 /* --- 左側：個人資訊 --- */
 
-/* 頭像區域 (.avatar-area) 樣式 */
+/* 頭像區域 (.avatar-area) 樣式 (尺寸調整) */
 .avatar-area {
     position: relative;
-    /* 調整容器尺寸：從 150px 減小到 130px */
     width: 130px; 
     height: 130px; 
     margin: 0 auto 30px;
@@ -83,17 +81,16 @@
     display: flex;
     justify-content: center;
     align-items: center;
-    background-color: #EFEFEF; /* 這是灰底的顏色 */
+    background-color: #EFEFEF;
     flex-shrink: 0;
 }
 
-/* 頭像圖片 (.avatar-img) 樣式 */
+/* 頭像圖片 (.avatar-img) 樣式 (尺寸調整) */
 .avatar-img {
-    /* 調整圖片尺寸：從 100px 增加到 120px */
     width: 120px;
     height: 120px;
     border-radius: 50%;
-    object-fit: cover; /* 確保圖片不變形 */
+    object-fit: cover;
 }
 
 /* 編輯按鈕 (.edit-btn) 樣式 */
@@ -221,18 +218,24 @@
     justify-content: space-around; 
 }
 
-/* 單行設定 (.setting-row) 樣式 */
+/* 單行設定 (.setting-row) 樣式 (設置定位參考點) */
 .setting-row {
     display: flex;
     justify-content: space-between;
     align-items: center;
     padding: 20px 0; 
     border-bottom: 1px solid #E0E0E0;
+    position: relative; 
 }
 
 /* 移除設定區塊中最後一行的底部邊線 */
 .setting-group-box .setting-row:last-child {
     border-bottom: none;
+}
+
+/* 鎖定狀態下，讓整個 row 顯示標準游標 */
+.setting-row:has(.toggle-switch.is-locked) {
+    cursor: default;
 }
 
 /* 設定標籤 (.setting-label) 樣式 */
@@ -325,41 +328,23 @@ input:checked + .slider:before {
 
 /* 鎖定狀態下，滑塊容器的樣式調整 */
 .toggle-switch.is-locked {
-    opacity: 0.8; /* 稍微降低透明度 */
-    cursor: not-allowed; /* 游標變為禁止符號 */
-}
-
-/* 鎖定狀態下，滑塊容器的樣式調整 */
-.toggle-switch.is-locked {
-    opacity: 0.8; 
-    /* ❌ 移除這行的 cursor: not-allowed; */
+    opacity: 0.8;
 }
 
 /* 鎖定狀態下，滑塊軌道的顏色 */
 .toggle-switch.is-locked .slider {
     background-color: #A5D6A7; 
-    cursor: default; /* 💡 將禁止游標改為標準游標 */
+    cursor: default;
 }
 
-/* 由於 input 被 disabled，我們讓整個 row 顯示鎖定游標 */
-.setting-row:has(.toggle-switch.is-locked) {
-    cursor: default; /* 💡 將禁止游標改為標準游標 */
-}
-
-/* --- MFA 懸浮提示框樣式 (新增) --- */
-
-/* 確保容器定位的參考點是 setting-row (這需要在 HTML 中的 setting-row 設置 position: relative) */
-.setting-row {
-    position: relative; 
-    /* ... 確保您的 setting-row 樣式已經包含這行 */
-}
+/* --- MFA 懸浮提示框樣式 --- */
 
 /* 提示框本身 (初始隱藏) */
 .mfa-tooltip {
     position: absolute;
-    right: 0; /* 讓它位於設定行右側 */
+    right: 0;
     top: 50%;
-    transform: translateY(-50%) translateX(-65px); /* 調整位置，使其位於開關上方或旁邊 */
+    transform: translateY(-50%) translateX(-65px);
     
     background-color: #333;
     color: white;
@@ -369,16 +354,14 @@ input:checked + .slider:before {
     font-weight: 400;
     white-space: nowrap; 
     
-    /* 預設隱藏 */
     opacity: 0;
     visibility: hidden;
-    /* 💡 修正點 1: 設置過渡時間為 0s，實現「立即」顯示 */
-    transition: opacity 0s; 
+    transition: opacity 0s;
     z-index: 10;
-    pointer-events: none; /* 確保提示框不會擋住底層元素 */
+    pointer-events: none;
 }
 
-/* 💡 新增：鎖定狀態下，滑鼠懸停時顯示提示框 */
+/* 鎖定狀態下，滑鼠懸停時顯示提示框 */
 .setting-row:has(.toggle-switch.is-locked):hover .mfa-tooltip {
     opacity: 1;
     visibility: visible;
