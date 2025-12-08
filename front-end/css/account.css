@@ -1,4 +1,4 @@
-/* 全局樣式重置 (保持不變) */
+/* 全局樣式重置 */
 * {
     margin: 0;
     padding: 0;
@@ -7,7 +7,7 @@
     -webkit-tap-highlight-color: transparent; 
 }
 
-/* body, html 頁面整體佈局與背景設定 (保持不變) */
+/* body, html 頁面整體佈局與背景設定 */
 body, html {
     height: 100%;
     font-family: Arial, sans-serif;
@@ -19,7 +19,7 @@ body, html {
     min-height: 100vh;
 }
 
-/* --- 響應式容器和分層 (保持不變) --- */
+/* --- 響應式容器和分層 --- */
 .container {
     width: 100vw;
     min-height: 100vh; 
@@ -28,7 +28,7 @@ body, html {
     position: relative; 
 }
 
-/* 頂部深藍色區塊 (.top-blue-bg) 樣式 (保持不變) */
+/* 頂部深藍色區塊 (.top-blue-bg) 樣式 */
 .top-blue-bg {
     height: 28.85vh;
     min-height: 150px;
@@ -42,7 +42,7 @@ body, html {
     padding: 0; 
 }
 
-/* 標題文字 (.header-text) 樣式 (保持不變) */
+/* 標題文字 (.header-text) 樣式 */
 .header-text {
     font-size: 64px; 
     font-weight: bold;
@@ -57,7 +57,7 @@ body, html {
     margin-top: 113px;
 }
 
-/* 中間白色區塊 (.middle-white-area) 樣式及陰影 (保持置中) */
+/* 中間白色區塊 (.middle-white-area) 樣式及陰影 */
 .middle-white-area {
     flex-grow: 1; 
     background-color: #FFFFFF;
@@ -71,7 +71,7 @@ body, html {
     position: relative; 
     z-index: 2;
 }
-/* 底部深藍色區塊 (.bottom-blue-bg) 樣式與分層 (保持不變) */
+/* 底部深藍色區塊 (.bottom-blue-bg) 樣式與分層 */
 .bottom-blue-bg {
     height: 9.97vh;
     min-height: 50px;
@@ -82,50 +82,44 @@ body, html {
 
 /* --- 表單內部樣式 (登入畫面專屬調整) --- */
 
-/* 表單容器 (.signup-form-final) 佈局 */
+/* 表單容器 (.signup-form-final) 佈局 (寬度調整至 350px) */
 .signup-form-final {
-    /* 🚀 調整: 縮小容器寬度，配合縮小的輸入框和標籤，使整體更居中 */
     width: 350px; 
-    
     display: flex;
     flex-direction: column;
     margin: 0 auto; 
     align-items: center; 
 }
 
-/* 表單組 (.form-group-final) 佈局 */
+/* 表單組 (.form-group-final) 佈局 (寬度調整至 350px) */
 .form-group-final {
     display: flex;
     align-items: center;
     
-    /* 使用 flex-start 配合精確的寬度計算，確保標籤右側對齊 */
     justify-content: flex-start; 
     
-    width: 350px; /* 寬度匹配表單容器 */
+    width: 350px;
     margin-bottom: 25px;
 }
 
-/* 標籤 (label) 樣式 - 登入專屬調整 */
+/* 標籤 (label) 樣式 (寬度及間距調整) */
 .form-group-final label {
     font-size: 24px; 
     font-weight: bold;
     color: #333;
     
-    /* 🚀 調整: 適用於「帳號」「密碼」兩個字 */
     width: 80px; 
     
     text-align: right; 
     
-    /* 🚀 調整: 縮小標籤與輸入框的間距 */
     margin-right: 30px; 
     padding: 0;
     
     white-space: nowrap; 
 }
 
-/* 輸入框 (input) 樣式 - 登入專屬調整 */
+/* 輸入框 (input) 樣式 (寬度調整至 200px) */
 .form-group-final input {
-    /* 🚀 調整: 縮小輸入框寬度，讓整體視覺更平衡 */
     width: 200px; 
     height: 39px; 
     padding: 5px 5px; 
@@ -135,13 +129,13 @@ body, html {
     margin: 0; 
 }
 
-/* 輸入框 placeholder 樣式 (保持不變) */
+/* 輸入框 placeholder 樣式 */
 #username::placeholder {
     color: #999;
     font-size: 14px;
     text-align: center;
 }
-/* 確認按鈕 (.confirm-button-final) 樣式 (保持不變，因為登入頁面沒有這個按鈕) */
+/* 確認按鈕 (.confirm-button-final) 樣式 */
 .confirm-button-final {
     width: 100px;
     height: 42px; 
@@ -162,19 +156,18 @@ body, html {
     transition: background-color 0.3s;
 }
 
-/* 確認按鈕 Hover 效果 (保持不變) */
+/* 確認按鈕 Hover 效果 */
 .confirm-button-final:hover {
     background: linear-gradient(to bottom, #AECBE8, #69A3D3);
 }
 
 /* --- 登入頁面專屬樣式 --- */
 
-/* 輔助連結和記住我區塊 (.login-links) 樣式 - 修正寬度 */
+/* 輔助連結和記住我區塊 (.login-links) 樣式 (寬度調整至 350px) */
 .login-links {
-    /* 🚀 調整: 統一寬度，匹配表單容器，確保置中 */
     width: 350px; 
     display: flex;
-    justify-content: flex-end; /* 保持靠右對齊 (忘記密碼/記住我) */
+    justify-content: flex-end;
     
     font-size: 20px; 
     
@@ -184,28 +177,27 @@ body, html {
     padding-right: 0px; 
 }
 
-/* 輔助連結 (a) 樣式 (保持不變) */
+/* 輔助連結 (a) 樣式 */
 .login-links a {
     color: #555;
     text-decoration: none;
     margin-right: 15px; 
 }
 
-/* 記住我 checkbox 樣式 (保持不變) */
+/* 記住我 checkbox 樣式 */
 .login-links input[type="checkbox"] {
     margin-right: 5px;
 }
 
-/* 按鈕群組容器 (.button-group) 佈局 - 修正寬度 */
+/* 按鈕群組容器 (.button-group) 佈局 (寬度調整至 350px) */
 .button-group {
-    /* 🚀 調整: 統一寬度，匹配表單容器，確保置中 */
     width: 350px; 
     display: flex;
     justify-content: center; 
     margin-top: 15px;
 }
 
-/* 登入 (.login-button) 和註冊 (.register-button) 按鈕共同樣式 (保持不變) */
+/* 登入 (.login-button) 和註冊 (.register-button) 按鈕共同樣式 */
 .login-button, .register-button {
     width: 100px;
     height: 42px; 
@@ -220,20 +212,20 @@ body, html {
     margin: 0 10px; 
 }
 
-/* 登入按鈕背景色 (保持不變) */
+/* 登入按鈕背景色 */
 .login-button {
     background: linear-gradient(to bottom, #BFDDFF, #85B9E8); 
 }
-/* 登入按鈕 Hover 效果 (保持不變) */
+/* 登入按鈕 Hover 效果 */
 .login-button:hover {
     background: linear-gradient(to bottom, #AECBE8, #69A3D3);
 }
 
-/* 註冊按鈕背景色 (保持不變) */
+/* 註冊按鈕背景色 */
 .register-button {
     background: linear-gradient(to bottom, #BFDDFF, #85B9E8); 
 }
-/* 註冊按鈕 Hover 效果 (保持不變) */
+/* 註冊按鈕 Hover 效果 */
 .register-button:hover {
     background: linear-gradient(to bottom, #AECBE8, #69A3D3);
 }

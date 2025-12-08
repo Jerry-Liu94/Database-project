@@ -28,7 +28,7 @@ body, html {
     position: relative;
 }
 
-/* 頂部深藍色區塊 (佔約 28.85vh 高度) */
+/* 頂部深藍色區塊 (.top-blue-bg) 樣式 */
 .top-blue-bg {
     height: 28.85vh;
     min-height: 150px;
@@ -42,7 +42,7 @@ body, html {
     padding: 0;
 }
 
-/* 標題文字樣式 */
+/* 標題文字 (.header-text) 樣式 */
 .header-text {
     font-size: 64px;
     font-weight: bold;
@@ -57,7 +57,7 @@ body, html {
     margin-top: 113px;
 }
 
-/* 中間白色區塊 (彈性擴展，用於容納 MFA 內容) */
+/* 中間白色區塊 (.middle-white-area) 樣式及陰影 */
 .middle-white-area {
     flex-grow: 1;
     background-color: #FFFFFF;
@@ -72,7 +72,7 @@ body, html {
     z-index: 2;
 }
 
-/* 底部深藍色區塊 (佔約 9.97vh 高度) */
+/* 底部深藍色區塊 (.bottom-blue-bg) 樣式與分層 */
 .bottom-blue-bg {
     height: 9.97vh;
     min-height: 50px;
@@ -83,7 +83,7 @@ body, html {
 
 /* --- MFA 認證頁面專屬樣式 --- */
 
-/* MFA 容器：負責內容垂直排列和水平置中 */
+/* MFA 內容容器 (.mfa-container) 佈局 */
 .mfa-container {
     width: 300px;
     display: flex;
@@ -92,40 +92,44 @@ body, html {
     margin: 0 auto;
 }
 
-/* 圖片佔位符 (灰色方塊，寬高 180px) */
+/* 圖片佔位符容器 (.mfa-image-placeholder) 樣式 */
 .mfa-image-placeholder {
-    width: 180px;
-    height: 180px;
-
-    background-color: #E0E0E0;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    
+    background-color: transparent;
 
     margin-bottom: 25px;
     margin-top: 50px;
 }
 
-/* 計時器文字樣式 */
+/* QR Code 圖片 (#qr-code-img) 樣式 */
+#qr-code-img {
+    width: 200px;
+    height: 200px;
+    margin-bottom: 10px !important;
+}
+
+/* 計時器文字 (.mfa-timer) 樣式 */
 .mfa-timer {
     font-size: 20px;
     font-weight: bold;
     color: #333;
-
-    margin-bottom: 30px;
+    margin-bottom: 25px; 
 }
 
-/* 認證碼輸入框樣式 */
+/* 認證碼輸入框 (.mfa-input) 樣式 */
 .mfa-input {
     width: 150px;
     height: 39px;
-    padding: 5px 10px;
-    border: 1px solid #ccc;
-    border-radius: 4px;
-    font-size: 16px;
+    /* ... 其他樣式 ... */
     text-align: center;
-
-    margin-bottom: 15px;
+    margin-bottom: 30px; 
 }
 
-/* 確認按鈕的最終樣式 */
+/* 確認按鈕 (.confirm-button-final) 樣式 */
 .confirm-button-final {
     width: 100px;
     height: 42px;
