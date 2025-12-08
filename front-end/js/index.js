@@ -35,6 +35,12 @@ async function loadAssets() {
     }
 }
 
+// [新增] 讀取收藏列表輔助函式
+function getLocalFavorites() {
+    const stored = localStorage.getItem('dam_favorites');
+    return stored ? JSON.parse(stored) : [];
+}
+
 // --- API: 把後端資料畫到畫面上 (網格佈局) ---
 function renderApiAssets(assets) {
     const container = document.getElementById('all-assets-container'); 
@@ -46,48 +52,43 @@ function renderApiAssets(assets) {
     if(headerTitle) headerTitle.innerText = `所有資產列表 (${assets.length})`;
 
     if (assets.length === 0) {
-        // 無資料時，讓提示文字置中
         container.style.display = 'flex';
         container.style.justifyContent = 'center';
         container.innerHTML = '<div style="width:100%; text-align:center; color:#ccc; padding:40px; font-size:1.2rem;">目前沒有任何資產</div>';
         return;
     } else {
-        // 有資料時恢復 Grid
         container.style.display = 'grid';
     }
 
+    // 1. 取得目前已收藏的 ID 列表
+    const myFavs = getLocalFavorites();
+
     assets.forEach(asset => {
         const thumb = asset.thumbnail_url || 'static/image/upload_grey.png'; 
-        
-        // 1. 處理標籤資料 (給篩選用)
-        // 把所有標籤名稱串起來，例如 "貓咪,動物,可愛"
-        const tagsList = asset.tags ? asset.tags.map(t => t.tag_name).join(',') : "";
-        
-        // 2. 決定卡片上要顯示哪一個標籤 (顯示用)
-        // 如果有 AI 標籤，就顯示第一個；沒有就顯示 "No Tag"
-        let displayTag = "No Tag";
-        if (asset.tags && asset.tags.length > 0) {
-            displayTag = asset.tags[0].tag_name;
-        }
+        const categoryData = asset.category || "Marketing"; 
+        const tagsData = asset.filename; 
 
-        // 3. 產生 HTML
-        // 注意 data-tags 更新了，display 也更新了
+        // 2. 判斷此資產是否在收藏名單中
+        const isFav = myFavs.includes(String(asset.asset_id));
+        
+        // 3. 設定愛心圖示與狀態
+        const heartIcon = isFav ? 'static/image/heart_fill_black.png' : 'static/image/heart_black.png';
+        const favAttr = isFav ? 'true' : 'false';
+        
+        // 4. 設定連結參數 (若已收藏，連結加上 fav=true)
+        let detailUrl = `asset_detail.html?id=${asset.asset_id}`;
+        if (isFav) detailUrl += `&fav=true`;
+
         const cardHTML = `
-            <a href="asset_detail.html?id=${asset.asset_id}" class="card" 
-               data-category="Marketing" 
-               data-tags="${tagsList}" 
-               data-favorite="false">
-               
-                <img src="static/image/heart_black.png" class="favorite-btn" onclick="toggleFavorite(event, this)">
+            <a href="${detailUrl}" class="card" data-id="${asset.asset_id}" data-category="${categoryData}" data-tags="${tagsData}" data-favorite="${favAttr}">
+                <img src="${heartIcon}" class="favorite-btn" onclick="toggleFavorite(event, this)">
                 
                 <div class="card-img-container">
                     <img src="${thumb}" onerror="this.src='static/image/upload_grey.png'">
                 </div>
 
                 <div class="card-title">${asset.filename}</div>
-                
-                <div class="card-tag-display">#${displayTag}</div>
-                
+                <div class="card-tag-display">#${asset.file_type || 'AI Tag'}</div>
                 <div class="card-version">ID: ${asset.asset_id}</div>
             </a>
         `;
@@ -145,21 +146,50 @@ window.toggleTag = function(tag, element) {
     applyFilter();
 }
 
-// 5. 愛心切換
+// 5. 愛心切換 (整合 localStorage 與 URL 參數)
 window.toggleFavorite = function(event, btn) {
     event.preventDefault(); 
     event.stopPropagation(); 
 
     const card = btn.closest('.card');
+    const assetId = String(card.getAttribute('data-id')); 
     const isFav = card.getAttribute('data-favorite') === 'true';
+    
+    // 處理連結參數
+    let currentHref = card.getAttribute('href');
+    let url = new URL(currentHref, window.location.origin);
+    
+    // 處理 localStorage
+    let myFavs = getLocalFavorites();
 
     if (isFav) {
+        // 取消收藏
         card.setAttribute('data-favorite', 'false');
         btn.src = 'static/image/heart_black.png';
+        
+        // 更新網址參數
+        url.searchParams.set('fav', 'false');
+        
+        // 移除 Storage
+        myFavs = myFavs.filter(id => id !== assetId);
     } else {
+        // 加入收藏
         card.setAttribute('data-favorite', 'true');
         btn.src = 'static/image/heart_fill_black.png';
+        
+        // 更新網址參數
+        url.searchParams.set('fav', 'true');
+        
+        // 加入 Storage
+        if (!myFavs.includes(assetId)) myFavs.push(assetId);
     }
+
+    // 寫回 href
+    const newPath = url.pathname + url.search;
+    card.setAttribute('href', newPath);
+
+    // 寫回 localStorage
+    localStorage.setItem('dam_favorites', JSON.stringify(myFavs));
 
     if (showFavoritesOnly) applyFilter();
 }
@@ -234,7 +264,6 @@ if(modal) modal.addEventListener('click', (e) => { if(e.target === modal) closeM
 if(dropZone) dropZone.addEventListener('click', () => { if(modalButtons.style.display !== 'none') fileInput.click(); });
 if(fileInput) fileInput.addEventListener('change', (e) => { if (e.target.files.length > 0) handleFiles(Array.from(e.target.files)); });
 
-// [修改] 處理檔案顯示：使用 checkmark_grey.png (空心)
 function handleFiles(files) {
     if (!dropZone.classList.contains('has-file')) {
         dropZone.classList.add('has-file');
@@ -244,25 +273,19 @@ function handleFiles(files) {
     files.forEach(file => {
         const item = document.createElement('div');
         item.className = 'file-list-item';
-        
-        item.innerHTML = `
-            <div class="file-info-left">
-                <img src="static/image/checkmark_grey.png" class="check-icon status-icon" alt="status">
-                <span class="file-name-text">${file.name}</span>
-            </div>`;
-            
+        // 預設灰色空心勾勾
+        item.innerHTML = `<div class="file-info-left"><img src="static/image/checkmark_grey.png" class="check-icon status-icon"><span class="file-name-text">${file.name}</span></div>`;
         fileListContainer.appendChild(item);
     });
 }
 
-// [修改] 點擊上傳按鈕 (API 上傳 + 切換圖示)
+// 點擊上傳按鈕 (API 上傳 + 換圖示)
 if(uploadBtn) {
     const newUploadBtn = uploadBtn.cloneNode(true);
     uploadBtn.parentNode.replaceChild(newUploadBtn, uploadBtn);
 
     newUploadBtn.addEventListener('click', async () => {
         const files = fileInput.files;
-        // 如果 input 沒有檔案，檢查是否有拖曳進來的檔案顯示在 UI 上 (這裡僅做簡易檢查)
         if (files.length === 0 && document.querySelectorAll('.file-list-item').length === 0) {
             alert("請先選擇檔案");
             return;
@@ -272,7 +295,6 @@ if(uploadBtn) {
         newUploadBtn.disabled = true;
 
         try {
-            // 迴圈上傳每一個檔案
             for (let i = 0; i < files.length; i++) {
                 const formData = new FormData();
                 formData.append('file', files[i]);
@@ -286,7 +308,6 @@ if(uploadBtn) {
                 if (!res.ok) throw new Error(`檔案 ${files[i].name} 上傳失敗`);
             }
 
-            // 全部成功後，更新 UI 圖示
             const rows = document.querySelectorAll('.file-list-item');
             rows.forEach(row => {
                 if (!row.querySelector('.ai-tag')) {
@@ -295,19 +316,14 @@ if(uploadBtn) {
                     tagSpan.innerText = 'AI Analysis...'; 
                     row.appendChild(tagSpan);
                 }
-                
-                // [關鍵修改] 上傳成功，切換為 checkmark_fill_grey.png (實心灰色勾勾)
-                // 注意：請確保您的圖片檔名是 grey 或 gray，這裡使用 grey
+                // 切換為灰色實心勾勾
                 const icon = row.querySelector('.status-icon'); 
                 if (icon) icon.src = 'static/image/checkmark_fill_grey.png';
             });
 
-            // 隱藏按鈕，顯示成功訊息 (成功訊息內已有綠色勾勾或圖片)
             modalButtons.style.display = 'none';
-            // 使用 flex 讓圖文置中
-            if(successMsg) successMsg.style.display = 'flex'; 
+            if(successMsg) successMsg.style.display = 'flex'; // 顯示含圖示的成功訊息
 
-            // 1.5秒後重新整理頁面
             setTimeout(() => {
                 location.reload(); 
             }, 1500);
@@ -322,18 +338,9 @@ if(uploadBtn) {
 }
 
 function resetFileState() {
-    dropZone.classList.remove('has-file'); 
-    emptyState.style.display = 'flex'; 
-    fileListContainer.style.display = 'none'; 
-    fileListContainer.innerHTML = ''; 
-    fileInput.value = '';
-    
-    // 重置按鈕與訊息
-    if(modalButtons) modalButtons.style.display = 'flex'; 
-    if(successMsg) successMsg.style.display = 'none';
-    
-    // 重置按鈕文字
-    const btn = document.querySelector('.btn-upload');
+    dropZone.classList.remove('has-file'); emptyState.style.display = 'flex'; fileListContainer.style.display = 'none'; fileListContainer.innerHTML = ''; fileInput.value = '';
+    modalButtons.style.display = 'flex'; successMsg.style.display = 'none';
+    const btn = document.querySelector('.btn-upload'); // 重新選取新按鈕
     if(btn) { btn.innerText = "上傳"; btn.disabled = false; }
 }
 
@@ -350,7 +357,7 @@ if(dropZone) {
     });
 }
 
-// --- Notification Sidebar Logic ---
+// --- Notification Sidebar ---
 const notifyBtn = document.getElementById('notification-btn');
 const notifySidebar = document.getElementById('notify-sidebar');
 const notifyOverlay = document.getElementById('notify-overlay');
@@ -371,40 +378,3 @@ function closeNotification() {
 
 if (closeNotifyBtn) closeNotifyBtn.addEventListener('click', closeNotification);
 if (notifyOverlay) notifyOverlay.addEventListener('click', closeNotification);
-
-window.toggleFavorite = function(event, btn) {
-    event.preventDefault(); 
-    event.stopPropagation(); 
-
-    const card = btn.closest('.card');
-    // 取得目前的狀態
-    const isFav = card.getAttribute('data-favorite') === 'true';
-    
-    // 取得原本的連結 href
-    let currentHref = card.getAttribute('href');
-    // 建立 URL 物件方便操作參數
-    // 注意：因為 href 可能是相對路徑，這裡用 dummy host 輔助解析
-    let url = new URL(currentHref, window.location.origin);
-    
-    if (isFav) {
-        // 取消收藏
-        card.setAttribute('data-favorite', 'false');
-        btn.src = 'static/image/heart_black.png';
-        // 更新連結參數 fav=false
-        url.searchParams.set('fav', 'false');
-    } else {
-        // 加入收藏
-        card.setAttribute('data-favorite', 'true');
-        btn.src = 'static/image/heart_fill_black.png';
-        // 更新連結參數 fav=true
-        url.searchParams.set('fav', 'true');
-    }
-
-    // 將更新後的網址寫回 href
-    // 因為 new URL 會產生絕對路徑，我們取 pathname + search 變回相對路徑
-    const newPath = url.pathname + url.search;
-    // 這裡要小心，原本是 asset_detail.html?id=...，我們把新的參數寫回去
-    card.setAttribute('href', newPath);
-
-    if (showFavoritesOnly) applyFilter();
-}
