@@ -340,15 +340,6 @@ def require_permission(resource: str, action: str):
         return current_user
     return permission_checker
 
-
-沒問題！這是 create_asset (單檔上傳) 的完整修正版程式碼。
-
-我已經幫你加入了 影片截圖 (FFmpeg) 的邏輯，並且優化了 MinIO 上傳 與 暫存檔清理 的流程。
-
-請將 main.py 裡的 create_asset 函式 整段替換 成下面這段：
-
-Python
-
 # [修正版] API: 單檔上傳 (支援圖片與影片截圖)
 @app.post("/assets/", response_model=schemas.AssetOut)
 def create_asset(
