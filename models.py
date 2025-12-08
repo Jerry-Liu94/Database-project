@@ -55,12 +55,11 @@ class Asset(Base):
     uploaded_by_user_id = Column(BigInteger, ForeignKey("user.user_id"), nullable=False)
 
     uploader = relationship("User", back_populates="assets_uploaded")
-    
-    # 這裡定義與 Version 的關係
     versions = relationship("Version", back_populates="asset", foreign_keys="Version.asset_id")
-    
-    # 指向最新版本的關聯 (使用 remote_side 解決循環)
     latest_version = relationship("Version", foreign_keys=[latest_version_id], post_update=True)
+
+    # [🔥 補上這行] 建立與 Tag 的多對多關聯
+    tags = relationship("Tag", secondary="asset_tag", backref="assets")
 
 # 6. 版本 (Version) [cite: 93]
 class Version(Base):
