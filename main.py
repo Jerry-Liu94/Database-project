@@ -640,12 +640,12 @@ def create_user(user: schemas.UserCreate, db: Session = Depends(get_db)):
     # 2. 密碼加密 (使用 security.py 的功能)
     hashed_password = security.get_password_hash(user.password)
     
-    # 3. 建立使用者 (預設角色為 3 = Viewer)
-    # 注意：這裡我們寫死 role_id=3，避免一般人註冊變成 Admin
+    # 3. 建立使用者 (預設角色為 2 = user)
+    # 注意：這裡我們寫死 role_id=2，避免一般人註冊變成 Admin
     new_user = models.User(
         email=user.email,
         password_hash=hashed_password,
-        role_id=3,  # 預設 Viewer
+        role_id=2,  # 預設 User
         user_name=user.user_name
     )
     
