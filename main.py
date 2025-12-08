@@ -514,33 +514,49 @@ def login_for_access_token(
     # 1. 找使用者
     user = db.query(models.User).filter(models.User.email == form_data.username).first()
     
-    # 2. 驗證密碼
+    # 2. 驗證帳號密碼
     if not user or not security.verify_password(form_data.password, user.password_hash):
+        # [新增] 如果使用者存在但密碼錯誤，記錄下來 (暴力破解偵測)
+        if user:
+            try:
+                db.add(models.AuditLog(user_id=user.user_id, action_type="LOGIN_FAILED_PASSWORD"))
+                db.commit()
+            except:
+                db.rollback() # 避免影響報錯流程
+
         raise HTTPException(
             status_code=401,
             detail="帳號或密碼錯誤",
             headers={"WWW-Authenticate": "Bearer"},
         )
     
-    # 3. [關鍵邏輯] 檢查 MFA
+    # 3. 檢查 MFA
     if user.mfa_secret:
-        # 如果使用者有綁定 MFA，但這次請求沒有附帶 OTP
         if not otp:
-            # 回傳 403 Forbidden，並在 detail 帶上特殊字串，讓前端知道要跳出輸入框
-            raise HTTPException(
-                status_code=403, 
-                detail="MFA_REQUIRED"  # <--- 前端會辨識這個字串
-            )
+            raise HTTPException(status_code=403, detail="MFA_REQUIRED")
         
-        # 如果有附帶 OTP，則進行驗證
+        # 驗證 OTP
         totp = pyotp.TOTP(user.mfa_secret)
         if not totp.verify(otp):
-            raise HTTPException(
-                status_code=400, 
-                detail="MFA 驗證碼錯誤或已過期"
-            )
+            # [新增] 記錄 MFA 失敗 (可能密碼已洩漏)
+            try:
+                db.add(models.AuditLog(user_id=user.user_id, action_type="LOGIN_FAILED_MFA"))
+                db.commit()
+            except:
+                db.rollback()
+
+            raise HTTPException(status_code=400, detail="MFA 驗證碼錯誤或已過期")
     
-    # 4. 全部通過，發放 Token
+    # 4. [新增] 登入成功紀錄
+    try:
+        db.add(models.AuditLog(user_id=user.user_id, action_type="LOGIN"))
+        db.commit()
+    except Exception as e:
+        logger.error(f"寫入登入日誌失敗: {e}")
+        # 日誌失敗不應阻擋登入，所以這裡吞掉錯誤或 rollback
+        db.rollback()
+
+    # 5. 發放 Token
     access_token_expires = timedelta(minutes=security.ACCESS_TOKEN_EXPIRE_MINUTES)
     access_token = security.create_access_token(
         data={"sub": user.email}, expires_delta=access_token_expires
@@ -795,6 +811,15 @@ def create_share_link(
     )
     db.add(new_share_asset)
     
+    # 6. 寫入稽核日誌
+    new_log = models.AuditLog(
+        user_id=current_user.user_id,
+        asset_id=asset.asset_id,
+        # 記錄動作為 SHARE，甚至可以把 token 記在備註裡(如果有的話)
+        action_type="SHARE_ASSET"
+    )
+    db.add(new_log)
+    
     db.commit()
 
     # 6. 回傳結果 (組裝成完整網址)
@@ -864,6 +889,14 @@ def create_api_token(
     )
     
     db.add(new_token)
+    
+    # [新增] 寫入稽核日誌
+    new_log = models.AuditLog(
+        user_id=current_user.user_id,
+        action_type="CREATE_API_TOKEN"
+    )
+    db.add(new_log)
+    
     db.commit()
     db.refresh(new_token)
     
