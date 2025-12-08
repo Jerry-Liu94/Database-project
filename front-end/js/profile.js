@@ -87,7 +87,9 @@ async function loadUserProfile() {
 }
 
 // --- 渲染畫面 ---
+// --- 渲染畫面 ---
 function renderProfile(user) {
+    // 1. 填入基本資料 (原本的程式碼)
     const nameEl = document.querySelector('.user-name');
     const emailEl = document.querySelector('.user-email');
     if (nameEl) nameEl.innerText = user.user_name || "未設定";
@@ -98,29 +100,23 @@ function renderProfile(user) {
         roleEl.innerText = user.role_id !== undefined ? user.role_id : "N/A";
     }
 
-    // ★★★ 新增這段：處理 MFA 開關狀態 ★★★
-    const mfaToggle = document.getElementById('mfa-toggle');
-    const mfaTooltip = document.querySelector('.mfa-tooltip'); // "已啟用" 的文字
-
-    if (mfaToggle) {
-        if (user.is_mfa_enabled) {
-            // 狀態 1: 已開啟 MFA
-            mfaToggle.checked = true;      // 勾選開關 (變綠色)
-            mfaToggle.disabled = true;     // 鎖定 (不讓使用者隨意關掉)
-            
-            // 顯示「已啟用」文字
-            if (mfaTooltip) mfaTooltip.style.display = 'inline-block';
-            
-            // 額外樣式：讓開關看起來是鎖定狀態
-            mfaToggle.parentElement.classList.add('is-locked');
+    // ★★★ 新增這段：動態修改 Logo 連結 ★★★
+    const logoLink = document.getElementById('logo-link');
+    if (logoLink) {
+        // 如果是 Admin (role_id = 1)，點擊 Logo 回到用戶管理頁面
+        if (user.role_id === 1) {
+            logoLink.href = "user_management.html";
         } else {
-            // 狀態 2: 未開啟
-            mfaToggle.checked = false;
-            mfaToggle.disabled = false;
-            if (mfaTooltip) mfaTooltip.style.display = 'none';
-            mfaToggle.parentElement.classList.remove('is-locked');
+            // 其他人回到首頁 (這行其實可以省略，因為 HTML 預設就是 index.html)
+            logoLink.href = "index.html";
         }
     }
+    // ★★★ 結束新增 ★★★
+
+
+    // ... (原本的 MFA 開關邏輯保持不變) ...
+    const mfaToggle = document.getElementById('mfa-toggle');
+    // ...
 }
 
 // --- 事件綁定 ---
