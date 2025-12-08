@@ -82,7 +82,7 @@ class Metadata(Base):
     encoding_format = Column(String(50))
 
     # Metadata 與 Asset 是 1 對 1 關係
-    asset_info = relationship("Asset", backref="metadata_info")
+    asset_info = relationship("Asset", backref=backref("metadata_info", cascade="all, delete-orphan", passive_deletes=True))
     
 # 8. 稽核日誌 (Audit Log)
 class AuditLog(Base):
