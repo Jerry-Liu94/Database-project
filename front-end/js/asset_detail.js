@@ -24,6 +24,42 @@ document.addEventListener('DOMContentLoaded', () => {
             opt.onclick = downloadAsset;
         }
     });
+
+    // --- [新增] 刪除資產邏輯 ---
+    const deleteBtn = document.getElementById('delete-btn');
+    if (deleteBtn) {
+        deleteBtn.addEventListener('click', async () => {
+            // 1.再一次確認 (防止手殘)
+            const isConfirmed = confirm("⚠️ 危險操作\n\n您確定要永久刪除此資產嗎？\n刪除後無法復原！");
+            
+            if (!isConfirmed) return;
+
+            try {
+                // 為了避免使用者以為沒反應，可以改變一下按鈕文字
+                deleteBtn.innerText = "刪除中...";
+                
+                // 2. 呼叫後端 API
+                const response = await fetch(`${API_BASE_URL}/assets/${assetId}`, {
+                    method: 'DELETE',
+                    headers: api.getHeaders() // 記得帶 Token，因為後端會檢查權限
+                });
+
+                if (!response.ok) {
+                    const err = await response.json();
+                    throw new Error(err.detail || "刪除失敗");
+                }
+
+                // 3. 成功後跳轉
+                alert("🗑️ 資產已成功刪除！");
+                window.location.href = "index.html";
+
+            } catch (error) {
+                console.error(error);
+                alert("錯誤: " + error.message);
+                deleteBtn.innerText = "刪除"; // 恢復文字
+            }
+        });
+    }
 });
 
 // --- API: 載入資產詳情 ---
@@ -80,11 +116,37 @@ function renderDetail(asset) {
         tagsDisplay.innerText = `#${asset.file_type || '一般'}`;
     }
 
-    // 預覽圖片
+    // 預覽區塊 (支援 圖片 與 影片)
     const previewBox = document.querySelector('.preview-box');
+    
+    // [關鍵修正] 先清空舊內容
+    previewBox.innerHTML = '';
+
     if (asset.thumbnail_url) {
-        // 使用 onerror 處理圖片載入失敗的情況
-        previewBox.innerHTML = `<img src="${asset.thumbnail_url}" style="max-width:100%; max-height:100%; object-fit:contain;" onerror="this.src='static/image/upload_grey.png'">`;
+        // 判斷是否為影片
+        if (asset.file_type && asset.file_type.startsWith('video/')) {
+            // === 影片模式 ===
+            // 使用 download_url (串流) 作為來源，這樣才能播放
+            previewBox.innerHTML = `
+                <video controls autoplay name="media" 
+                       style="max-width: 100%; max-height: 100%; border-radius: 8px; box-shadow: 0 4px 12px rgba(0,0,0,0.1);">
+                    <source src="${asset.download_url}" type="${asset.file_type}">
+                    您的瀏覽器不支援此影片格式。
+                </video>
+            `;
+        } else {
+            // === 圖片模式 ===
+            // 為了看清楚細節，這裡建議優先使用 download_url (大圖)，thumbnail_url (縮圖) 作為備案
+            const imgUrl = asset.download_url || asset.thumbnail_url;
+            previewBox.innerHTML = `
+                <img src="${imgUrl}" 
+                     style="max-width:100%; max-height:100%; object-fit:contain;" 
+                     onerror="this.src='static/image/upload_grey.png'">
+            `;
+        }
+    } else {
+        // 無預覽圖時顯示預設文字
+        previewBox.innerHTML = `<div class="preview-text">無預覽</div>`;
     }
 }
 
@@ -145,12 +207,15 @@ window.selectVersion = function(clickedBtn) {
     }
 }
 
+// ==========================================
 // 2. 通用 UI (Toast 提示)
+// ==========================================
 const successToast = document.getElementById('success-toast');
 function showToast(msg) {
     if(successToast) {
         successToast.innerText = msg;
         successToast.style.display = 'block';
+        // 2秒後消失
         setTimeout(() => { successToast.style.display = 'none'; }, 2000);
     }
 }
@@ -161,6 +226,43 @@ const dropdownMenu = document.getElementById('dropdown-menu');
 if(menuTrigger) {
     menuTrigger.addEventListener('click', (e) => { e.stopPropagation(); dropdownMenu.classList.toggle('show'); });
     document.addEventListener('click', (e) => { if (!dropdownMenu.contains(e.target) && e.target !== menuTrigger) dropdownMenu.classList.remove('show'); });
+}
+
+// ==========================================
+// 4. 愛心收藏切換邏輯 (整合 Index 帶過來的狀態)
+// ==========================================
+const detailHeartBtn = document.getElementById('detail-heart-btn');
+let isFavorite = false;
+
+// [新增] 初始化：檢查網址參數是否有 fav=true
+function initFavoriteStatus() {
+    const urlParams = new URLSearchParams(window.location.search);
+    const favParam = urlParams.get('fav');
+
+    if (favParam === 'true') {
+        isFavorite = true;
+        if(detailHeartBtn) detailHeartBtn.src = 'static/image/heart_fill_black.png'; // 變更為實心黑
+    }
+}
+
+// 執行初始化
+initFavoriteStatus();
+
+// 點擊事件
+if (detailHeartBtn) {
+    detailHeartBtn.addEventListener('click', () => {
+        isFavorite = !isFavorite; // 切換狀態
+        
+        if (isFavorite) {
+            // 變成實心黑
+            detailHeartBtn.src = 'static/image/heart_fill_black.png';
+            showToast('已加入收藏'); // 跳出彈窗
+        } else {
+            // 變回空心黑
+            detailHeartBtn.src = 'static/image/heart_black.png';
+            showToast('已取消收藏'); // 跳出彈窗
+        }
+    });
 }
 
 // 4. 分享彈窗
