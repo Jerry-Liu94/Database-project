@@ -631,42 +631,43 @@ def delete_asset(
     if not asset:
         raise HTTPException(status_code=404, detail="找不到該資產")
 
-    # 2. 權限檢查 (只有 上傳者 或 管理員 可以刪除)
-    # 假設 Role ID 1 是 Admin (根據 init_db.py)
+    # 2. 權限檢查
     if asset.uploaded_by_user_id != current_user.user_id and current_user.role_id != 1:
-        raise HTTPException(status_code=403, detail="權限不足：您無法刪除此資產")
-    
-    # 3. 清理 MinIO 上的實體檔案
-    versions = db.query(models.Version).filter(models.Version.asset_id == asset_id).all()
-    for v in versions:
+        raise HTTPException(status_code=403, detail="權限不足")
+
+    # 3. 清理 MinIO 實體檔案 (先刪檔案，再動 DB)
+    for v in asset.versions: # 透過 relationship 直接拿版本，不用再 query 一次
         try:
             minio_client.remove_object(MINIO_BUCKET_NAME, v.storage_path)
-            # 嘗試刪除縮圖
             thumb_path = f"{os.path.splitext(v.storage_path)[0]}_thumb.jpg"
             minio_client.remove_object(MINIO_BUCKET_NAME, thumb_path)
             logger.info(f"🗑️ 已從 MinIO 刪除: {v.storage_path}")
         except Exception as e:
-            logger.info(f"⚠️ MinIO 刪除失敗 (可能檔案已不存在): {e}")
+            logger.warning(f"⚠️ MinIO 刪除失敗: {e}")
 
-    # 4. 刪除資料庫紀錄 (關鍵修正！)
     try:
-        # [Step A] 先寫入日誌 (因為等一下 asset 就沒了，先記再說)
-        new_log = models.AuditLog(
-            user_id=current_user.user_id,
-            asset_id=None, # 資產刪除後 ID 會失效，這裡記 NULL 或記在 action_type 備註裡
-            action_type=f"DELETE_ASSET_{asset_id}" # 把 ID 記在字串裡比較保險
-        )
-        db.add(new_log)
-
-        # [Step B] 解開循環鎖死 (關鍵！)
-        # 先把 Asset 指向 Version 的那條線剪斷
+        # 4. [關鍵步驟] 解開循環依賴鎖
+        # 先把指向 Version 的線剪斷，這樣 MySQL 就不會因為 Version 還被引用而阻止刪除
         asset.latest_version_id = None
-        db.commit() # 提交變更，讓 Asset 不再依賴 Version
+        db.commit()
         
-        # [Step C] 現在可以放心刪除 Asset 了
-        # 因為有設定 ON DELETE CASCADE，Versions, Metadata, Tags 會自動被刪除
+        # 5. 執行刪除
+        # 因為 models.py 已經設定了 cascade="all, delete-orphan"
+        # SQLAlchemy 會自動幫你先刪除 Metadata, Comments, Versions，最後刪 Asset
         db.delete(asset)
         db.commit()
+        
+        # 6. 寫入日誌
+        try:
+            new_log = models.AuditLog(
+                user_id=current_user.user_id,
+                asset_id=None, # Asset 已經沒了
+                action_type=f"DELETE_ASSET_{asset_id}"
+            )
+            db.add(new_log)
+            db.commit()
+        except:
+            pass # 日誌失敗不影響主流程
         
         return {"message": f"資產 {asset_id} 已成功刪除"}
 

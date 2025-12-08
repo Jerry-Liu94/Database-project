@@ -43,23 +43,33 @@ class User(Base):
     role = relationship("Role", back_populates="users")
     assets_uploaded = relationship("Asset", back_populates="uploader")
 
-# 5. 資產 (Asset) [cite: 81]
-# 注意：這裡有循環參照，latest_version_id 指向 Version 表
+# 5. 資產 (Asset)
 class Asset(Base):
     __tablename__ = "asset"
+    # ... (欄位保持不變) ...
     asset_id = Column(BigInteger, primary_key=True, index=True)
     filename = Column(String(255), nullable=False)
     file_type = Column(String(50))
-    # 這裡使用字串 'version.version_id' 來解決循環依賴定義問題
     latest_version_id = Column(BigInteger, ForeignKey("version.version_id"), nullable=True)
     uploaded_by_user_id = Column(BigInteger, ForeignKey("user.user_id"), nullable=False)
 
     uploader = relationship("User", back_populates="assets_uploaded")
-    versions = relationship("Version", back_populates="asset", foreign_keys="Version.asset_id", cascade="all, delete-orphan", passive_deletes=True)
+    
+    # [修正 1] 版本 (一對多): 加上 cascade
+    versions = relationship("Version", back_populates="asset", foreign_keys="Version.asset_id", cascade="all, delete-orphan")
+    
+    # [修正 2] 最新版本 (單向): 不需 cascade
     latest_version = relationship("Version", foreign_keys=[latest_version_id], post_update=True)
 
-    # [🔥 補上這行] 建立與 Tag 的多對多關聯
+    # [修正 3] 標籤 (多對多): 這裡不用改，依賴 AssetTag 的 ondelete="CASCADE" 即可
     tags = relationship("Tag", secondary="asset_tag", backref="assets")
+    
+    # [修正 4] 元數據 (一對一): 加上 cascade，解決 blank-out PK 錯誤
+    # 注意: 這裡定義了 back_populates="asset_info"，等下 Metadata 那邊也要改
+    metadata_info = relationship("Metadata", uselist=False, back_populates="asset_info", cascade="all, delete-orphan")
+
+    # [修正 5] 留言 (一對多): 加上 cascade
+    comments = relationship("Comment", back_populates="asset", cascade="all, delete-orphan")
 
 # 6. 版本 (Version) [cite: 93]
 class Version(Base):
@@ -81,8 +91,8 @@ class Metadata(Base):
     duration = Column(String(50)) # 若是影片才有
     encoding_format = Column(String(50))
 
-    # Metadata 與 Asset 是 1 對 1 關係
-    asset_info = relationship("Asset", backref=backref("metadata_info", cascade="all, delete-orphan", passive_deletes=True))
+    # 對應 Asset.metadata_info
+    asset_info = relationship("Asset", back_populates="metadata_info")
     
 # 8. 稽核日誌 (Audit Log)
 class AuditLog(Base):
@@ -176,7 +186,8 @@ class Comment(Base):
     target_info = Column(String(255), nullable=True) # 用於標記影片時間軸或圖片區域
 
     user = relationship("User")
-    asset = relationship("Asset")
+    # [修正] 對應 Asset.comments
+    asset = relationship("Asset", back_populates="comments")
     
 # 18. 密碼重設 Token 表 (Password Reset Token) 
 class PasswordResetToken(Base):
