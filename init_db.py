@@ -15,8 +15,7 @@ def init_db():
         # 定義系統的三種角色
         roles = [
             models.Role(role_id=1, role_name="Admin"),
-            models.Role(role_id=2, role_name="Editor"),
-            models.Role(role_id=3, role_name="Viewer"),
+            models.Role(role_id=2, role_name="User"),
         ]
         for r in roles:
             existing = db.query(models.Role).filter_by(role_id=r.role_id).first()
@@ -49,7 +48,9 @@ def init_db():
             models.RolePermission(role_id=1, permission_id=1), # Admin 可以 Upload
             models.RolePermission(role_id=1, permission_id=2), # Admin 可以 View
             models.RolePermission(role_id=1, permission_id=3), # Admin 可以 Delete
-            models.RolePermission(role_id=3, permission_id=2), # Viewer 可以 View
+            models.RolePermission(role_id=2, permission_id=1), # User 可以 Upload
+            models.RolePermission(role_id=2, permission_id=2), # User 可以 View
+            models.RolePermission(role_id=2, permission_id=3), # User 可以 Delete
         ]
 
         for rp in role_permissions:

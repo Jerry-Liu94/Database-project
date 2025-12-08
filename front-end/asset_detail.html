@@ -24,17 +24,16 @@
 
         <div class="header-icons">
             <img src="static/image/add_white.png" alt="Add" class="icon-btn-img" id="add-btn">
-            <img src="static/image/person_white.png" alt="User" class="icon-btn-img">
+            
+            <a href="profile.html">
+                <img src="static/image/person_white.png" alt="User" class="icon-btn-img">
+            </a>
         </div>
     </header>
 
     <div class="detail-container">
         <div class="preview-panel">
             <div class="preview-box"><div class="preview-text">文件預覽</div></div>
-            <div class="preview-controls">
-                <img src="static/image/left_grey.png" alt="Previous" class="nav-arrow">
-                <img src="static/image/right_grey.png" alt="Next" class="nav-arrow">
-            </div>
         </div>
 
         <div class="info-panel">
@@ -180,8 +179,15 @@
                 </div>
                 <div id="file-list-container"></div>
             </div>
-            <div class="modal-buttons"><button class="btn-modal btn-upload" id="upload-btn-action">上傳</button><button class="btn-modal btn-cancel" id="cancel-btn">取消</button></div>
-            <div class="success-message" id="success-msg">上傳成功！AI標籤標記完成</div>
+            <div class="modal-buttons">
+                <button class="btn-modal btn-upload" id="upload-btn-action">上傳</button>
+                <button class="btn-modal btn-cancel" id="cancel-btn">取消</button>
+            </div>
+            
+            <div class="success-message" id="success-msg">
+                <img src="static/image/checkmark_fill_grey.png" alt="Success" class="success-icon-img" style="width: 28px; height: 28px; margin-right: 10px;">
+                上傳成功！AI標籤標記完成
+            </div>
         </div>
     </div>
 

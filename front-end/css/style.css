@@ -9,7 +9,7 @@
     -webkit-tap-highlight-color: transparent; 
 }
 
-/* 關鍵修正：使用 100% 確保填滿，避免移動端或縮放時出現黑邊 */
+/* 確保背景填滿 */
 html, body {
     height: 100%;
     width: 100%;
@@ -46,8 +46,9 @@ header {
 /* --- Main Layout Containers --- */
 .main-container, .detail-container { 
     display: flex; 
-    flex: 1; /* 自動填滿剩餘高度 */
+    flex: 1; 
     width: 100%;
+    height: 100%;
     overflow: hidden; 
 }
 
@@ -79,45 +80,134 @@ aside { width: 260px; background-color: rgba(193, 193, 193, 1); display: flex; f
 .tags-container { display: flex; flex-wrap: wrap; gap: 10px; }
 .tag-pill { background-color: #fff; padding: 6px 16px; border-radius: 20px; font-size: 0.85rem; color: #333; border: 1px solid rgba(142, 142, 142, 1); cursor: pointer; font-weight: 500; box-shadow: 0 2px 4px rgba(0,0,0,0.1); transition: transform 0.1s, box-shadow 0.1s, background-color 0.2s; }
 .tag-pill:hover { transform: translateY(-1px); box-shadow: 0 4px 6px rgba(0,0,0,0.15); }
-.tag-pill:active { transform: translateY(1px); box-shadow: 0 1px 2px rgba(0,0,0,0.1); }
 .tag-pill.active-filter { background-color: #333; color: #fff; border-color: #333; }
 
 /* --- Main Content (Dashboard) --- */
-main { flex: 1; background-color: rgba(7, 35, 125, 1); padding: 30px 40px; overflow-y: auto; overflow-x: hidden; }
-.section-header { color: #fff; font-size: 1.25rem; margin-bottom: 12px; font-weight: 700; letter-spacing: 1px; }
+main { 
+    flex: 1; 
+    background-color: rgba(7, 35, 125, 1); 
+    padding: 30px 40px; 
+    overflow-y: auto; 
+    overflow-x: hidden; 
+}
 
-/* 舊的 Row Layout (保留相容性) */
-.content-row { background-color: rgba(255, 255, 255, 0.25); border-radius: 12px; padding: 20px; margin-bottom: 30px; display: flex; align-items: center; height: 220px; overflow-x: auto; overflow-y: hidden; gap: 20px; scroll-behavior: smooth; transition: opacity 0.3s; }
-.content-row.hidden { display: none; }
-.content-row::-webkit-scrollbar { height: 8px; }
-.content-row::-webkit-scrollbar-track { background: rgba(0, 0, 0, 0.1); border-radius: 10px; margin: 0 10px; }
-.content-row::-webkit-scrollbar-thumb { background-color: rgba(255, 255, 255, 0.4); border-radius: 10px; border: 1px solid rgba(255,255,255,0.1); }
-.content-row::-webkit-scrollbar-thumb:hover { background-color: rgba(255, 255, 255, 0.7); }
+.section-header { 
+    color: #fff; 
+    font-size: 1.5rem; 
+    margin-bottom: 20px; 
+    font-weight: 700; 
+    letter-spacing: 1px; 
+}
 
-/* [新增] Grid Layout (首頁改版用) */
+/* [修改] 網格佈局 (Grid Layout) */
 .assets-grid {
-    /* 若需要背景可加: background-color: rgba(255, 255, 255, 0.1); */
-    padding: 10px 0;
+    background-color: rgba(255, 255, 255, 0.1);
+    border-radius: 16px; 
+    /* 減少 padding，讓卡片有更多空間可以變寬 */
+    padding: 20px; 
+    
     margin-bottom: 30px;
-    display: flex;
-    flex-wrap: wrap; /* 自動換行 */
-    gap: 25px;       /* 間距 */
+    display: grid;
+    /* 強制一行顯示 6 個 */
+    grid-template-columns: repeat(6, 1fr);
+    /* 減少間距，讓卡片有更多空間變寬 */
+    gap: 15px;       
     align-items: flex-start;
     min-height: 200px;
 }
 
-/* --- Card (Dashboard) --- */
-.card { background-color: #fff; width: 150px; height: 150px; border-radius: 16px; padding: 16px; position: relative; display: flex; flex-direction: column; justify-content: flex-start; box-shadow: 0 4px 10px rgba(0,0,0,0.15); flex-shrink: 0; transition: transform 0.2s; cursor: pointer; text-decoration: none; }
-.card:hover { transform: scale(1.03); }
+/* [修改] 卡片樣式 */
+.card { 
+    background-color: #fff; 
+    width: 100%; 
+    height: 300px; /* 稍微加高 */
+    border-radius: 16px; 
+    /* [關鍵] 增加上方 padding，讓愛心有獨立空間，不壓到圖片 */
+    padding: 12px;
+    padding-top: 45px; 
+    
+    position: relative; 
+    display: flex; 
+    flex-direction: column; 
+    justify-content: flex-start; 
+    box-shadow: 0 4px 10px rgba(0,0,0,0.15); 
+    transition: transform 0.2s; 
+    cursor: pointer; 
+    text-decoration: none; 
+}
+
+.card:hover { 
+    transform: translateY(-5px); 
+    box-shadow: 0 8px 20px rgba(0,0,0,0.2); 
+}
+
 .card.hidden { display: none !important; }
 
-/* Dashboard 愛心按鈕 */
-.favorite-btn { position: absolute; top: 10px; right: 10px; width: 20px; height: 20px; cursor: pointer; z-index: 10; transition: transform 0.2s; }
+/* [修改] 愛心按鈕位置 */
+.favorite-btn { 
+    position: absolute; 
+    /* 固定在右上角，位於 padding-top 預留的白底區域 */
+    top: 10px; 
+    right: 12px; 
+    width: 22px; 
+    height: 22px; 
+    cursor: pointer; 
+    z-index: 10; 
+    transition: transform 0.2s; 
+}
 .favorite-btn:hover { transform: scale(1.2); }
 
-.card-title { color: #777; font-size: 1.1rem; font-weight: 600; text-align: center; margin-top: 15px; margin-bottom: auto; }
-.card-tag-display { background-color: #f0f0f0; color: #888; font-size: 0.75rem; padding: 4px 10px; border-radius: 12px; align-self: center; margin-bottom: 8px; font-weight: 500; max-width: 100%; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.card-version { color: #999; align-self: flex-end; font-weight: 700; font-size: 1.2rem; }
+/* 卡片內圖片容器 */
+.card-img-container {
+    width: 100%;
+    height: 160px; 
+    background-color: #f8f8f8;
+    border-radius: 12px;
+    margin-bottom: 12px;
+    overflow: hidden;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.card-img-container img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+}
+
+/* 文字樣式 */
+.card-title { 
+    color: #333; 
+    font-size: 1rem; 
+    font-weight: 700; 
+    margin-bottom: 8px; 
+    white-space: nowrap; 
+    overflow: hidden; 
+    text-overflow: ellipsis; 
+}
+
+.card-tag-display { 
+    background-color: #eee; 
+    color: #666; 
+    font-size: 0.8rem; 
+    padding: 4px 10px; 
+    border-radius: 12px; 
+    align-self: flex-start; 
+    margin-bottom: auto;    
+    max-width: 100%; 
+    white-space: nowrap; 
+    overflow: hidden; 
+    text-overflow: ellipsis; 
+}
+
+.card-version { 
+    color: #999; 
+    align-self: flex-end; 
+    font-weight: 600; 
+    font-size: 0.85rem;
+    margin-top: 5px;
+}
 
 /* --- Detail View Panels --- */
 .preview-panel { flex: 1; background-color: #fff; border-radius: 20px; padding: 30px; display: flex; flex-direction: column; justify-content: center; align-items: center; box-shadow: 0 10px 30px rgba(0,0,0,0.2); position: relative; }
@@ -129,29 +219,10 @@ main { flex: 1; background-color: rgba(7, 35, 125, 1); padding: 30px 40px; overf
 
 .info-panel { width: 400px; background-color: #fff; border-radius: 20px; padding: 40px 35px; display: flex; flex-direction: column; box-shadow: 0 10px 30px rgba(0,0,0,0.2); position: relative; overflow-y: hidden; }
 
-/* [新增] 右上角功能按鈕容器 (詳細頁對齊用) */
-.panel-header-actions {
-    position: absolute;
-    top: 35px;
-    right: 35px;
-    display: flex;
-    align-items: center;
-    gap: 20px; 
-    z-index: 20;
-}
-.list-icon, .detail-heart-btn {
-    position: static; /* 讓 flex 控制位置 */
-    width: 22px;
-    height: auto;
-    object-fit: contain;
-    cursor: pointer;
-    opacity: 0.8;
-    transition: transform 0.2s;
-}
+/* Detail Page Header Icons */
+.panel-header-actions { position: absolute; top: 35px; right: 35px; display: flex; align-items: center; gap: 20px; z-index: 20; }
+.list-icon, .detail-heart-btn { position: static; width: 22px; height: auto; object-fit: contain; cursor: pointer; opacity: 0.8; transition: transform 0.2s; }
 .list-icon:hover, .detail-heart-btn:hover { transform: scale(1.1); opacity: 1; }
-
-/* 原本的絕對定位 (作為備用，若沒用到 .panel-header-actions) */
-/* .list-icon { position: absolute; top: 35px; right: 35px; ... } */
 
 .file-title { color: rgba(7, 35, 125, 1); font-size: 1.5rem; font-weight: 800; text-align: center; margin-bottom: 5px; margin-top: 10px; }
 .file-id { color: #999; font-size: 1rem; text-align: center; margin-bottom: 35px; font-weight: 600; }
@@ -199,7 +270,17 @@ main { flex: 1; background-color: rgba(7, 35, 125, 1); padding: 30px 40px; overf
 .share-modal-box { width: 600px; }
 .restore-modal-box { width: 500px; padding: 50px 40px; text-align: center; align-items: center; }
 
-.close-modal-x { position: absolute; top: 15px; right: 40px; font-size: 1.8rem; color: #333; cursor: pointer; z-index: 10; font-family: sans-serif; line-height: 1; }
+.close-modal-x {
+    position: absolute;
+    top: 15px;
+    right: 40px; 
+    font-size: 1.8rem;
+    color: #333;
+    cursor: pointer;
+    z-index: 10;
+    font-family: sans-serif;
+    line-height: 1;
+}
 
 .modal-buttons { display: flex; justify-content: center; gap: 30px; margin-top: 20px; }
 .btn-action, .btn-modal { padding: 10px 50px; border-radius: 12px; border: none; font-size: 1.1rem; font-weight: 600; cursor: pointer; box-shadow: 0 4px 12px rgba(0,0,0,0.1); transition: all 0.2s cubic-bezier(0.25, 0.8, 0.25, 1); }
@@ -207,27 +288,11 @@ main { flex: 1; background-color: rgba(7, 35, 125, 1); padding: 30px 40px; overf
 .btn-save, .btn-upload { background-color: #D2E3FC; color: #333; }
 .btn-cancel { background-color: #F9E8BD; color: #333; }
 
-/* 成功提示 Toast */
 .success-message { display: none; color: rgba(7, 35, 125, 1); font-size: 1.4rem; font-weight: 700; text-align: center; margin-top: 10px; animation: fadeInOverlay 0.5s ease; }
-.success-toast { 
-    position: absolute; 
-    bottom: 30px; 
-    left: 50%; 
-    transform: translateX(-50%); 
-    background-color: rgba(7, 35, 125, 0.9); 
-    color: white; 
-    padding: 10px 30px; 
-    border-radius: 30px; 
-    font-weight: 600; 
-    display: none; 
-    animation: fadeUp 0.3s ease-out; 
-    z-index: 9999; 
-}
+.success-toast { position: absolute; bottom: 30px; left: 50%; transform: translateX(-50%); background-color: rgba(7, 35, 125, 0.9); color: white; padding: 10px 30px; border-radius: 30px; font-weight: 600; display: none; animation: fadeUp 0.3s ease-out; z-index: 9999; }
 @keyframes fadeUp { from { opacity: 0; transform: translate(-50%, 20px); } to { opacity: 1; transform: translate(-50%, 0); } }
 
-.restore-message { font-size: 1.25rem; font-weight: 700; color: #333; line-height: 1.6; margin-bottom: 30px; }
-
-/* Form Elements */
+/* Other Modal Elements */
 .edit-title { text-align: center; font-size: 1.5rem; font-weight: 800; color: rgba(7, 35, 125, 1); margin-bottom: 25px; margin-top: 20px; }
 .form-group { display: flex; align-items: center; margin-bottom: 20px; }
 .form-label { width: 80px; font-size: 1.1rem; font-weight: 700; color: #333; text-align: right; margin-right: 20px; }
@@ -244,14 +309,14 @@ main { flex: 1; background-color: rgba(7, 35, 125, 1); padding: 30px 40px; overf
 .date-input { min-width: 160px; padding: 7px 20px; color: #333; }
 .date-input::-webkit-calendar-picker-indicator { cursor: pointer; opacity: 0.6; }
 
-/* 拖曳區 */
 .drop-zone { 
     flex: 1; 
+    width: 100%;
     background-color: rgba(235, 235, 235, 1); 
     border: 3px dashed rgba(142, 142, 142, 1); 
     border-radius: 16px; 
     margin-bottom: 10px; 
-    margin-top: 35px; /* 避開 X */
+    margin-top: 35px; 
     min-height: 250px; 
     max-height: 300px;
     display: flex; flex-direction: column; justify-content: center; align-items: center; cursor: pointer; position: relative; overflow: hidden; transition: border-color 0.2s; 
@@ -265,6 +330,7 @@ main { flex: 1; background-color: rgba(7, 35, 125, 1); padding: 30px 40px; overf
 .file-info-left { display: flex; align-items: center; overflow: hidden; }
 .check-icon { width: 24px; height: 24px; object-fit: contain; margin-right: 15px; opacity: 0.8; flex-shrink: 0; }
 .file-name-text { font-size: 1rem; font-weight: 600; color: #666; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 350px; }
+.restore-message { font-size: 1.25rem; font-weight: 700; color: #333; line-height: 1.6; margin-bottom: 30px; }
 
 /* Notification Sidebar */
 .notification-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background-color: rgba(0, 0, 0, 0.3); z-index: 2999; display: none; opacity: 0; transition: opacity 0.3s ease; }
@@ -287,9 +353,7 @@ main { flex: 1; background-color: rgba(7, 35, 125, 1); padding: 30px 40px; overf
 .notify-time { font-size: 0.8rem; color: #999; }
 .unread-dot { width: 8px; height: 8px; background-color: #ff4d4f; border-radius: 50%; position: absolute; top: 25px; right: 20px; }
 
-/* ========================================= */
-/* --- MFA Success Page (登入成功頁面) --- */
-/* ========================================= */
+/* MFA Success */
 body.mfa-body { background-color: #fff; display: flex; flex-direction: column; margin: 0; overflow: hidden; }
 .mfa-header { background-color: rgba(7, 35, 125, 1); height: 160px; width: 100%; display: flex; justify-content: center; align-items: center; flex-shrink: 0; }
 .system-title { color: white; font-size: 2.8rem; font-weight: 800; letter-spacing: 1px; }
@@ -298,8 +362,6 @@ body.mfa-body { background-color: #fff; display: flex; flex-direction: column; m
 .icon-circle { width: 90px; height: 90px; background-color: #fff; border-radius: 50%; display: flex; justify-content: center; align-items: center; margin-bottom: 30px; box-shadow: 0 2px 8px rgba(0,0,0,0.05); position: relative; }
 .success-text { font-size: 1.6rem; font-weight: 700; color: #888; letter-spacing: 1px; }
 .mfa-footer { background-color: rgba(7, 35, 125, 1); height: 100px; width: 100%; flex-shrink: 0; }
-
-/* SVG Animation for Checkmark */
 .check-svg { width: 50px; height: 50px; display: block; animation: stroke 0.6s cubic-bezier(0.65, 0, 0.45, 1) 0.2s forwards; }
 .checkmark-circle { fill: none; stroke-width: 3; stroke: #28a745; stroke-miterlimit: 10; opacity: 0; animation: fadeCircle 0.3s ease-in-out 0.2s forwards; }
 .checkmark-check { transform-origin: 50% 50%; stroke-width: 4; stroke-dasharray: 48; stroke-dashoffset: 48; stroke: #28a745; stroke-linecap: round; stroke-linejoin: round; }

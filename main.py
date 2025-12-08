@@ -58,7 +58,7 @@ origins = [
     "https://redantdam.indiechild.xyz",
     
     # 3. 前端網域
-    "https://www.redantdam.indiechild.xyz", 
+    "https://redant-web.indiechild.xyz", 
 ]
 
 app.add_middleware(
@@ -76,10 +76,13 @@ def read_root():
 # --- MinIO 設定 ---
 # 開發時連 localhost:9000 (透過 SSH 隧道)
 # 部署到 Ubuntu 後，這行通常不用改 (因為也是 localhost:9000) 或改成 minio 容器名
-MINIO_ENDPOINT = os.getenv("MINIO_ENDPOINT", "127.0.0.1:9000")
-MINIO_ACCESS_KEY = os.getenv("MINIO_ACCESS_KEY", "admin")
-MINIO_SECRET_KEY = os.getenv("MINIO_SECRET_KEY", "password123")
-MINIO_BUCKET_NAME = os.getenv("MINIO_BUCKET_NAME", "redant-assets")
+MINIO_ENDPOINT = os.getenv("MINIO_ENDPOINT")
+MINIO_ACCESS_KEY = os.getenv("MINIO_ACCESS_KEY")
+MINIO_SECRET_KEY = os.getenv("MINIO_SECRET_KEY")
+MINIO_BUCKET_NAME = os.getenv("MINIO_BUCKET_NAME")
+
+if not all([MINIO_ENDPOINT, MINIO_ACCESS_KEY, MINIO_SECRET_KEY, MINIO_BUCKET_NAME]):
+    raise ValueError("❌ 錯誤：MinIO 環境變數未設定完全！請檢查 .env 檔案。")   
 
 # 初始化 Client
 minio_client = Minio(
@@ -568,9 +571,15 @@ def read_assets(
     filename: Optional[str] = None,
     file_type: Optional[str] = None,
     tag: Optional[str] = None,
+    current_user: models.User = Depends(get_current_user),
     db: Session = Depends(get_db)
 ):
     query = db.query(models.Asset)
+    
+    
+    # 權限過濾：非 Admin 只能看自己的資產
+    if current_user.role_id != 1:
+        query = query.filter(models.Asset.uploaded_by_user_id == current_user.user_id)
     
     # 搜尋邏輯 (保持不變)
     if filename:
@@ -656,12 +665,12 @@ def create_user(user: schemas.UserCreate, db: Session = Depends(get_db)):
     # 2. 密碼加密 (使用 security.py 的功能)
     hashed_password = security.get_password_hash(user.password)
     
-    # 3. 建立使用者 (預設角色為 3 = Viewer)
-    # 注意：這裡我們寫死 role_id=3，避免一般人註冊變成 Admin
+    # 3. 建立使用者 (預設角色為 2 = user)
+    # 注意：這裡我們寫死 role_id=2，避免一般人註冊變成 Admin
     new_user = models.User(
         email=user.email,
         password_hash=hashed_password,
-        role_id=3,  # 預設 Viewer
+        role_id=2,  # 預設 User
         user_name=user.user_name
     )
     

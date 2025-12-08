@@ -4,3 +4,4 @@ uploads/
 exports/
 *.pyc
 .env
+.DS_Store
