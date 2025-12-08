@@ -55,7 +55,7 @@ class Asset(Base):
     uploaded_by_user_id = Column(BigInteger, ForeignKey("user.user_id"), nullable=False)
 
     uploader = relationship("User", back_populates="assets_uploaded")
-    versions = relationship("Version", back_populates="asset", foreign_keys="Version.asset_id")
+    versions = relationship("Version", back_populates="asset", foreign_keys="Version.asset_id", cascade="all, delete-orphan", passive_deletes=True)
     latest_version = relationship("Version", foreign_keys=[latest_version_id], post_update=True)
 
     # [🔥 補上這行] 建立與 Tag 的多對多關聯
