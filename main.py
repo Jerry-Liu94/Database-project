@@ -635,43 +635,44 @@ def delete_asset(
     # 假設 Role ID 1 是 Admin (根據 init_db.py)
     if asset.uploaded_by_user_id != current_user.user_id and current_user.role_id != 1:
         raise HTTPException(status_code=403, detail="權限不足：您無法刪除此資產")
-
-    # 3. [關鍵] 清理 MinIO 上的實體檔案
-    # 先找出所有版本，把硬碟裡的檔案都刪了
+    
+    # 3. 清理 MinIO 上的實體檔案
     versions = db.query(models.Version).filter(models.Version.asset_id == asset_id).all()
     for v in versions:
         try:
-            # 刪除原檔
             minio_client.remove_object(MINIO_BUCKET_NAME, v.storage_path)
-            
-            # 刪除縮圖 (依據之前的命名規則推算)
+            # 嘗試刪除縮圖
             thumb_path = f"{os.path.splitext(v.storage_path)[0]}_thumb.jpg"
             minio_client.remove_object(MINIO_BUCKET_NAME, thumb_path)
-            
             logger.info(f"🗑️ 已從 MinIO 刪除: {v.storage_path}")
         except Exception as e:
-            # 刪除檔案失敗不應阻擋資料庫刪除，印出錯誤即可
             logger.info(f"⚠️ MinIO 刪除失敗 (可能檔案已不存在): {e}")
 
-    # 4. 刪除資料庫紀錄
+    # 4. 刪除資料庫紀錄 (關鍵修正！)
     try:
-        # 寫入稽核日誌 (在刪除之前記一筆，不然 asset_id 會變成無效外鍵)
-        # 注意：因為 AuditLog.asset_id 是外鍵且設為 SET NULL，所以這裡記 ID 沒問題
+        # [Step A] 先寫入日誌 (因為等一下 asset 就沒了，先記再說)
         new_log = models.AuditLog(
             user_id=current_user.user_id,
-            asset_id=asset_id,
-            action_type="DELETE"
+            asset_id=None, # 資產刪除後 ID 會失效，這裡記 NULL 或記在 action_type 備註裡
+            action_type=f"DELETE_ASSET_{asset_id}" # 把 ID 記在字串裡比較保險
         )
         db.add(new_log)
+
+        # [Step B] 解開循環鎖死 (關鍵！)
+        # 先把 Asset 指向 Version 的那條線剪斷
+        asset.latest_version_id = None
+        db.commit() # 提交變更，讓 Asset 不再依賴 Version
         
-        # 真正刪除 Asset (Cascade 會自動刪除 Version, Metadata 等)
+        # [Step C] 現在可以放心刪除 Asset 了
+        # 因為有設定 ON DELETE CASCADE，Versions, Metadata, Tags 會自動被刪除
         db.delete(asset)
         db.commit()
         
-        return {"message": f"資產 {asset_id} 及其所有版本已成功刪除"}
+        return {"message": f"資產 {asset_id} 已成功刪除"}
 
     except Exception as e:
         db.rollback()
+        logger.error(f"資料庫刪除失敗: {e}", exc_info=True)
         raise HTTPException(status_code=500, detail=f"資料庫刪除失敗: {str(e)}")
 
 # [新增] 註冊新帳號 API (對應 FR-1.1)
