@@ -371,8 +371,9 @@ async def create_asset(  # <--- 注意：這裡要加 async (為了用 await)
         await file.seek(0)
         
         # 3. 串流寫入硬碟
+        contents = await file.read() # 先讀進記憶體 (注意：如果檔案太大可能會爆，但在測試階段先求有)
         with open(temp_file_path, "wb") as buffer:
-            shutil.copyfileobj(file.file, buffer)
+            buffer.write(contents)
         
         # 檢查檔案大小 (如果這裡還是 0，那就是前端傳送的問題)
         file_size = os.path.getsize(temp_file_path)
