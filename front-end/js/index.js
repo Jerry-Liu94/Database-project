@@ -7,7 +7,7 @@ let currentType = 'category';
 let activeTags = new Set();
 let showFavoritesOnly = false;
 
-// --- 初始化：檢查登入 & 載入資料 ---
+// --- 初始化 ---
 document.addEventListener('DOMContentLoaded', () => {
     api.checkLogin(); 
     loadAssets();     
@@ -24,7 +24,12 @@ async function loadAssets() {
         if (!response.ok) throw new Error("讀取資料失敗");
 
         const assets = await response.json();
+        
+        // 1. 渲染中間的資產卡片
         renderApiAssets(assets);
+        
+        // 2. [新增] 渲染側邊欄的 AI 標籤
+        renderSidebarTags(assets);
 
     } catch (error) {
         console.error(error);
@@ -33,6 +38,51 @@ async function loadAssets() {
             window.location.href = "login.html";
         }
     }
+}
+
+// --- [新增] 渲染側邊欄標籤 ---
+function renderSidebarTags(assets) {
+    const container = document.getElementById('sidebar-tags'); // 記得 HTML 要加 id="sidebar-tags"
+    if (!container) return; // 如果找不到容器(例如在別頁)就不執行
+
+    container.innerHTML = ''; // 清空舊標籤
+
+    // 1. 收集所有出現過的標籤 (使用 Set 去除重複)
+    const uniqueTags = new Set();
+    
+    assets.forEach(asset => {
+        if (asset.tags && Array.isArray(asset.tags)) {
+            asset.tags.forEach(tagObj => {
+                // 假設後端回傳結構是 { tag_name: "貓咪", ... }
+                if (tagObj.tag_name) {
+                    uniqueTags.add(tagObj.tag_name);
+                }
+            });
+        }
+    });
+
+    // 2. 如果沒有任何標籤
+    if (uniqueTags.size === 0) {
+        container.innerHTML = '<span style="color:#999; font-size:0.9rem;">無標籤</span>';
+        return;
+    }
+
+    // 3. 產生 HTML
+    uniqueTags.forEach(tagName => {
+        // 檢查此標籤是否在目前篩選名單中 (active-filter)
+        const isActive = activeTags.has(tagName) ? 'active-filter' : '';
+        
+        const pill = document.createElement('span');
+        pill.className = `tag-pill ${isActive}`;
+        pill.innerText = `#${tagName}`;
+        
+        // 綁定點擊事件
+        pill.onclick = function() {
+            window.toggleTag(tagName, this);
+        };
+
+        container.appendChild(pill);
+    });
 }
 
 // [新增] 讀取收藏列表輔助函式
@@ -60,27 +110,30 @@ function renderApiAssets(assets) {
         container.style.display = 'grid';
     }
 
-    // 1. 取得目前已收藏的 ID 列表
     const myFavs = getLocalFavorites();
 
     assets.forEach(asset => {
         const thumb = asset.thumbnail_url || 'static/image/upload_grey.png'; 
         const categoryData = asset.category || "Marketing"; 
-        const tagsData = asset.filename; 
-
-        // 2. 判斷此資產是否在收藏名單中
-        const isFav = myFavs.includes(String(asset.asset_id));
         
-        // 3. 設定愛心圖示與狀態
+        // 產生標籤字串 (給篩選器用)
+        const tagsList = asset.tags ? asset.tags.map(t => t.tag_name).join(',') : "";
+        
+        // 顯示第一個標籤
+        let displayTag = "No Tag";
+        if (asset.tags && asset.tags.length > 0) {
+            displayTag = asset.tags[0].tag_name;
+        }
+
+        const isFav = myFavs.includes(String(asset.asset_id));
         const heartIcon = isFav ? 'static/image/heart_fill_black.png' : 'static/image/heart_black.png';
         const favAttr = isFav ? 'true' : 'false';
         
-        // 4. 設定連結參數 (若已收藏，連結加上 fav=true)
         let detailUrl = `asset_detail.html?id=${asset.asset_id}`;
         if (isFav) detailUrl += `&fav=true`;
 
         const cardHTML = `
-            <a href="${detailUrl}" class="card" data-id="${asset.asset_id}" data-category="${categoryData}" data-tags="${tagsData}" data-favorite="${favAttr}">
+            <a href="${detailUrl}" class="card" data-id="${asset.asset_id}" data-category="${categoryData}" data-tags="${tagsList}" data-favorite="${favAttr}">
                 <img src="${heartIcon}" class="favorite-btn" onclick="toggleFavorite(event, this)">
                 
                 <div class="card-img-container">
@@ -88,7 +141,7 @@ function renderApiAssets(assets) {
                 </div>
 
                 <div class="card-title">${asset.filename}</div>
-                <div class="card-tag-display">#${asset.file_type || 'AI Tag'}</div>
+                <div class="card-tag-display">#${displayTag}</div>
                 <div class="card-version">ID: ${asset.asset_id}</div>
             </a>
         `;
@@ -103,6 +156,7 @@ window.resetFilters = function(element) {
     activeTags.clear();
     showFavoritesOnly = false;
 
+    // 重置所有 active 樣式
     document.querySelectorAll('.menu-item, .submenu-item').forEach(el => el.classList.remove('active-filter'));
     document.querySelectorAll('.tag-pill').forEach(el => el.classList.remove('active-filter'));
     
@@ -134,8 +188,9 @@ window.filterFavorites = function(element) {
     applyFilter();
 }
 
-// 4. 選擇標籤
+// 4. [修改] 選擇標籤 (支援多選切換)
 window.toggleTag = function(tag, element) {
+    // 切換 Set 中的狀態
     if (activeTags.has(tag)) {
         activeTags.delete(tag);
         element.classList.remove('active-filter');
@@ -143,10 +198,14 @@ window.toggleTag = function(tag, element) {
         activeTags.add(tag);
         element.classList.add('active-filter');
     }
+    
+    // 如果有點選標籤，要清除左側「所有資產」或「類別」的 active 狀態，避免混淆
+    // (這部分看需求，通常標籤是附加篩選，這裡暫保留共存)
+    
     applyFilter();
 }
 
-// 5. 愛心切換 (整合 localStorage 與 URL 參數)
+// 5. 愛心切換
 window.toggleFavorite = function(event, btn) {
     event.preventDefault(); 
     event.stopPropagation(); 
@@ -155,40 +214,24 @@ window.toggleFavorite = function(event, btn) {
     const assetId = String(card.getAttribute('data-id')); 
     const isFav = card.getAttribute('data-favorite') === 'true';
     
-    // 處理連結參數
     let currentHref = card.getAttribute('href');
     let url = new URL(currentHref, window.location.origin);
-    
-    // 處理 localStorage
     let myFavs = getLocalFavorites();
 
     if (isFav) {
-        // 取消收藏
         card.setAttribute('data-favorite', 'false');
         btn.src = 'static/image/heart_black.png';
-        
-        // 更新網址參數
         url.searchParams.set('fav', 'false');
-        
-        // 移除 Storage
         myFavs = myFavs.filter(id => id !== assetId);
     } else {
-        // 加入收藏
         card.setAttribute('data-favorite', 'true');
         btn.src = 'static/image/heart_fill_black.png';
-        
-        // 更新網址參數
         url.searchParams.set('fav', 'true');
-        
-        // 加入 Storage
         if (!myFavs.includes(assetId)) myFavs.push(assetId);
     }
 
-    // 寫回 href
     const newPath = url.pathname + url.search;
     card.setAttribute('href', newPath);
-
-    // 寫回 localStorage
     localStorage.setItem('dam_favorites', JSON.stringify(myFavs));
 
     if (showFavoritesOnly) applyFilter();
@@ -200,29 +243,31 @@ function applyFilter() {
 
     allCards.forEach(card => {
         const cardCategory = card.getAttribute('data-category');
-        const cardTags = card.getAttribute('data-tags');
+        // cardTags 現在是一個字串 "tag1,tag2,tag3"
+        const cardTagsStr = card.getAttribute('data-tags') || ""; 
         const isFavorite = card.getAttribute('data-favorite') === 'true';
         let shouldShow = false;
 
+        // 檢查標籤匹配 (只要 activeTags 裡面有一個標籤符合就顯示 => OR 邏輯)
+        // 若要 AND 邏輯需改寫
+        let tagMatch = true;
+        if (activeTags.size > 0) {
+            tagMatch = false;
+            // 檢查卡片的 tags 是否包含 activeTags 中的任意一個
+            for (let tag of activeTags) {
+                if (cardTagsStr.includes(tag)) { 
+                    tagMatch = true; 
+                    break; 
+                }
+            }
+        }
+
         if (showFavoritesOnly) {
-            if (isFavorite) {
-                if (activeTags.size > 0) {
-                    for (let tag of activeTags) {
-                        if (cardTags && cardTags.includes(tag)) { shouldShow = true; break; }
-                    }
-                } else {
-                    shouldShow = true;
-                }
-            }
+            // 收藏模式：必須是收藏 + 標籤符合
+            if (isFavorite && tagMatch) shouldShow = true;
         } else {
+            // 一般模式：類別符合 + 標籤符合
             let categoryMatch = (currentFilter === 'all' || cardCategory === currentFilter);
-            let tagMatch = true;
-            if (activeTags.size > 0) {
-                tagMatch = false;
-                for (let tag of activeTags) {
-                    if (cardTags && cardTags.includes(tag)) { tagMatch = true; break; }
-                }
-            }
             if (categoryMatch && tagMatch) shouldShow = true;
         }
 
@@ -254,110 +299,107 @@ const fileListContainer = document.getElementById('file-list-container');
 const modalButtons = document.querySelector('.modal-buttons');
 const successMsg = document.getElementById('success-msg');
 
-if (addBtn) addBtn.addEventListener('click', () => { modal.style.display = 'flex'; resetFileState(); });
-
-function closeModal() { modal.style.display = 'none'; }
-if(closeX) closeX.addEventListener('click', closeModal);
-if(cancelBtn) cancelBtn.addEventListener('click', closeModal);
-if(modal) modal.addEventListener('click', (e) => { if(e.target === modal) closeModal(); });
-
-if(dropZone) dropZone.addEventListener('click', () => { if(modalButtons.style.display !== 'none') fileInput.click(); });
-if(fileInput) fileInput.addEventListener('change', (e) => { if (e.target.files.length > 0) handleFiles(Array.from(e.target.files)); });
-
-function handleFiles(files) {
-    if (!dropZone.classList.contains('has-file')) {
-        dropZone.classList.add('has-file');
-        emptyState.style.display = 'none';
-        fileListContainer.style.display = 'block';
-    }
-    files.forEach(file => {
-        const item = document.createElement('div');
-        item.className = 'file-list-item';
-        // 預設灰色空心勾勾
-        item.innerHTML = `<div class="file-info-left"><img src="static/image/checkmark_grey.png" class="check-icon status-icon"><span class="file-name-text">${file.name}</span></div>`;
-        fileListContainer.appendChild(item);
+if (addBtn) {
+    addBtn.addEventListener('click', (e) => { 
+        e.preventDefault();
+        e.stopPropagation();
+        modal.style.display = 'flex'; 
+        resetGlobalFileState(); 
     });
-}
+    
+    function closeGlobalModal() { modal.style.display = 'none'; }
+    if(closeX) closeX.addEventListener('click', closeGlobalModal);
+    if(cancelBtn) cancelBtn.addEventListener('click', closeGlobalModal);
+    if(modal) modal.addEventListener('click', (e) => { if(e.target === modal) closeGlobalModal(); });
 
-// 點擊上傳按鈕 (API 上傳 + 換圖示)
-if(uploadBtn) {
-    const newUploadBtn = uploadBtn.cloneNode(true);
-    uploadBtn.parentNode.replaceChild(newUploadBtn, uploadBtn);
+    if(dropZone) dropZone.addEventListener('click', () => { if(modalButtons.style.display !== 'none') fileInput.click(); });
+    if(fileInput) fileInput.addEventListener('change', (e) => { if (e.target.files.length > 0) handleGlobalFiles(Array.from(e.target.files)); });
 
-    newUploadBtn.addEventListener('click', async () => {
-        const files = fileInput.files;
-        if (files.length === 0 && document.querySelectorAll('.file-list-item').length === 0) {
-            alert("請先選擇檔案");
-            return;
+    function handleGlobalFiles(files) {
+        if (!dropZone.classList.contains('has-file')) {
+            dropZone.classList.add('has-file');
+            emptyState.style.display = 'none';
+            fileListContainer.style.display = 'block';
         }
+        files.forEach(file => {
+            const item = document.createElement('div');
+            item.className = 'file-list-item';
+            item.innerHTML = `<div class="file-info-left"><img src="static/image/checkmark_grey.png" class="check-icon status-icon"><span class="file-name-text">${file.name}</span></div>`;
+            fileListContainer.appendChild(item);
+        });
+    }
 
-        newUploadBtn.innerText = "上傳中...";
-        newUploadBtn.disabled = true;
+    if(uploadBtn) {
+        const newUploadBtn = uploadBtn.cloneNode(true);
+        uploadBtn.parentNode.replaceChild(newUploadBtn, uploadBtn);
 
-        try {
-            for (let i = 0; i < files.length; i++) {
-                const formData = new FormData();
-                formData.append('file', files[i]);
-
-                const res = await fetch(`${API_BASE_URL}/assets/`, {
-                    method: 'POST',
-                    headers: api.getHeaders(true),
-                    body: formData
-                });
-
-                if (!res.ok) throw new Error(`檔案 ${files[i].name} 上傳失敗`);
+        newUploadBtn.addEventListener('click', async () => {
+            const files = fileInput.files;
+            if (files.length === 0 && document.querySelectorAll('.file-list-item').length === 0) {
+                alert("請先選擇檔案");
+                return;
             }
 
-            const rows = document.querySelectorAll('.file-list-item');
-            rows.forEach(row => {
-                if (!row.querySelector('.ai-tag')) {
-                    const tagSpan = document.createElement('span'); 
-                    tagSpan.className = 'ai-tag'; 
-                    tagSpan.innerText = 'AI Analysis...'; 
-                    row.appendChild(tagSpan);
+            newUploadBtn.innerText = "上傳中...";
+            newUploadBtn.disabled = true;
+
+            try {
+                for (let i = 0; i < files.length; i++) {
+                    const formData = new FormData();
+                    formData.append('file', files[i]);
+                    await fetch(`${API_BASE_URL}/assets/`, {
+                        method: 'POST',
+                        headers: api.getHeaders(true),
+                        body: formData
+                    });
                 }
-                // 切換為灰色實心勾勾
-                const icon = row.querySelector('.status-icon'); 
-                if (icon) icon.src = 'static/image/checkmark_fill_grey.png';
-            });
 
-            modalButtons.style.display = 'none';
-            if(successMsg) successMsg.style.display = 'flex'; // 顯示含圖示的成功訊息
+                const rows = document.querySelectorAll('.file-list-item');
+                rows.forEach(row => {
+                    if (!row.querySelector('.ai-tag')) {
+                        const tagSpan = document.createElement('span'); tagSpan.className = 'ai-tag'; tagSpan.innerText = 'AI TAG[1]'; row.appendChild(tagSpan);
+                    }
+                    const icon = row.querySelector('.status-icon'); if (icon) icon.src = 'static/image/checkmark_fill_grey.png';
+                });
+                
+                if(modalButtons) modalButtons.style.display = 'none';
+                if(successMsg) successMsg.style.display = 'flex';
+                
+                setTimeout(() => { 
+                    closeGlobalModal(); 
+                    location.reload(); // 上傳後重整頁面以顯示新標籤
+                }, 1500);
 
-            setTimeout(() => {
-                location.reload(); 
-            }, 1500);
+            } catch (error) {
+                alert("上傳錯誤: " + error.message);
+                newUploadBtn.innerText = "上傳";
+                newUploadBtn.disabled = false;
+            }
+        });
+    }
 
-        } catch (error) {
-            console.error(error);
-            alert("上傳錯誤: " + error.message);
-            newUploadBtn.innerText = "上傳";
-            newUploadBtn.disabled = false;
-        }
-    });
+    function resetGlobalFileState() {
+        dropZone.classList.remove('has-file'); emptyState.style.display = 'flex'; fileListContainer.style.display = 'none'; fileListContainer.innerHTML = ''; fileInput.value = '';
+        if(modalButtons) modalButtons.style.display = 'flex'; 
+        if(successMsg) successMsg.style.display = 'none';
+        const btn = document.querySelector('.btn-upload'); 
+        if(btn) { btn.innerText = "上傳"; btn.disabled = false; }
+    }
+    
+    if(dropZone) {
+        dropZone.addEventListener('dragover', (e) => { e.preventDefault(); dropZone.style.borderColor = '#666'; });
+        dropZone.addEventListener('dragleave', (e) => { e.preventDefault(); dropZone.style.borderColor = 'rgba(142, 142, 142, 1)'; });
+        dropZone.addEventListener('drop', (e) => { 
+            e.preventDefault(); 
+            dropZone.style.borderColor = 'rgba(142, 142, 142, 1)'; 
+            if (e.dataTransfer.files.length > 0 && (!modalButtons || modalButtons.style.display !== 'none')) {
+                handleGlobalFiles(Array.from(e.dataTransfer.files));
+            }
+        });
+    }
 }
 
-function resetFileState() {
-    dropZone.classList.remove('has-file'); emptyState.style.display = 'flex'; fileListContainer.style.display = 'none'; fileListContainer.innerHTML = ''; fileInput.value = '';
-    modalButtons.style.display = 'flex'; successMsg.style.display = 'none';
-    const btn = document.querySelector('.btn-upload'); // 重新選取新按鈕
-    if(btn) { btn.innerText = "上傳"; btn.disabled = false; }
-}
-
-if(dropZone) {
-    dropZone.addEventListener('dragover', (e) => { e.preventDefault(); dropZone.style.borderColor = '#666'; });
-    dropZone.addEventListener('dragleave', (e) => { e.preventDefault(); dropZone.style.borderColor = 'rgba(142, 142, 142, 1)'; });
-    dropZone.addEventListener('drop', (e) => { 
-        e.preventDefault(); 
-        dropZone.style.borderColor = 'rgba(142, 142, 142, 1)'; 
-        if (e.dataTransfer.files.length > 0) {
-            fileInput.files = e.dataTransfer.files;
-            if(modalButtons.style.display !== 'none') handleFiles(Array.from(e.dataTransfer.files));
-        }
-    });
-}
-
-// --- Notification Sidebar ---
+// Notification Sidebar
 const notifyBtn = document.getElementById('notification-btn');
 const notifySidebar = document.getElementById('notify-sidebar');
 const notifyOverlay = document.getElementById('notify-overlay');
