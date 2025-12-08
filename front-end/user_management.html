@@ -37,19 +37,22 @@
                             <th>ID</th>
                             <th>姓名</th>
                             <th>角色</th>
-                            <th>Email</th> <th>操作</th>
+                            <th>狀態</th>
+                            <th>最近登入</th>
+                            <th>操作</th>
                         </tr>
                     </thead>
-
-                    <div class="form-group">
-                        <label for="new-user-role">角色</label>
-                        <div class="role-select-wrapper">
-                            <select id="new-user-role" class="role-select-modal">
-                                <option value="1">Admin</option>
-                                <option value="2" selected>User</option>
+                    <tbody>
+                        <tr class="data-row">
+                            <td data-label="ID">#1234</td>
+                            <td data-label="姓名">LSS</td>
+                            <td data-label="角色">
+                                <select class="role-select">
+                                    <option value="admin">Admin</option>
+                                    <option value="editor" selected>Editor</option>
+                                    <option value="viewer">Viewer</option>
                                 </select>
-                        </div>
-                    </div>
+                            </td>
                             <td data-label="狀態">Active</td>
                             <td data-label="最近登入">2025-11-26</td>
                             <td data-label="操作"> <div class="action-icons"> <button class="action-icon delete-btn" title="刪除使用者">
