@@ -593,3 +593,45 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     });
 });
+
+// --- [新增] 分享連結複製功能 ---
+document.addEventListener('DOMContentLoaded', () => {
+    const copyLinkBtn = document.getElementById('copy-link-btn');
+    const shareUrlText = document.getElementById('share-url-text');
+
+    if (copyLinkBtn && shareUrlText) {
+        copyLinkBtn.addEventListener('click', () => {
+            const textToCopy = shareUrlText.innerText;
+
+            // 使用現代瀏覽器的剪貼簿 API
+            if (navigator.clipboard && navigator.clipboard.writeText) {
+                navigator.clipboard.writeText(textToCopy)
+                    .then(() => {
+                        showToast("連結已複製！"); // 呼叫現有的提示框
+                    })
+                    .catch(err => {
+                        console.error('複製失敗:', err);
+                        fallbackCopyText(textToCopy); // 失敗時嘗試備用方案
+                    });
+            } else {
+                fallbackCopyText(textToCopy); // 不支援 API 時使用備用方案
+            }
+        });
+    }
+
+    // 備用複製方案 (相容性較好)
+    function fallbackCopyText(text) {
+        try {
+            const textarea = document.createElement("textarea");
+            textarea.value = text;
+            textarea.style.position = "fixed"; // 避免頁面滾動
+            document.body.appendChild(textarea);
+            textarea.select();
+            document.execCommand("copy"); // 執行複製
+            document.body.removeChild(textarea);
+            showToast("連結已複製！");
+        } catch (err) {
+            alert("複製失敗，請手動複製");
+        }
+    }
+});
