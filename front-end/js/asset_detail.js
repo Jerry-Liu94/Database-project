@@ -24,6 +24,42 @@ document.addEventListener('DOMContentLoaded', () => {
             opt.onclick = downloadAsset;
         }
     });
+
+    // --- [新增] 刪除資產邏輯 ---
+    const deleteBtn = document.getElementById('delete-btn');
+    if (deleteBtn) {
+        deleteBtn.addEventListener('click', async () => {
+            // 1.再一次確認 (防止手殘)
+            const isConfirmed = confirm("⚠️ 危險操作\n\n您確定要永久刪除此資產嗎？\n刪除後無法復原！");
+            
+            if (!isConfirmed) return;
+
+            try {
+                // 為了避免使用者以為沒反應，可以改變一下按鈕文字
+                deleteBtn.innerText = "刪除中...";
+                
+                // 2. 呼叫後端 API
+                const response = await fetch(`${API_BASE_URL}/assets/${assetId}`, {
+                    method: 'DELETE',
+                    headers: api.getHeaders() // 記得帶 Token，因為後端會檢查權限
+                });
+
+                if (!response.ok) {
+                    const err = await response.json();
+                    throw new Error(err.detail || "刪除失敗");
+                }
+
+                // 3. 成功後跳轉
+                alert("🗑️ 資產已成功刪除！");
+                window.location.href = "index.html";
+
+            } catch (error) {
+                console.error(error);
+                alert("錯誤: " + error.message);
+                deleteBtn.innerText = "刪除"; // 恢復文字
+            }
+        });
+    }
 });
 
 // --- API: 載入資產詳情 ---
