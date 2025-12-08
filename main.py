@@ -31,6 +31,7 @@ from fastapi.responses import HTMLResponse
 from minio import Minio # <--- 新增
 from minio.error import S3Error
 import logging
+import subprocess
 
 APP_BASE_URL = os.getenv("DOMAIN_HOST", "http://localhost:8000")
 
@@ -339,9 +340,16 @@ def require_permission(resource: str, action: str):
         return current_user
     return permission_checker
 
-# [新增] 上傳新版本 API (對應 FR-4.2) 使用 response_model=List[schemas.AssetOut] 來豐富資料
 
-# [修正版] 上傳資產 API (防記憶體爆炸 + MinIO 優化)
+沒問題！這是 create_asset (單檔上傳) 的完整修正版程式碼。
+
+我已經幫你加入了 影片截圖 (FFmpeg) 的邏輯，並且優化了 MinIO 上傳 與 暫存檔清理 的流程。
+
+請將 main.py 裡的 create_asset 函式 整段替換 成下面這段：
+
+Python
+
+# [修正版] API: 單檔上傳 (支援圖片與影片截圖)
 @app.post("/assets/", response_model=schemas.AssetOut)
 def create_asset(
     background_tasks: BackgroundTasks,
@@ -354,57 +362,73 @@ def create_asset(
     if not os.path.exists(upload_dir):
         os.makedirs(upload_dir)
 
-    # 2. 產生暫存檔路徑 (避免檔名衝突)
+    # 2. 產生檔名與路徑
     timestamp = datetime.now().strftime("%Y%m%d%H%M%S")
     safe_filename = f"{timestamp}_{secrets.token_hex(4)}_{file.filename}"
     temp_file_path = f"{upload_dir}/{safe_filename}"
     
-    # MinIO 物件名稱
+    # MinIO 物件名稱與縮圖路徑
     object_name = f"{timestamp}_{file.filename}"
+    thumb_location = f"{os.path.splitext(temp_file_path)[0]}_thumb.jpg"
     thumb_object_name = f"{os.path.splitext(object_name)[0]}_thumb.jpg"
 
+    has_thumbnail = False
     resolution = "Unknown"
     file_size = 0
 
     try:
-        # 3. [關鍵修正] 串流寫入硬碟 (不會吃光 RAM)
+        # 3. [關鍵修正] 串流寫入硬碟 (防止記憶體爆炸)
         with open(temp_file_path, "wb") as buffer:
             shutil.copyfileobj(file.file, buffer)
         
-        # 取得檔案大小
         file_size = os.path.getsize(temp_file_path)
 
-        # 4. 圖片處理 (讀取硬碟中的檔案，而非 RAM)
+        # 4. 處理縮圖 (支援圖片與影片)
         if file.content_type and file.content_type.startswith("image/"):
+            # === A. 圖片處理 ===
             try:
                 with Image.open(temp_file_path) as img:
-                    # A. 讀取解析度
                     resolution = f"{img.size[0]}x{img.size[1]}"
-                    
-                    # B. 製作縮圖 (不改動原圖，另存縮圖)
                     img_copy = img.copy()
                     img_copy.thumbnail((300, 300))
                     if img_copy.mode in ("RGBA", "P"):
                         img_copy = img_copy.convert("RGB")
-                    
-                    # 縮圖寫入記憶體 (縮圖很小，放 RAM 沒關係)
-                    thumb_io = io.BytesIO()
-                    img_copy.save(thumb_io, "JPEG")
-                    thumb_io.seek(0)
-                    thumb_size = thumb_io.getbuffer().nbytes
-
-                    # 上傳縮圖
-                    minio_client.put_object(
-                        MINIO_BUCKET_NAME,
-                        thumb_object_name,
-                        thumb_io,
-                        thumb_size,
-                        content_type="image/jpeg"
-                    )
+                    img_copy.save(thumb_location, "JPEG")
+                    has_thumbnail = True
             except Exception as e:
-                logger.info(f"⚠️ 圖片處理失敗 (可能是非標準格式): {e}")
+                logger.info(f"⚠️ 圖片縮圖失敗: {e}")
 
-        # 5. [關鍵修正] 使用 fput_object 上傳實體檔案 (效率更高)
+        elif file.content_type and file.content_type.startswith("video/"):
+            # === B. 影片處理 (使用 FFmpeg 截圖) ===
+            try:
+                subprocess.call([
+                    'ffmpeg', '-y', 
+                    '-i', temp_file_path, 
+                    '-ss', '00:00:01.000', # 截取第 1 秒
+                    '-vframes', '1',
+                    '-vf', 'scale=300:-1', # 寬度 300，高度自動
+                    thumb_location
+                ], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+                
+                if os.path.exists(thumb_location):
+                    has_thumbnail = True
+            except Exception as e:
+                logger.info(f"⚠️ 影片截圖失敗: {e}")
+
+        # 5. 上傳到 MinIO
+        # A. 上傳縮圖
+        if has_thumbnail:
+            try:
+                minio_client.fput_object(
+                    MINIO_BUCKET_NAME,
+                    thumb_object_name,
+                    thumb_location,
+                    content_type="image/jpeg"
+                )
+            except Exception as e:
+                logger.error(f"縮圖上傳 MinIO 失敗: {e}")
+
+        # B. 上傳原檔
         minio_client.fput_object(
             MINIO_BUCKET_NAME,
             object_name,
@@ -450,7 +474,7 @@ def create_asset(
         db.commit()
         db.refresh(new_asset)
         
-        # 觸發 AI 分析
+        # 觸發 AI 分析 (僅限圖片)
         if new_asset.file_type and new_asset.file_type.startswith("image/"):
             background_tasks.add_task(generate_ai_tags, new_asset.asset_id, object_name)
 
@@ -466,9 +490,11 @@ def create_asset(
         raise HTTPException(status_code=500, detail=f"伺服器錯誤: {str(e)}")
     
     finally:
-        # 7. [重要] 清理暫存檔
+        # 7. [重要] 清理暫存檔 (原檔 + 縮圖)
         if os.path.exists(temp_file_path):
             os.remove(temp_file_path)
+        if has_thumbnail and os.path.exists(thumb_location):
+            os.remove(thumb_location)
     
 # ==========================================
 # 2. 下載資產 API (MinIO 版)
@@ -1204,48 +1230,97 @@ def export_audit_logs(
     
  
     
-# [新增] API: 批次上傳 (FR-2.2)
-# 允許一次上傳多個檔案，並回傳成功建立的資產列表
+# [修正版] API: 批次上傳 (FR-2.2)
 @app.post("/assets/batch", response_model=List[schemas.AssetOut])
 def create_batch_assets(
-    files: List[UploadFile] = File(...), # 注意這裡變成 List 了
+    background_tasks: BackgroundTasks, # 加入這個以便處理 AI 分析
+    files: List[UploadFile] = File(...), 
     current_user: models.User = Depends(require_permission("asset", "upload")),
     db: Session = Depends(get_db)
 ):
     success_assets = []
-    upload_dir = "uploads"
+    
+    # 1. 準備暫存資料夾
+    upload_dir = "temp_uploads"
     if not os.path.exists(upload_dir):
         os.makedirs(upload_dir)
 
     for file in files:
+        # 每個檔案都獨立處理，避免一個失敗全部失敗
+        temp_file_path = ""
+        thumb_location = ""
         try:
-            # 1. 準備檔名
+            # 2. 產生檔名與路徑
             timestamp = datetime.now().strftime("%Y%m%d%H%M%S")
-            # 為了避免檔名衝突，加個隨機亂數或是利用 index，這裡簡單用 timestamp
-            # 實務上可能需要更精細的命名，但在這裡只要不重複就好
             safe_filename = f"{timestamp}_{secrets.token_hex(4)}_{file.filename}" 
-            file_location = f"{upload_dir}/{safe_filename}"
+            temp_file_path = f"{upload_dir}/{safe_filename}"
             
-            # 2. 寫入硬碟
-            with open(file_location, "wb") as buffer:
-                shutil.copyfileobj(file.file, buffer)
-            file_size = os.path.getsize(file_location)
-
-            # 3. 處理縮圖與解析度 (複製之前的邏輯)
+            # MinIO 物件名稱
+            object_name = f"{timestamp}_{file.filename}"
+            thumb_location = f"{os.path.splitext(temp_file_path)[0]}_thumb.jpg"
+            thumb_object_name = f"{os.path.splitext(object_name)[0]}_thumb.jpg"
+            
+            has_thumbnail = False
             resolution = "Unknown"
-            thumb_location = f"{os.path.splitext(file_location)[0]}_thumb.jpg"
+
+            # 3. 寫入暫存檔
+            with open(temp_file_path, "wb") as buffer:
+                shutil.copyfileobj(file.file, buffer)
+            
+            file_size = os.path.getsize(temp_file_path)
+
+            # 4. 處理縮圖 (支援圖片與影片)
             if file.content_type and file.content_type.startswith("image/"):
                 try:
-                    with Image.open(file_location) as img:
+                    with Image.open(temp_file_path) as img:
                         resolution = f"{img.size[0]}x{img.size[1]}"
-                        img.thumbnail((300, 300))
-                        if img.mode in ("RGBA", "P"):
-                            img = img.convert("RGB")
-                        img.save(thumb_location, "JPEG")
-                except Exception:
-                    pass
+                        img_copy = img.copy()
+                        img_copy.thumbnail((300, 300))
+                        if img_copy.mode in ("RGBA", "P"):
+                            img_copy = img_copy.convert("RGB")
+                        img_copy.save(thumb_location, "JPEG")
+                        has_thumbnail = True
+                except Exception as e:
+                    logger.info(f"⚠️ 圖片縮圖失敗: {e}")
 
-            # 4. 寫入資料庫 (Asset -> Version -> Metadata)
+            elif file.content_type and file.content_type.startswith("video/"):
+                # 影片截圖 (需安裝 ffmpeg)
+                try:
+                    subprocess.call([
+                        'ffmpeg', '-y', 
+                        '-i', temp_file_path, 
+                        '-ss', '00:00:01.000', 
+                        '-vframes', '1',
+                        '-vf', 'scale=300:-1', 
+                        thumb_location
+                    ], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+                    if os.path.exists(thumb_location):
+                        has_thumbnail = True
+                except Exception as e:
+                    logger.info(f"⚠️ 影片截圖失敗: {e}")
+
+            # 5. 上傳到 MinIO
+            # A. 上傳縮圖
+            if has_thumbnail:
+                try:
+                    minio_client.fput_object(
+                        MINIO_BUCKET_NAME,
+                        thumb_object_name,
+                        thumb_location,
+                        content_type="image/jpeg"
+                    )
+                except Exception as e:
+                    logger.error(f"縮圖上傳 MinIO 失敗: {e}")
+
+            # B. 上傳原檔
+            minio_client.fput_object(
+                MINIO_BUCKET_NAME,
+                object_name,
+                temp_file_path,
+                content_type=file.content_type
+            )
+
+            # 6. 寫入資料庫
             new_asset = models.Asset(
                 filename=file.filename,
                 file_type=file.content_type,
@@ -1258,7 +1333,7 @@ def create_batch_assets(
             new_version = models.Version(
                 asset_id=new_asset.asset_id,
                 version_number=1,
-                storage_path=file_location
+                storage_path=object_name 
             )
             db.add(new_version)
             db.flush()
@@ -1273,7 +1348,7 @@ def create_batch_assets(
 
             new_asset.latest_version_id = new_version.version_id
             
-            # 5. 寫入日誌 (Batch Upload)
+            # 7. 寫入日誌
             new_log = models.AuditLog(
                 user_id=current_user.user_id,
                 asset_id=new_asset.asset_id,
@@ -1284,9 +1359,13 @@ def create_batch_assets(
             db.commit()
             db.refresh(new_asset)
             
-            # 補上連結屬性以便 Schema 讀取
-            new_asset.download_url = f"http://127.0.0.1:8000/assets/{new_asset.asset_id}/download"
-            new_asset.thumbnail_url = f"http://127.0.0.1:8000/assets/{new_asset.asset_id}/thumbnail"
+            # 觸發 AI 分析 (如果是圖片)
+            if new_asset.file_type and new_asset.file_type.startswith("image/"):
+                background_tasks.add_task(generate_ai_tags, new_asset.asset_id, object_name)
+            
+            # 8. 補上連結屬性 (使用正確的 APP_BASE_URL)
+            new_asset.download_url = f"{APP_BASE_URL}/assets/{new_asset.asset_id}/download"
+            new_asset.thumbnail_url = f"{APP_BASE_URL}/assets/{new_asset.asset_id}/thumbnail"
             
             success_assets.append(new_asset)
 
@@ -1295,6 +1374,15 @@ def create_batch_assets(
             logger.error(f"File {file.filename} failed: {e}", exc_info=True)
             db.rollback()
             continue
+        
+        finally:
+            # 9. 清理暫存檔
+            if os.path.exists(temp_file_path):
+                os.remove(temp_file_path)
+            if has_thumbnail and os.path.exists(thumb_location):
+                os.remove(thumb_location)
+                
+    return success_assets
 
 # [新增] API: 建立新分類 (FR-3.2)
 @app.post("/categories/", response_model=schemas.CategoryOut)
