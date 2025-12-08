@@ -2,7 +2,7 @@
 from fastapi.security import OAuth2PasswordBearer, OAuth2PasswordRequestForm, APIKeyHeader
 from fastapi.responses import FileResponse, StreamingResponse
 from fastapi.middleware.cors import CORSMiddleware
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, joinedload
 from typing import List, Optional
 from database import get_db, SessionLocal
 import models
@@ -590,9 +590,8 @@ def read_assets(
     current_user: models.User = Depends(get_current_user),
     db: Session = Depends(get_db)
 ):
-    query = db.query(models.Asset)
-    
-    
+    query = db.query(models.Asset).options(joinedload(models.Asset.tags))
+
     # 權限過濾：非 Admin 只能看自己的資產
     if current_user.role_id != 1:
         query = query.filter(models.Asset.uploaded_by_user_id == current_user.user_id)
