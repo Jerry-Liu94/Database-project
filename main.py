@@ -552,9 +552,15 @@ def read_assets(
     filename: Optional[str] = None,
     file_type: Optional[str] = None,
     tag: Optional[str] = None,
+    current_user: models.User = Depends(get_current_user),
     db: Session = Depends(get_db)
 ):
     query = db.query(models.Asset)
+    
+    
+    # 權限過濾：非 Admin 只能看自己的資產
+    if current_user.role_id != 1:
+        query = query.filter(models.Asset.uploaded_by_user_id == current_user.user_id)
     
     # 搜尋邏輯 (保持不變)
     if filename:
