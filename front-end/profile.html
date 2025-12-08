@@ -61,8 +61,7 @@
                 
                 <div class="profile-card profile-info-card">
                     <div class="avatar-area">
-                        <img src="static/image/user_avatar.png" alt="Avatar" class="avatar-img">
-                        <div class="edit-btn">編輯</div>
+                        <img src="static/image/lss.JPG" alt="Avatar" class="avatar-img">
                     </div>
                     <div class="user-name">LSS</div>
                     <div class="user-email">lss@gmail.com</div>
@@ -70,12 +69,12 @@
                     <div class="info-group-box">
                         <div class="info-group">
                             <div class="info-label">職稱</div>
-                            <div class="info-value info-editable">
-                                <span id="user-title"></span> <img src="static/image/edit_black.png" alt="Edit Title" class="edit-icon info-edit-icon">
+                            <div class="info-value">
+                                <span id="user-title"></span> 
                             </div>
                         </div>
                         <div class="info-group">
-                            <div class="info-label">權限</div>
+                            <div class="info-label">權限等級</div>
                             <div class="info-value info-editable">
                                 <span id="user-role"></span>
                             </div>
@@ -102,6 +101,9 @@
                         </div>
                         <div class="setting-row">
                             <div class="setting-label">多因素認證</div>
+                            
+                            <span class="mfa-tooltip">已啟用</span> 
+
                             <div class="toggle-switch">
                                 <input type="checkbox" id="mfa-toggle">
                                 <label for="mfa-toggle" class="slider"></label>
@@ -147,19 +149,80 @@
     </div>
 
     <script>
+        // ----------------------------------------------------
+        // 💡 模擬 API 資料 - 供後端串接人員替換
+        // ----------------------------------------------------
+        
+        // 1. 模擬用戶角色資訊
         const userData = {
-            title: "鴨王", 
-            role: "Admin"          
+            role_name: "admin", 
+            role_id: 1          
         };
 
+        // 2. 模擬多因素認證狀態
+        const initialMfaStatus = false; 
+
+        // ----------------------------------------------------
+        // 載入函數 - 填充職稱和權限
+        // ----------------------------------------------------
         function loadUserProfile() {
-            document.getElementById('user-title').textContent = userData.title || '未設定';
-            document.getElementById('user-role').textContent = userData.role || 'N/A';
+            const titleElement = document.getElementById('user-title');
+            const roleElement = document.getElementById('user-role');
+            
+            if (titleElement) {
+                // 填充職稱 (使用 role_name)
+                titleElement.textContent = userData.role_name || '未設定職稱'; 
+            }
+
+            if (roleElement) {
+                // 填充權限 (使用 role_id)
+                roleElement.textContent = userData.role_id.toString() || 'N/A';
+            }
+        }
+        
+        // ----------------------------------------------------
+        // MFA 鎖定邏輯
+        // ----------------------------------------------------
+        const mfaToggle = document.getElementById('mfa-toggle');
+
+        function lockMfaToggle(toggleElement) {
+            toggleElement.checked = true;
+            toggleElement.disabled = true; 
+            
+            const switchContainer = toggleElement.closest('.toggle-switch');
+            
+            // 1. 設置 CSS 鎖定類別
+            switchContainer.classList.add('is-locked');
+            
+            // 2. 💡 修正：將 title 屬性設置在整個 setting-row 上
+            switchContainer.classList.add('is-locked');
         }
 
-        document.addEventListener('DOMContentLoaded', loadUserProfile);
-    </script>
+        function setupMfaToggle() {
+            if (!mfaToggle) return;
 
-    <script type="module" src="js/profile.js"></script>
+            mfaToggle.checked = initialMfaStatus;
+            
+            if (initialMfaStatus) {
+                lockMfaToggle(mfaToggle);
+            } else {
+                mfaToggle.addEventListener('change', function() {
+                    if (this.checked) {
+                        lockMfaToggle(this);
+                        alert("多因素認證已成功啟用並鎖定！");
+                    }
+                });
+            }
+        }
+
+        // ----------------------------------------------------
+        // 頁面載入執行點：在同一個 DOMContentLoaded 內呼叫所有函數
+        // ----------------------------------------------------
+        document.addEventListener('DOMContentLoaded', () => {
+            loadUserProfile();
+            setupMfaToggle();
+        });
+        
+    </script>
 </body>
 </html>

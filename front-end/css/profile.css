@@ -75,21 +75,23 @@
 /* 頭像區域 (.avatar-area) 樣式 */
 .avatar-area {
     position: relative;
-    width: 150px; 
-    height: 150px; 
+    /* 調整容器尺寸：從 150px 減小到 130px */
+    width: 130px; 
+    height: 130px; 
     margin: 0 auto 30px;
     border-radius: 50%;
     display: flex;
     justify-content: center;
     align-items: center;
-    background-color: #EFEFEF;
+    background-color: #EFEFEF; /* 這是灰底的顏色 */
     flex-shrink: 0;
 }
 
 /* 頭像圖片 (.avatar-img) 樣式 */
 .avatar-img {
-    width: 100px;
-    height: 100px;
+    /* 調整圖片尺寸：從 100px 增加到 120px */
+    width: 120px;
+    height: 120px;
     border-radius: 50%;
     object-fit: cover; /* 確保圖片不變形 */
 }
@@ -319,4 +321,65 @@ input:checked + .slider {
 /* 開啟狀態的滑塊圓點位置 */
 input:checked + .slider:before {
     transform: translateX(26px);
+}
+
+/* 鎖定狀態下，滑塊容器的樣式調整 */
+.toggle-switch.is-locked {
+    opacity: 0.8; /* 稍微降低透明度 */
+    cursor: not-allowed; /* 游標變為禁止符號 */
+}
+
+/* 鎖定狀態下，滑塊容器的樣式調整 */
+.toggle-switch.is-locked {
+    opacity: 0.8; 
+    /* ❌ 移除這行的 cursor: not-allowed; */
+}
+
+/* 鎖定狀態下，滑塊軌道的顏色 */
+.toggle-switch.is-locked .slider {
+    background-color: #A5D6A7; 
+    cursor: default; /* 💡 將禁止游標改為標準游標 */
+}
+
+/* 由於 input 被 disabled，我們讓整個 row 顯示鎖定游標 */
+.setting-row:has(.toggle-switch.is-locked) {
+    cursor: default; /* 💡 將禁止游標改為標準游標 */
+}
+
+/* --- MFA 懸浮提示框樣式 (新增) --- */
+
+/* 確保容器定位的參考點是 setting-row (這需要在 HTML 中的 setting-row 設置 position: relative) */
+.setting-row {
+    position: relative; 
+    /* ... 確保您的 setting-row 樣式已經包含這行 */
+}
+
+/* 提示框本身 (初始隱藏) */
+.mfa-tooltip {
+    position: absolute;
+    right: 0; /* 讓它位於設定行右側 */
+    top: 50%;
+    transform: translateY(-50%) translateX(-65px); /* 調整位置，使其位於開關上方或旁邊 */
+    
+    background-color: #333;
+    color: white;
+    padding: 4px 8px;
+    border-radius: 4px;
+    font-size: 0.85rem;
+    font-weight: 400;
+    white-space: nowrap; 
+    
+    /* 預設隱藏 */
+    opacity: 0;
+    visibility: hidden;
+    /* 💡 修正點 1: 設置過渡時間為 0s，實現「立即」顯示 */
+    transition: opacity 0s; 
+    z-index: 10;
+    pointer-events: none; /* 確保提示框不會擋住底層元素 */
+}
+
+/* 💡 新增：鎖定狀態下，滑鼠懸停時顯示提示框 */
+.setting-row:has(.toggle-switch.is-locked):hover .mfa-tooltip {
+    opacity: 1;
+    visibility: visible;
 }
