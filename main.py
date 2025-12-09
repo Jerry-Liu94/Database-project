@@ -1,4 +1,4 @@
-﻿from fastapi import FastAPI, Depends, HTTPException, File, UploadFile, Security, BackgroundTasks, Form
+﻿from fastapi import FastAPI, Depends, HTTPException, File, UploadFile, Security, BackgroundTasks, Form, Request, Response, Body
 from fastapi.security import OAuth2PasswordBearer, OAuth2PasswordRequestForm, APIKeyHeader
 from fastapi.responses import FileResponse, StreamingResponse
 from fastapi.middleware.cors import CORSMiddleware
@@ -68,6 +68,9 @@ app.add_middleware(
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
+    # 新增 expose_headers，讓前端能讀到 Accept-Ranges/Content-Range/Content-Length/Content-Type
+    expose_headers=["Accept-Ranges", "Content-Range", "Content-Length", "Content-Type", "ETag"],
+    max_age=600
 )
 
 @app.get("/")
@@ -92,6 +95,8 @@ minio_client = Minio(
     secret_key=MINIO_SECRET_KEY,
     secure=False 
 )
+
+USE_PRESIGNED = os.getenv("MINIO_USE_PRESIGNED", "false").lower() in ("1", "true", "yes")
 # 定義 API Token 應該放在 Header 的哪個欄位 (例如 X-API-TOKEN)
 api_key_header = APIKeyHeader(name="X-API-TOKEN", auto_error=False)
 
@@ -342,7 +347,7 @@ def require_permission(resource: str, action: str):
 
 # [修正版] API: 單檔上傳 (支援圖片與影片截圖)
 @app.post("/assets/", response_model=schemas.AssetOut)
-def create_asset(
+async def create_asset(  # <--- 注意：這裡要加 async (為了用 await)
     background_tasks: BackgroundTasks,
     file: UploadFile = File(...),
     current_user: models.User = Depends(require_permission("asset", "upload")),
@@ -358,7 +363,6 @@ def create_asset(
     safe_filename = f"{timestamp}_{secrets.token_hex(4)}_{file.filename}"
     temp_file_path = f"{upload_dir}/{safe_filename}"
     
-    # MinIO 物件名稱與縮圖路徑
     object_name = f"{timestamp}_{file.filename}"
     thumb_location = f"{os.path.splitext(temp_file_path)[0]}_thumb.jpg"
     thumb_object_name = f"{os.path.splitext(object_name)[0]}_thumb.jpg"
@@ -368,58 +372,56 @@ def create_asset(
     file_size = 0
 
     try:
-        # 3. [關鍵修正] 串流寫入硬碟 (防止記憶體爆炸)
-        with open(temp_file_path, "wb") as buffer:
-            shutil.copyfileobj(file.file, buffer)
+        # [關鍵修正] 強制歸零指標，確保從頭讀取
+        await file.seek(0)
         
+        # 3. 串流寫入硬碟
+        contents = await file.read() # 先讀進記憶體 (注意：如果檔案太大可能會爆，但在測試階段先求有)
+        with open(temp_file_path, "wb") as buffer:
+            buffer.write(contents)
+        
+        # 檢查檔案大小 (如果這裡還是 0，那就是前端傳送的問題)
         file_size = os.path.getsize(temp_file_path)
+        if file_size == 0:
+            raise HTTPException(status_code=400, detail="上傳的檔案是空的 (0 bytes)")
 
-        # 4. 處理縮圖 (支援圖片與影片)
+        # 4. 處理縮圖 (圖片/影片)
         if file.content_type and file.content_type.startswith("image/"):
-            # === A. 圖片處理 ===
             try:
                 with Image.open(temp_file_path) as img:
                     resolution = f"{img.size[0]}x{img.size[1]}"
-                    img_copy = img.copy()
-                    img_copy.thumbnail((300, 300))
-                    if img_copy.mode in ("RGBA", "P"):
-                        img_copy = img_copy.convert("RGB")
-                    img_copy.save(thumb_location, "JPEG")
+                    img.thumbnail((300, 300))
+                    if img.mode in ("RGBA", "P"):
+                        img = img.convert("RGB")
+                    img.save(thumb_location, "JPEG")
                     has_thumbnail = True
-            except Exception as e:
-                logger.info(f"⚠️ 圖片縮圖失敗: {e}")
+            except Exception:
+                pass
 
         elif file.content_type and file.content_type.startswith("video/"):
-            # === B. 影片處理 (使用 FFmpeg 截圖) ===
+            # 影片截圖 (需安裝 ffmpeg)
             try:
                 subprocess.call([
                     'ffmpeg', '-y', 
                     '-i', temp_file_path, 
-                    '-ss', '00:00:01.000', # 截取第 1 秒
+                    '-ss', '00:00:01.000', 
                     '-vframes', '1',
-                    '-vf', 'scale=300:-1', # 寬度 300，高度自動
+                    '-vf', 'scale=300:-1', 
                     thumb_location
                 ], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
                 
                 if os.path.exists(thumb_location):
                     has_thumbnail = True
             except Exception as e:
-                logger.info(f"⚠️ 影片截圖失敗: {e}")
+                logger.info(f"影片截圖失敗 (請確認伺服器已安裝 ffmpeg): {e}")
 
         # 5. 上傳到 MinIO
-        # A. 上傳縮圖
         if has_thumbnail:
             try:
-                minio_client.fput_object(
-                    MINIO_BUCKET_NAME,
-                    thumb_object_name,
-                    thumb_location,
-                    content_type="image/jpeg"
-                )
-            except Exception as e:
-                logger.error(f"縮圖上傳 MinIO 失敗: {e}")
+                minio_client.fput_object(MINIO_BUCKET_NAME, thumb_object_name, thumb_location, content_type="image/jpeg")
+            except:
+                pass
 
-        # B. 上傳原檔
         minio_client.fput_object(
             MINIO_BUCKET_NAME,
             object_name,
@@ -465,11 +467,9 @@ def create_asset(
         db.commit()
         db.refresh(new_asset)
         
-        # 觸發 AI 分析 (僅限圖片)
         if new_asset.file_type and new_asset.file_type.startswith("image/"):
             background_tasks.add_task(generate_ai_tags, new_asset.asset_id, object_name)
 
-        # 補上連結屬性
         new_asset.download_url = f"{APP_BASE_URL}/assets/{new_asset.asset_id}/download"
         new_asset.thumbnail_url = f"{APP_BASE_URL}/assets/{new_asset.asset_id}/thumbnail"
 
@@ -477,11 +477,10 @@ def create_asset(
 
     except Exception as e:
         db.rollback()
-        logger.error(f"❌ 上傳失敗: {e}", exc_info=True)
+        logger.error(f"上傳失敗: {e}", exc_info=True)
         raise HTTPException(status_code=500, detail=f"伺服器錯誤: {str(e)}")
     
     finally:
-        # 7. [重要] 清理暫存檔 (原檔 + 縮圖)
         if os.path.exists(temp_file_path):
             os.remove(temp_file_path)
         if has_thumbnail and os.path.exists(thumb_location):
@@ -493,39 +492,74 @@ def create_asset(
 @app.get("/assets/{asset_id}/download")
 def download_asset(
     asset_id: int, 
-    # [🔥 補上這行] 強制檢查登入
-    current_user: models.User = Depends(get_current_user), 
+    request: Request, # 接收請求資訊 (為了拿 Range Header)
+    current_user: models.User = Depends(get_current_user),
     db: Session = Depends(get_db)
 ):
     # 1. 查詢資產與最新版本
     asset = db.query(models.Asset).filter(models.Asset.asset_id == asset_id).first()
-    
-    if not asset:
-        raise HTTPException(status_code=404, detail="找不到該資產")
-        
-    if not asset.latest_version_id:
-        raise HTTPException(status_code=404, detail="該資產沒有任何版本檔案")
+    if not asset or not asset.latest_version:
+        raise HTTPException(status_code=404, detail="檔案不存在")
+    version = asset.latest_version
 
-    version = db.query(models.Version).filter(models.Version.version_id == asset.latest_version_id).first()
-    
-    if not version:
-        raise HTTPException(status_code=404, detail="版本紀錄遺失")
-
-    # 2. 從 MinIO 讀取檔案流
+    # 2. 先取得檔案大小（stat_object）
     try:
-        # get_object 回傳的是一個 stream，可以直接丟給 StreamingResponse
-        data = minio_client.get_object(MINIO_BUCKET_NAME, version.storage_path)
-        
-        # 3. 回傳串流 (不佔用伺服器記憶體)
-        return StreamingResponse(
-            data, 
-            media_type=asset.file_type or "application/octet-stream",
-            headers={"Content-Disposition": f"inline; filename={asset.filename}"}
-        )
-    except S3Error:
-        raise HTTPException(status_code=404, detail="MinIO 中找不到此檔案 (可能已被刪除)")
+        stat = minio_client.stat_object(MINIO_BUCKET_NAME, version.storage_path)
+        file_size = stat.size
     except Exception as e:
-        raise HTTPException(status_code=500, detail=f"MinIO 讀取失敗: {e}")
+        logger.error(f"MinIO stat_object error: {e}")
+        raise HTTPException(status_code=500, detail="Storage error")
+
+    content_type = asset.file_type or "application/octet-stream"
+
+    # 3. 解析 Range Header
+    range_header = request.headers.get("Range")
+    try:
+        if range_header:
+            # 解析 bytes=START-END
+            if not range_header.startswith("bytes="):
+                raise HTTPException(status_code=416, detail="Invalid Range")
+            ranges = range_header.replace("bytes=", "").split("-")
+            start = int(ranges[0]) if ranges[0] else 0
+            end = int(ranges[1]) if (len(ranges) > 1 and ranges[1]) else file_size - 1
+            if start >= file_size:
+                raise HTTPException(status_code=416, detail="Range Not Satisfiable")
+            if end >= file_size:
+                end = file_size - 1
+            length = end - start + 1
+
+            obj = minio_client.get_object(
+                MINIO_BUCKET_NAME,
+                version.storage_path,
+                offset=start,
+                length=length
+            )
+
+            headers = {
+                "Content-Range": f"bytes {start}-{end}/{file_size}",
+                "Accept-Ranges": "bytes",
+                "Content-Length": str(length),
+                "Content-Disposition": f'inline; filename="{asset.filename}"',
+                "Content-Type": content_type
+            }
+            return StreamingResponse(obj, status_code=206, headers=headers, media_type=content_type)
+
+        # 4. 沒有 Range -> 回傳整個物件（同樣提供 Accept-Ranges 與 Content-Length）
+        obj = minio_client.get_object(MINIO_BUCKET_NAME, version.storage_path)
+        headers = {
+            "Accept-Ranges": "bytes",
+            "Content-Length": str(file_size),
+            "Content-Disposition": f'inline; filename="{asset.filename}"',
+            "Content-Type": content_type
+        }
+        return StreamingResponse(obj, headers=headers, media_type=content_type)
+
+    except HTTPException:
+        # 把已知的 HTTPException 直接 re-raise
+        raise
+    except Exception as e:
+        logger.error(f"下載/流式傳輸失敗: {e}", exc_info=True)
+        raise HTTPException(status_code=500, detail=f"讀取失敗: {e}")
     
 @app.post("/token", response_model=schemas.Token)
 def login_for_access_token(
@@ -612,8 +646,13 @@ def read_assets(
     current_user: models.User = Depends(get_current_user),
     db: Session = Depends(get_db)
 ):
-    query = db.query(models.Asset).options(joinedload(models.Asset.tags))
-
+    
+    query = db.query(models.Asset).options(
+        joinedload(models.Asset.tags),
+        joinedload(models.Asset.metadata_info),
+        joinedload(models.Asset.latest_version),
+        joinedload(models.Asset.uploader)
+    )
     # 權限過濾：非 Admin 只能看自己的資產
     if current_user.role_id != 1:
         query = query.filter(models.Asset.uploaded_by_user_id == current_user.user_id)
@@ -635,6 +674,42 @@ def read_assets(
         asset.thumbnail_url = f"{APP_BASE_URL}/assets/{asset.asset_id}/thumbnail"
         
     return assets
+
+@app.get("/assets/{asset_id}", response_model=schemas.AssetOut)
+def read_asset(
+    asset_id: int,
+    current_user: models.User = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    asset = db.query(models.Asset).options(
+        joinedload(models.Asset.tags),
+        joinedload(models.Asset.metadata_info),
+        joinedload(models.Asset.latest_version),
+        joinedload(models.Asset.uploader)
+    ).filter(models.Asset.asset_id == asset_id).first()
+    if not asset:
+        raise HTTPException(status_code=404, detail="找不到資產")
+    # 權限：Admin 或 上傳者
+    if current_user.role_id != 1 and asset.uploaded_by_user_id != current_user.user_id:
+        raise HTTPException(status_code=403, detail="權限不足")
+    asset.download_url = f"{APP_BASE_URL}/assets/{asset.asset_id}/download"
+    asset.thumbnail_url = f"{APP_BASE_URL}/assets/{asset.asset_id}/thumbnail"
+ 
+    try:
+        if asset.latest_version and USE_PRESIGNED:
+            presigned = minio_client.presigned_get_object(
+                MINIO_BUCKET_NAME,
+                asset.latest_version.storage_path,
+                expires=timedelta(hours=1)
+            )
+            asset.presigned_url = presigned
+        else:
+            asset.presigned_url = None
+    except Exception as e:
+        logger.info(f"取得 presigned URL 失敗或被停用: {e}")
+        asset.presigned_url = None
+         
+    return asset
 
 # [新增] 刪除資產 API (同步刪除 DB 與 MinIO 檔案)
 @app.delete("/assets/{asset_id}")
@@ -720,7 +795,7 @@ def create_user(user: schemas.UserCreate, db: Session = Depends(get_db)):
 
 # main.py (加在最下面)
 
-# [新增] 上傳新版本 API (對應 FR-4.2 資產版本控管)
+# ---------- 更新 create_asset_version：暫存 -> 上傳 MinIO -> 產生縮圖（圖片或影片） ----------
 @app.post("/assets/{asset_id}/versions", response_model=schemas.AssetOut)
 def create_asset_version(
     asset_id: int,
@@ -734,70 +809,169 @@ def create_asset_version(
     if not asset:
         raise HTTPException(status_code=404, detail="找不到該資產")
 
-    # 2. 處理檔案儲存 (模擬 NoSQL/S3)
-    upload_dir = "uploads"
+    # 2. 處理檔案儲存 
+    upload_dir = "temp_uploads"
+    os.makedirs(upload_dir, exist_ok=True)
+    
     # 為了不覆蓋舊檔，我們在檔名加上時間戳記
     timestamp = datetime.now().strftime("%Y%m%d%H%M%S")
-    file_location = f"{upload_dir}/{timestamp}_vNew_{file.filename}"
+    safe_object_name = f"{timestamp}_v{secrets.token_hex(4)}_{file.filename}"
+    temp_path = os.path.join(upload_dir, safe_object_name)
     
-    with open(file_location, "wb") as buffer:
-        shutil.copyfileobj(file.file, buffer)
+    # 1. 儲存到暫存檔
+    try:
+        with open(temp_path, "wb") as buffer:
+            shutil.copyfileobj(file.file, buffer)
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"寫入暫存檔失敗: {e}")
     
     # 取得新檔案大小
-    file_size = os.path.getsize(file_location)
+    file_size = os.path.getsize(temp_path)
     
-    # (選擇性) 解析新圖片解析度 (複製之前的 Pillow 邏輯)
     resolution = "Unknown"
+    has_thumbnail = False
+    thumb_object_name = f"{os.path.splitext(safe_object_name)[0]}_thumb.jpg"
+    temp_thumb_path = os.path.join(upload_dir, f"thumb_{secrets.token_hex(4)}.jpg")
+    
+    # 圖片縮圖
     if file.content_type and file.content_type.startswith("image/"):
         try:
-            with Image.open(file_location) as img:
+            with Image.open(temp_path) as img:
                 resolution = f"{img.size[0]}x{img.size[1]}"
+                img_copy = img.copy()
+                img_copy.thumbnail((300, 300))
+                if img_copy.mode in ("RGBA", "P"):
+                    img_copy = img_copy.convert("RGB")
+                img_copy.save(temp_thumb_path, "JPEG")
+                has_thumbnail = True
+        except Exception as e:
+            logger.info(f"圖片縮圖失敗: {e}")
+
+        # 3. 如果是影片，用 ffmpeg 擷取第一秒做縮圖（需要 ffmpeg 安裝）
+    elif file.content_type and file.content_type.startswith("video/"):
+        try:
+            # 嘗試用 ffmpeg 抽圖
+            cmd = [
+                "ffmpeg", "-y",
+                "-i", temp_path,
+                "-ss", "00:00:01.000",
+                "-vframes", "1",
+                "-vf", "scale=300:-1",
+                temp_thumb_path
+            ]
+            subprocess.run(cmd, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, check=True)
+            if os.path.exists(temp_thumb_path):
+                has_thumbnail = True
+        except Exception as e:
+            logger.info(f"影片擷取縮圖失敗（請確認 ffmpeg 安裝）: {e}")
+
+        # 嘗試解析影片解析度（若 ffprobe 可用也可以更準確）
+        try:
+            # 使用 Pillow 讀取截圖得到解析度，若截圖存在
+            if os.path.exists(temp_thumb_path):
+                with Image.open(temp_thumb_path) as timg:
+                    resolution = f"{timg.size[0]}x{timg.size[1]}"
         except Exception:
             pass
 
+    # 4. 上傳原始檔到 MinIO
     try:
-        # 3. 計算新版號 (找出目前最新版號 + 1)
-        # 如果 latest_version 是 None (理論上不該發生)，就從 0 開始
+        minio_client.fput_object(
+            MINIO_BUCKET_NAME,
+            safe_object_name,
+            temp_path,
+            content_type=file.content_type or "application/octet-stream"
+        )
+    except Exception as e:
+        # 上傳失敗，清理並回報
+        if os.path.exists(temp_path):
+            os.remove(temp_path)
+        raise HTTPException(status_code=500, detail=f"上傳 MinIO 失敗: {e}")
+
+    # 5. 上傳縮圖（若有）
+    if has_thumbnail and os.path.exists(temp_thumb_path):
+        try:
+            minio_client.fput_object(
+                MINIO_BUCKET_NAME,
+                thumb_object_name,
+                temp_thumb_path,
+                content_type="image/jpeg"
+            )
+        except Exception as e:
+            logger.warning(f"縮圖上傳失敗: {e}")
+            
+    # 6. 資料庫：建立新版本與更新 metadata
+    try:
         current_version_num = asset.latest_version.version_number if asset.latest_version else 0
         new_version_num = current_version_num + 1
 
-        # 4. 建立新 Version 記錄
         new_version = models.Version(
             asset_id=asset.asset_id,
             version_number=new_version_num,
-            storage_path=file_location
+            storage_path=safe_object_name  # 存 MinIO Key
         )
         db.add(new_version)
-        db.flush() # 先執行以取得 new_version.version_id
+        db.flush()
 
-        # 5. [關鍵] 更新 Asset 的 latest_version_id 指向新版本
         asset.latest_version_id = new_version.version_id
-        
-        # 6. 更新 Metadata (因為 Metadata 是跟著 Asset 的最新狀態)
+
+        # 更新或建立 metadata_info
         if asset.metadata_info:
-             asset.metadata_info.filesize = file_size
-             asset.metadata_info.resolution = resolution
-             asset.metadata_info.encoding_format = file.content_type.split("/")[-1] if file.content_type else "bin"
-        
-        # 7. 寫入稽核日誌 (Audit Log)
-        new_log = models.AuditLog(
+            asset.metadata_info.filesize = file_size
+            asset.metadata_info.resolution = resolution
+            asset.metadata_info.encoding_format = file.content_type.split("/")[-1] if file.content_type else "bin"
+        else:
+            new_meta = models.Metadata(
+                asset_id=asset.asset_id,
+                filesize=file_size,
+                resolution=resolution,
+                encoding_format=file.content_type.split("/")[-1] if file.content_type else "bin"
+            )
+            db.add(new_meta)
+
+        # 寫入稽核日誌
+        db.add(models.AuditLog(
             user_id=current_user.user_id,
             asset_id=asset.asset_id,
-            action_type=f"UPDATE_VERSION_v{new_version_num}" # 記錄變成了 v2, v3...
-        )
-        db.add(new_log)
+            action_type=f"UPDATE_VERSION_v{new_version_num}"
+        ))
 
         db.commit()
         db.refresh(asset)
+
+        # 補上連結屬性
+        asset.download_url = f"{APP_BASE_URL}/assets/{asset.asset_id}/download"
+        asset.thumbnail_url = f"{APP_BASE_URL}/assets/{asset.asset_id}/thumbnail"
+
+        # 產生 presigned URL（供前端直接播放/下載）
+        try:
+            asset.presigned_url = minio_client.presigned_get_object(
+                MINIO_BUCKET_NAME,
+                safe_object_name,
+                expires=timedelta(hours=1)
+            )
+        except Exception:
+            asset.presigned_url = None
+
         return asset
 
     except Exception as e:
         db.rollback()
-        # 出錯時記得刪除剛剛存的實體檔案，避免變成垃圾
-        if os.path.exists(file_location):
-            os.remove(file_location)
-        raise HTTPException(status_code=500, detail=f"版本更新失敗: {str(e)}")
-    
+        # 回滾時清理剛上傳到 MinIO 的檔案（盡量）
+        try:
+            minio_client.remove_object(MINIO_BUCKET_NAME, safe_object_name)
+            if has_thumbnail:
+                minio_client.remove_object(MINIO_BUCKET_NAME, thumb_object_name)
+        except:
+            pass
+        raise HTTPException(status_code=500, detail=f"版本更新失敗: {e}")
+    finally:
+        # 清理暫存檔
+        if os.path.exists(temp_path):
+            os.remove(temp_path)
+        if os.path.exists(temp_thumb_path):
+            os.remove(temp_thumb_path)
+  
 # [新增] API 1: 產生分享連結 (FR-5.2)
 @app.post("/assets/{asset_id}/share", response_model=schemas.ShareLinkOut)
 def create_share_link(
@@ -1219,7 +1393,60 @@ def export_audit_logs(
         headers={"Content-Disposition": f"attachment; filename={filename}"}
     )
     
- 
+@app.post("/admin/users/", response_model=schemas.UserOut)
+def admin_create_user(
+    user: schemas.AdminUserCreate,
+    current_user: models.User = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    # 僅 Admin
+    if current_user.role_id != 1:
+        raise HTTPException(status_code=403, detail="僅限管理員")
+
+    # 僅允許 1 或 2
+    if user.role_id not in (1, 2):
+        raise HTTPException(status_code=400, detail="role_id 僅能為 1 或 2")
+
+    # Email 不得重複
+    existing = db.query(models.User).filter(models.User.email == user.email).first()
+    if existing:
+        raise HTTPException(status_code=400, detail="Email 已被註冊")
+
+    hashed_pwd = security.get_password_hash(user.password)
+    new_user = models.User(
+        email=user.email,
+        user_name=user.user_name,
+        password_hash=hashed_pwd,
+        role_id=user.role_id
+    )
+    db.add(new_user)
+    db.commit()
+    db.refresh(new_user)
+    return new_user
+
+
+@app.patch("/admin/users/{user_id}/role", response_model=schemas.UserOut)
+def admin_update_user_role(
+    user_id: int,
+    payload: schemas.RoleUpdate,
+    current_user: models.User = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    # 僅 Admin
+    if current_user.role_id != 1:
+        raise HTTPException(status_code=403, detail="僅限管理員")
+
+    if payload.role_id not in (1, 2):
+        raise HTTPException(status_code=400, detail="role_id 僅能為 1 或 2")
+
+    user = db.query(models.User).filter(models.User.user_id == user_id).first()
+    if not user:
+        raise HTTPException(status_code=404, detail="使用者不存在")
+
+    user.role_id = payload.role_id
+    db.commit()
+    db.refresh(user)
+    return user
     
 # [修正版] API: 批次上傳 (FR-2.2)
 @app.post("/assets/batch", response_model=List[schemas.AssetOut])

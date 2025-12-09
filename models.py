@@ -198,4 +198,3 @@ class PasswordResetToken(Base):
     expires_at = Column(TIMESTAMP, nullable=False)
 
     user = relationship("User")
-    

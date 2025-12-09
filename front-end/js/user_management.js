@@ -89,7 +89,9 @@ function renderUserTable(users) {
                     throw new Error(result.detail || "更新失敗");
                 }
 
-                alert("✅ " + result.message);
+                const roleText = parseInt(newRoleId) === 1 ? "Admin" : "User";
+
+                alert(`✅ 角色已更新為 ${roleText}`);
 
             } catch (error) {
                 alert("❌ 錯誤: " + error.message);

@@ -4,16 +4,17 @@
 export const API_BASE_URL = "https://redantdam.indiechild.xyz"; 
 
 export const api = {
-    // 取得 Header (自動帶 Token)
-    getHeaders(isFileUpload = false) {
+    // 只有在非 GET 且非檔案上傳時才加 Content-Type，避免預檢 (preflight)
+    getHeaders(isFileUpload = false, method = 'GET') {
         const token = localStorage.getItem('redant_token');
         const headers = {};
         if (token) headers['Authorization'] = `Bearer ${token}`;
-        if (!isFileUpload) headers['Content-Type'] = 'application/json';
+        if (!isFileUpload && method && method.toUpperCase() !== 'GET') {
+            headers['Content-Type'] = 'application/json';
+        }
         return headers;
     },
 
-    // 檢查是否登入
     checkLogin() {
         const token = localStorage.getItem('redant_token');
         if (!token) {
