@@ -248,6 +248,25 @@
     cursor: default;
 }
 
+.audit-table thead th:nth-child(1), /* 操作者 (User Name) */
+.audit-table tbody td:nth-child(1) {
+    width: 20%; 
+}
+
+.audit-table thead th:nth-child(2), /* 動作 (Action Type) */
+.audit-table tbody td:nth-child(2) {
+    width: 30%; 
+}
+
+.audit-table thead th:nth-child(3), /* 時間 (Timestamp) */
+.audit-table tbody td:nth-child(3) {
+    width: 35%; 
+}
+
+.audit-table thead th:nth-child(4), /* User ID (可當作隱藏或小型欄位) */
+.audit-table tbody td:nth-child(4) {
+    width: 15%; 
+}
 
 /* --- 分頁列 (Pagination Bar) 樣式 --- */
 .pagination-bar {
