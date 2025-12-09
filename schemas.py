@@ -47,6 +47,8 @@ class AssetOut(BaseModel):
     latest_version: Optional[VersionOut] = None
     uploader: Optional[UserOut] = None
 
+    versions: List[VersionOut] = []
+
     tags: List["TagOut"] = []
     metadata_info: Optional[MetadataOut] = None
 

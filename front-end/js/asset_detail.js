@@ -180,46 +180,52 @@ function updatePreview(asset, specificVersionNum) {
     const mime = asset.file_type || '';
     let targetUrl = '';
 
+    // 1. 強制由前端建構 URL，不依賴後端回傳的 download_url (避免 localhost/127.0.0.1 混亂)
+    // 格式: http://127.0.0.1:8000/assets/{id}/download
+    let baseUrl = `${API_BASE_URL}/assets/${asset.asset_id}/download`;
+
+    // 2. 判斷是否要指定版本
     if (specificVersionNum) {
-        // [情況 A] 指定特定版本 -> 使用 version_number 參數
-        targetUrl = `${API_BASE_URL}/assets/${asset.asset_id}/download?version_number=${specificVersionNum}`;
+        // 指定版本: ?version_number=1
+        targetUrl = `${baseUrl}?version_number=${specificVersionNum}`;
     } else {
-        // [情況 B] 顯示最新版本 (預設)
-        // 優先順序：有效的 Presigned URL > Download URL > Thumbnail
-        if (asset.presigned_url && !isLikelyMinioUrl(asset.presigned_url)) {
-            targetUrl = asset.presigned_url;
-        } else if (asset.download_url) {
-            targetUrl = asset.download_url;
-        } else {
-            targetUrl = asset.thumbnail_url;
-        }
+        // 最新版本: 直接呼叫 download API，讓後端自己抓 latest
+        // 注意：這裡我們不使用 presigned_url，因為它可能有內網 Docker 網域問題
+        // 統一走後端 Proxy 下載最穩
+        targetUrl = baseUrl;
     }
 
-    // 只要是連回我們後端的 API，都要補上 Token
-    if (targetUrl && (targetUrl.includes('/download') || specificVersionNum)) {
-        targetUrl = appendTokenToUrl(targetUrl);
-    }
+    // 3. [關鍵] 補上 Token
+    // 呼叫 appendTokenToUrl 來確保 ?token=... 有被加上去
+    targetUrl = appendTokenToUrl(targetUrl);
+    
+    // Debug: 你可以在 Console 看到它最後試著連去哪裡
+    console.log("Loading Preview URL:", targetUrl);
 
     if (!targetUrl) {
         previewBox.innerHTML = `<div class="preview-text">無預覽</div>`;
         return;
     }
 
-    // 開始渲染 DOM
+    // 4. 渲染 DOM
     if (mime.startsWith('video/')) {
         const video = document.createElement('video');
         video.controls = true;
         video.playsInline = true;
-        video.style.maxWidth = '100%';
+        // 設定樣式
+        video.style.width = '100%';
+        video.style.height = '100%';
         video.style.maxHeight = '600px';
-        video.style.borderRadius = '8px';
+        video.style.objectFit = 'contain'; 
+        video.style.backgroundColor = '#000'; // 影片背景黑底比較好看
 
         const source = document.createElement('source');
         source.src = targetUrl;
         source.type = mime;
         video.appendChild(source);
+        
         previewBox.appendChild(video);
-        video.load(); // 確保切換 src 後重新載入
+        video.load(); // 確保重新載入
 
     } else if (mime.startsWith('image/')) {
         const img = document.createElement('img');
@@ -228,15 +234,26 @@ function updatePreview(asset, specificVersionNum) {
         img.style.maxWidth = '100%';
         img.style.maxHeight = '600px';
         img.style.objectFit = 'contain';
-        img.onerror = function() { this.src='static/image/upload_grey.png'; };
+        
+        // 錯誤處理：如果還是讀不到，顯示預設圖
+        img.onerror = function() { 
+            console.error("圖片載入失敗:", this.src);
+            this.style.objectFit = "none"; // 讓 icon 不要被拉伸
+            this.src='static/image/upload_grey.png'; 
+        };
         previewBox.appendChild(img);
 
     } else {
-        // 其他檔案
+        // 其他檔案顯示下載按鈕
         const btn = document.createElement('a');
         btn.href = targetUrl;
-        btn.innerText = specificVersionNum ? `下載此版本 (v${specificVersionNum})` : '下載檔案';
+        btn.innerHTML = `<div style="display:flex; flex-direction:column; align-items:center;">
+                            <img src="static/image/upload_grey.png" style="width:64px; margin-bottom:10px;">
+                            <span>${specificVersionNum ? `下載 v${specificVersionNum}` : '下載檔案'}</span>
+                         </div>`;
         btn.className = 'btn-action btn-save';
+        btn.style.height = 'auto'; // 讓按鈕高度自動
+        btn.style.padding = '20px';
         btn.setAttribute('download', asset.filename || 'download');
         previewBox.appendChild(btn);
     }
