@@ -1,5 +1,5 @@
 /* js/asset_detail.js
-   完整修正版：使用 version_number 進行版本切換與下載
+   完整修正版：解決瀏覽器快取問題 (Cache Busting)
 */
 import { API_BASE_URL, api } from './config.js';
 
@@ -23,7 +23,8 @@ document.addEventListener('DOMContentLoaded', () => {
 // --- API: 載入單一資產詳情 ---
 async function loadAssetDetail() {
     try {
-        const response = await fetch(`${API_BASE_URL}/assets/${assetId}`, {
+        // 這裡也可以加個時間戳記，避免 metadata 被快取
+        const response = await fetch(`${API_BASE_URL}/assets/${assetId}?_t=${new Date().getTime()}`, {
             method: 'GET',
             headers: api.getHeaders(false, 'GET')
         });
@@ -40,17 +41,6 @@ async function loadAssetDetail() {
     } catch (error) {
         console.error(error);
         alert("載入失敗: " + error.message);
-    }
-}
-
-// --- Helper: 判斷 URL 是否很可能指向內網 MinIO ---
-function isLikelyMinioUrl(url) {
-    if (!url) return false;
-    try {
-        const u = new URL(url);
-        return (u.port && (u.port === "9000" || u.port === "9001")) || u.hostname.includes("minio");
-    } catch (e) {
-        return false;
     }
 }
 
@@ -101,7 +91,7 @@ function renderDetail(asset) {
         tagsDisplay.innerText = tagText;
     }
 
-    // 2. 渲染版本列表 (使用 version_number)
+    // 2. 渲染版本列表
     renderVersionList(asset);
 
     // 3. 初始預覽 (傳入 null 代表顯示最新版)
@@ -114,7 +104,7 @@ function renderDetail(asset) {
     }
 }
 
-// --- [關鍵修改] 渲染版本列表 ---
+// --- 渲染版本列表 ---
 function renderVersionList(asset) {
     const listContainer = document.getElementById('version-scroll-list');
     if (!listContainer) return;
@@ -126,7 +116,6 @@ function renderVersionList(asset) {
     versions.sort((a, b) => b.version_number - a.version_number);
 
     if (versions.length === 0) {
-        // 若無版本資料，顯示預設按鈕
         const defaultDiv = document.createElement('div');
         defaultDiv.className = 'version-btn active';
         defaultDiv.innerHTML = `<span>最新</span><span>Current</span>`;
@@ -134,16 +123,14 @@ function renderVersionList(asset) {
         return;
     }
 
-    // 找出目前最新版的號碼 (通常是排序後的第一個，或從 asset.latest_version 拿)
+    // 找出目前最新版的號碼
     const latestVerNum = asset.latest_version ? asset.latest_version.version_number : versions[0].version_number;
 
     versions.forEach(ver => {
         const btn = document.createElement('div');
-        // 判斷是否為最新版
         const isLatest = (ver.version_number === latestVerNum);
         btn.className = `version-btn ${isLatest ? 'active' : 'inactive'}`;
         
-        // 顯示日期
         const dateStr = ver.created_at ? new Date(ver.created_at).toLocaleDateString() : 'Unknown';
 
         btn.innerHTML = `
@@ -153,7 +140,7 @@ function renderVersionList(asset) {
 
         // 點擊切換事件
         btn.onclick = () => {
-            // 1. UI 狀態切換
+            // UI 狀態切換
             document.querySelectorAll('.version-btn').forEach(b => {
                 b.classList.remove('active');
                 b.classList.add('inactive');
@@ -161,9 +148,7 @@ function renderVersionList(asset) {
             btn.classList.remove('inactive');
             btn.classList.add('active');
 
-            // 2. 更新預覽內容
-            // 如果是點擊最新版，傳 null (讓 updatePreview 使用預設邏輯)
-            // 如果是舊版，傳 version_number
+            // 更新預覽：如果是最新版傳 null，舊版傳版號
             updatePreview(asset, isLatest ? null : ver.version_number);
         };
 
@@ -171,7 +156,7 @@ function renderVersionList(asset) {
     });
 }
 
-// --- [關鍵修改] 更新預覽區域邏輯 ---
+// --- [核心修正] 更新預覽區域邏輯 ---
 function updatePreview(asset, specificVersionNum) {
     const previewBox = document.querySelector('.preview-box');
     if (!previewBox) return;
@@ -180,26 +165,24 @@ function updatePreview(asset, specificVersionNum) {
     const mime = asset.file_type || '';
     let targetUrl = '';
 
-    // 1. 強制由前端建構 URL，不依賴後端回傳的 download_url (避免 localhost/127.0.0.1 混亂)
-    // 格式: http://127.0.0.1:8000/assets/{id}/download
+    // 1. 建構基礎 URL
     let baseUrl = `${API_BASE_URL}/assets/${asset.asset_id}/download`;
 
-    // 2. 判斷是否要指定版本
+    // 2. 處理版本參數
     if (specificVersionNum) {
-        // 指定版本: ?version_number=1
         targetUrl = `${baseUrl}?version_number=${specificVersionNum}`;
     } else {
-        // 最新版本: 直接呼叫 download API，讓後端自己抓 latest
-        // 注意：這裡我們不使用 presigned_url，因為它可能有內網 Docker 網域問題
-        // 統一走後端 Proxy 下載最穩
         targetUrl = baseUrl;
     }
 
-    // 3. [關鍵] 補上 Token
-    // 呼叫 appendTokenToUrl 來確保 ?token=... 有被加上去
+    // 3. 補上 Token
     targetUrl = appendTokenToUrl(targetUrl);
     
-    // Debug: 你可以在 Console 看到它最後試著連去哪裡
+    // 4. [關鍵修正] 加上時間戳記 (Cache Busting)
+    // 這行程式碼強迫瀏覽器認為這是一個全新的網址，必須重新下載，解決「灰階/彩色」不切換的問題
+    const separator = targetUrl.includes('?') ? '&' : '?';
+    targetUrl = `${targetUrl}${separator}_t=${new Date().getTime()}`;
+
     console.log("Loading Preview URL:", targetUrl);
 
     if (!targetUrl) {
@@ -207,17 +190,16 @@ function updatePreview(asset, specificVersionNum) {
         return;
     }
 
-    // 4. 渲染 DOM
+    // 5. 渲染 DOM
     if (mime.startsWith('video/')) {
         const video = document.createElement('video');
         video.controls = true;
         video.playsInline = true;
-        // 設定樣式
         video.style.width = '100%';
         video.style.height = '100%';
         video.style.maxHeight = '600px';
         video.style.objectFit = 'contain'; 
-        video.style.backgroundColor = '#000'; // 影片背景黑底比較好看
+        video.style.backgroundColor = '#000';
 
         const source = document.createElement('source');
         source.src = targetUrl;
@@ -225,7 +207,7 @@ function updatePreview(asset, specificVersionNum) {
         video.appendChild(source);
         
         previewBox.appendChild(video);
-        video.load(); // 確保重新載入
+        video.load(); 
 
     } else if (mime.startsWith('image/')) {
         const img = document.createElement('img');
@@ -235,16 +217,15 @@ function updatePreview(asset, specificVersionNum) {
         img.style.maxHeight = '600px';
         img.style.objectFit = 'contain';
         
-        // 錯誤處理：如果還是讀不到，顯示預設圖
         img.onerror = function() { 
             console.error("圖片載入失敗:", this.src);
-            this.style.objectFit = "none"; // 讓 icon 不要被拉伸
+            this.style.objectFit = "none";
             this.src='static/image/upload_grey.png'; 
         };
         previewBox.appendChild(img);
 
     } else {
-        // 其他檔案顯示下載按鈕
+        // 下載按鈕 (如果是其他檔案)
         const btn = document.createElement('a');
         btn.href = targetUrl;
         btn.innerHTML = `<div style="display:flex; flex-direction:column; align-items:center;">
@@ -252,16 +233,16 @@ function updatePreview(asset, specificVersionNum) {
                             <span>${specificVersionNum ? `下載 v${specificVersionNum}` : '下載檔案'}</span>
                          </div>`;
         btn.className = 'btn-action btn-save';
-        btn.style.height = 'auto'; // 讓按鈕高度自動
+        btn.style.height = 'auto';
         btn.style.padding = '20px';
         btn.setAttribute('download', asset.filename || 'download');
         previewBox.appendChild(btn);
     }
 }
 
-// --- 綁定事件（下載、刪除、分享等） ---
+// --- 綁定事件 ---
 function setupEventListeners() {
-    // 下載按鈕 (右上角選單的「下載」) -> 下載最新版
+    // 下載按鈕
     const menuOptions = document.querySelectorAll('.menu-option');
     menuOptions.forEach(opt => {
         if (opt.innerText.includes("下載")) {
@@ -295,7 +276,7 @@ function setupEventListeners() {
         });
     }
 
-    // 分享複製連結
+    // 複製連結
     const copyLinkBtn = document.getElementById('copy-link-btn');
     const shareUrlText = document.getElementById('share-url-text');
     if (copyLinkBtn && shareUrlText) {
@@ -304,6 +285,7 @@ function setupEventListeners() {
             if (navigator.clipboard && navigator.clipboard.writeText) {
                 navigator.clipboard.writeText(text).then(() => showToast("連結已複製！"));
             } else {
+                // Fallback
                 const textarea = document.createElement("textarea");
                 textarea.value = text;
                 document.body.appendChild(textarea);
@@ -315,7 +297,7 @@ function setupEventListeners() {
         });
     }
 
-    // 右上角選單 (Dropdown)
+    // Dropdown Menu
     const menuTrigger = document.getElementById('menu-trigger');
     const dropdownMenu = document.getElementById('dropdown-menu');
     if(menuTrigger) {
@@ -330,7 +312,7 @@ function setupEventListeners() {
         });
     }
 
-    // 愛心收藏
+    // 愛心
     const detailHeartBtn = document.getElementById('detail-heart-btn');
     if (detailHeartBtn) {
         detailHeartBtn.addEventListener('click', () => {
@@ -344,7 +326,7 @@ function setupEventListeners() {
     setupModalLogic();
 }
 
-// --- Modal 邏輯 (包含 版本上傳 / 影像處理 / 編輯) ---
+// --- Modal 邏輯 ---
 function setupModalLogic() {
     const dropdownMenu = document.getElementById('dropdown-menu');
 
@@ -361,7 +343,7 @@ function setupModalLogic() {
         shareModal.addEventListener('click', (e) => { if (e.target === shareModal) shareModal.style.display = 'none'; });
     }
 
-    // 2. 編輯資訊
+    // 2. 編輯
     const editOption = document.getElementById('menu-edit-btn');
     const editModal = document.getElementById('edit-modal');
     const closeEditX = document.getElementById('close-edit-x');
@@ -369,7 +351,6 @@ function setupModalLogic() {
     if (editOption && editModal) {
         editOption.addEventListener('click', () => {
             dropdownMenu && dropdownMenu.classList.remove('show');
-            // 填入當前值
             const dFile = document.getElementById('display-filename');
             const dTags = document.getElementById('display-tags');
             if (dFile) document.getElementById('edit-filename-input').value = dFile.innerText;
@@ -381,10 +362,8 @@ function setupModalLogic() {
         closeEditX && closeEditX.addEventListener('click', () => editModal.style.display = 'none');
         cancelEditBtn && cancelEditBtn.addEventListener('click', () => editModal.style.display = 'none');
         
-        // 綁定影像處理
         setupImageProcessing();
 
-        // 綁定「儲存資訊」按鈕
         const saveEditBtn = document.getElementById('save-edit-btn');
         if (saveEditBtn) {
             saveEditBtn.onclick = async () => {
@@ -430,7 +409,6 @@ function setupModalLogic() {
             if (e.target === versionModal) versionModal.style.display = 'none';
         });
 
-        // 拖拉上傳
         if (versionDropZone) {
             versionDropZone.addEventListener('click', () => { if (versionFileInput) versionFileInput.click(); });
             versionDropZone.addEventListener('dragover', (e) => { e.preventDefault(); versionDropZone.style.borderColor = '#666'; });
@@ -478,7 +456,7 @@ function setupModalLogic() {
 
                 try {
                     const formData = new FormData();
-                    formData.append('file', files[0]); // 只取第一個
+                    formData.append('file', files[0]);
 
                     const res = await fetch(`${API_BASE_URL}/assets/${assetId}/versions`, {
                         method: 'POST',
@@ -510,7 +488,6 @@ function setupModalLogic() {
         ov.addEventListener('click', (e) => { if (e.target === ov) ov.style.display = 'none'; });
     });
 
-    // 內部函式：影像處理
     function setupImageProcessing() {
         const processSelect = document.getElementById('img-process-select');
         const processBtn = document.getElementById('btn-process-image');
@@ -574,7 +551,11 @@ function formatBytes(bytes, decimals = 2) {
 
 function downloadAsset(id) {
     // 下載最新版本
-    const url = appendTokenToUrl(`${API_BASE_URL}/assets/${id}/download`);
+    let url = `${API_BASE_URL}/assets/${id}/download`;
+    url = appendTokenToUrl(url);
+    // 下載也加上時間戳記，避免下載到舊檔
+    const separator = url.includes('?') ? '&' : '?';
+    url = `${url}${separator}_t=${new Date().getTime()}`;
     
     const a = document.createElement('a');
     a.href = url;
