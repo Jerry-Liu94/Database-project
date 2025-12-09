@@ -74,24 +74,36 @@ function renderUserTable(users) {
             roleSelect.disabled = true;
 
             try {
+                // ★★★ 修正這裡：補上 Content-Type Header ★★★
+                // 如果沒有這一行，後端會看不懂 JSON，導致報錯 [object Object]
+                const headers = api.getHeaders(); 
+                headers['Content-Type'] = 'application/json'; 
+
                 const response = await fetch(`${API_BASE_URL}/admin/users/${targetId}/role`, {
                     method: 'PATCH',
-                    headers: api.getHeaders(),
+                    headers: headers, // 使用修改後的 headers
                     body: JSON.stringify({ role_id: parseInt(newRoleId) })
                 });
 
+                // 為了避免報錯顯示 [object Object]，我們優化一下錯誤處理
                 const result = await response.json();
 
                 if (!response.ok) {
-                    throw new Error(result.detail || "更新失敗");
+                    // 如果後端回傳的是物件 (例如 Pydantic 的錯誤清單)，我們把它轉成字串讀出來
+                    const errorMsg = typeof result.detail === 'object' 
+                        ? JSON.stringify(result.detail) 
+                        : (result.detail || "更新失敗");
+                    
+                    throw new Error(errorMsg);
                 }
 
                 const roleText = parseInt(newRoleId) === 1 ? "Admin" : "User";
                 alert(`✅ 角色已更新為 ${roleText}`);
 
             } catch (error) {
+                console.error(error); // 在 Console 印出完整錯誤方便除錯
                 alert("❌ 錯誤: " + error.message);
-                loadUsers(); 
+                loadUsers(); // 失敗時重整表格
             } finally {
                 roleSelect.disabled = false;
             }
