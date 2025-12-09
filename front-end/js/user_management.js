@@ -27,9 +27,6 @@ async function loadUsers() {
     }
 }
 
-// js/user_management.js
-
-// ★★★ 修改重點：只顯示真實資料，移除假欄位與功能 ★★★
 function renderUserTable(users) {
     const tbody = document.querySelector('.audit-table tbody');
     tbody.innerHTML = ''; 
@@ -90,12 +87,10 @@ function renderUserTable(users) {
                 }
 
                 const roleText = parseInt(newRoleId) === 1 ? "Admin" : "User";
-
                 alert(`✅ 角色已更新為 ${roleText}`);
 
             } catch (error) {
                 alert("❌ 錯誤: " + error.message);
-                // 失敗時，重新整理頁面以恢復原本的選項 (避免畫面跟資料庫不同步)
                 loadUsers(); 
             } finally {
                 roleSelect.disabled = false;
@@ -106,14 +101,14 @@ function renderUserTable(users) {
     });
 }
 
-// 輔助函式：格式化時間 (如果你的代碼裡還沒有這個)
+// 輔助函式
 function formatDate(isoString) {
     if (!isoString) return "--";
     const date = new Date(isoString);
     return date.toLocaleString('zh-TW', { hour12: false });
 }
 
-// --- 彈窗與刪除邏輯 (維持不變) ---
+// --- 彈窗與刪除邏輯 ---
 function openConfirmModal(userId, userName) {
     targetUserId = userId;
     const modal = document.getElementById('confirm-modal');
@@ -139,7 +134,9 @@ function setupModalEvents() {
         confirmBtn.disabled = true;
 
         try {
-            const response = await fetch(`${API_BASE_URL}/users/${targetUserId}`, {
+            // ★★★ 修正這裡：改用 /admin/users/ 路徑 ★★★
+            // 這樣可以確保權限正確，並且能刪除連帶的資產檔案
+            const response = await fetch(`${API_BASE_URL}/admin/users/${targetUserId}`, {
                 method: 'DELETE',
                 headers: api.getHeaders()
             });
@@ -167,7 +164,7 @@ function setupModalEvents() {
     });
 }
 
-// --- 新增使用者彈窗邏輯 (維持不變) ---
+// --- 新增使用者彈窗邏輯 ---
 function setupAddUserModal() {
     const addUserBtn = document.querySelector('.add-user-btn');
     const modal = document.getElementById('user-modal');
