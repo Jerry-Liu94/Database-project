@@ -25,7 +25,10 @@
                 
                 <input type="text" class="mfa-input" placeholder="輸入 6 位數驗證碼">
                 
-                <button type="submit" class="confirm-button-final mfa-button">確認綁定</button>
+                <div class="button-group">
+                    <button type="submit" class="confirm-button-final mfa-button">確認綁定</button>
+                    <button type="button" class="cancel-button mfa-button" onclick="history.back()">取消</button>
+                </div>
             </div>
         </div>
 
@@ -52,10 +55,18 @@
             
             return `${formattedMinutes}:${formattedSeconds}`;
         }
-
-        // 倒數計時主要函式
+        // mfa.html script 區塊
         function startTimer() {
+            // [新增] 確保每次執行時，輸入框和按鈕是解鎖狀態
+            if (inputElement) inputElement.disabled = false;
+            if (buttonElement) buttonElement.disabled = false;
             
+            // 重置時間 (依需求)
+            totalSeconds = 300; 
+            
+            timerElement.textContent = formatTime(totalSeconds);
+            // ... 後續原本的 setInterval 代碼 ...
+
             // 初始化顯示時間
             timerElement.textContent = formatTime(totalSeconds);
 

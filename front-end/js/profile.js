@@ -115,7 +115,20 @@ function renderProfile(user) {
 
 
     // ... (原本的 MFA 開關邏輯保持不變) ...
+    // js/profile.js 的 renderProfile 函式內
+
+    // 假設後端回傳的 user 物件有 mfa_enabled 欄位
     const mfaToggle = document.getElementById('mfa-toggle');
+    const mfaStatusText = document.getElementById('mfa-status-text'); // 請對應我在 HTML 加的 ID
+
+    if (mfaToggle && user.mfa_enabled) {
+        mfaToggle.checked = true;
+        mfaToggle.disabled = true; // 如果啟用後不允許輕易關閉，可以鎖定
+        if(mfaStatusText) mfaStatusText.style.display = "inline";
+    } else {
+        mfaToggle.checked = false;
+        if(mfaStatusText) mfaStatusText.style.display = "none";
+    }
     // ...
 }
 
