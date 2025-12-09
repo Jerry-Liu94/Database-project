@@ -27,6 +27,8 @@ async function loadUsers() {
     }
 }
 
+// js/user_management.js
+
 // ★★★ 修改重點：只顯示真實資料，移除假欄位與功能 ★★★
 function renderUserTable(users) {
     const tbody = document.querySelector('.audit-table tbody');
@@ -48,10 +50,8 @@ function renderUserTable(users) {
                     <option value="2" ${isSelected(2)}>User</option>
                 </select>
             </td>
-            <td data-label="Email">${user.email}</td>
-            <td data-label="最近登入" style="font-size: 0.9rem; color: #666;">
-                ${formatDate(user.last_login)}
-            </td>
+            <td data-label="帳號">${user.email}</td> 
+            
             <td data-label="操作">
                 <div class="action-icons">
                     <button class="action-icon delete-btn" title="刪除使用者">
@@ -67,7 +67,7 @@ function renderUserTable(users) {
             openConfirmModal(user.user_id, user.user_name);
         });
 
-        // 2. ★★★ 新增：綁定角色切換事件 ★★★
+        // 2. 綁定角色切換事件
         const roleSelect = tr.querySelector('.role-select');
         roleSelect.addEventListener('change', async (e) => {
             const newRoleId = e.target.value;
