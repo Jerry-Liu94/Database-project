@@ -11,23 +11,29 @@ document.addEventListener('DOMContentLoaded', () => {
 });
 
 async function handleLogout() {
-    const token = localStorage.getItem("redant_token");
-    if (token) {
-        try {
-            await fetch(`${API_BASE_URL}/users/me/logout`, {
-                method: "POST",
-                headers: { "Authorization": `Bearer ${token}` }
-            });
-        } catch (err) { console.warn(err); }
+    try {
+        // 1. 呼叫後端登出 (記錄日誌)
+        // 使用 api.getHeaders() 可以同時支援 JWT 或 API Key 的登出請求
+        await fetch(`${API_BASE_URL}/users/me/logout`, {
+            method: "POST",
+            headers: api.getHeaders() 
+        });
+    } catch (err) { 
+        console.warn("登出 API 呼叫失敗，但仍執行本地登出", err); 
     }
-    localStorage.removeItem("redant_token");
+
+    // 2. ★★★ 清除「所有」類型的 Token ★★★
+    localStorage.removeItem("redant_token");   // 清除 JWT
+    localStorage.removeItem("redant_api_key"); // 清除 API Token (關鍵！)
+
     alert("您已成功登出 👋");
-    window.location.href = "index.html"; 
+    
+    // 3. ★★★ 修改這裡：跳轉回登入頁面 ★★★
+    window.location.href = "login.html"; 
 }
 
 async function loadUserProfile() {
     try {
-        // [修改] 不再自己在前端解碼 Token，而是直接問後端 "我是誰"
         // 這樣無論是 JWT 還是 API Token (sk-xxx) 都能通
         const response = await fetch(`${API_BASE_URL}/users/me`, {
             method: 'GET',
