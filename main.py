@@ -2,7 +2,7 @@
 from fastapi.security import OAuth2PasswordBearer, OAuth2PasswordRequestForm, APIKeyHeader
 from fastapi.responses import FileResponse, StreamingResponse
 from fastapi.middleware.cors import CORSMiddleware
-from sqlalchemy.orm import Session, joinedload
+from sqlalchemy.orm import Session, joinedload, outerjoin
 from typing import List, Optional
 from database import get_db, SessionLocal
 import models
@@ -1525,6 +1525,59 @@ def export_audit_logs(
         headers={"Content-Disposition": f"attachment; filename={filename}"}
     )
     
+# 新增：列出稽核日誌（包含操作者 user_name）
+@app.get("/admin/audit-logs")
+def list_audit_logs(
+    current_user: models.User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+    limit: int = 200,
+    offset: int = 0
+):
+    """
+    回傳稽核日誌 JSON 列表，包含 operator 的 user_name 與時間（ISO 格式）。
+    只允許 Admin (role_id == 1) 存取。
+    可用 query params: ?limit=100&offset=0
+    """
+    if current_user.role_id != 1:
+        raise HTTPException(status_code=403, detail="僅限管理員")
+
+    try:
+        # 明確 outerjoin audit_log -> user，避免依賴 relationship 名稱
+        # Select audit_log.*, user.user_name
+        # 注意： models.AuditLog 與 models.User 欄位名稱依你 DDL，這裡使用 log_id/user_id/...
+        q = db.query(
+            models.AuditLog.log_id,
+            models.AuditLog.user_id,
+            models.User.user_name,
+            models.AuditLog.action_type,
+            models.AuditLog.asset_id,
+            models.AuditLog.action_timestamp,
+            models.AuditLog.is_tampered
+        ).select_from(
+            outerjoin(models.AuditLog, models.User, models.AuditLog.user_id == models.User.user_id)
+        ).order_by(models.AuditLog.action_timestamp.desc()).offset(offset).limit(limit)
+
+        rows = q.all()
+
+        out = []
+        for row in rows:
+            # row 是 sqlalchemy.util.KeyedTuple，可用 row.<colname>
+            out.append({
+                "log_id": row.log_id,
+                "user_id": row.user_id,
+                "user_name": row.user_name if row.user_name else None,
+                "action_type": row.action_type,
+                "asset_id": row.asset_id,
+                "timestamp": row.action_timestamp.isoformat() if row.action_timestamp else None,
+                "is_tampered": bool(row.is_tampered) if row.is_tampered is not None else False
+            })
+
+        return out
+
+    except Exception as e:
+        logger.error(f"讀取稽核日誌失敗: {e}", exc_info=True)
+        raise HTTPException(status_code=500, detail="讀取稽核日誌失敗")
+        
 @app.post("/admin/users/", response_model=schemas.UserOut)
 def admin_create_user(
     user: schemas.AdminUserCreate,
