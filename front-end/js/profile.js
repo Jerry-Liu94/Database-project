@@ -95,6 +95,14 @@ function renderProfile(user) {
     if (nameEl) nameEl.innerText = user.user_name || "未設定";
     if (emailEl) emailEl.innerText = user.email;
 
+    // ★★★ [修改] 職稱改抓 role_name ★★★
+    const titleEl = document.getElementById('user-title');
+    if (titleEl) {
+        // 顯示 Role Name (例如 Admin 或 User)
+        titleEl.innerText = user.role_name || "未設定";
+    }
+
+    // 權限等級 (保持顯示 ID 即可，或者您想隱藏也可以)
     const roleEl = document.getElementById('user-role'); 
     if (roleEl) {
         roleEl.innerText = user.role_id !== undefined ? user.role_id : "N/A";
