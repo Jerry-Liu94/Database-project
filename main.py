@@ -690,10 +690,24 @@ def read_asset(
     ).filter(models.Asset.asset_id == asset_id).first()
     if not asset:
         raise HTTPException(status_code=404, detail="找不到資產")
+    # 權限：Admin 或 上傳者
     if current_user.role_id != 1 and asset.uploaded_by_user_id != current_user.user_id:
         raise HTTPException(status_code=403, detail="權限不足")
     asset.download_url = f"{APP_BASE_URL}/assets/{asset.asset_id}/download"
     asset.thumbnail_url = f"{APP_BASE_URL}/assets/{asset.asset_id}/thumbnail"
+    
+    try:
+        if asset.latest_version:
+            asset.presigned_url = minio_client.presigned_get_object(
+                MINIO_BUCKET_NAME,
+                asset.latest_version.storage_path,
+                expires=timedelta(hours=1)
+            )
+            asset.presigned_url = presigned
+    except Exception as e:
+        logger.info(f"取得 presigned URL 失敗: {e}")
+        asset.presigned_url = None
+    
     return asset
 
 # [新增] 刪除資產 API (同步刪除 DB 與 MinIO 檔案)
@@ -780,7 +794,7 @@ def create_user(user: schemas.UserCreate, db: Session = Depends(get_db)):
 
 # main.py (加在最下面)
 
-# [新增] 上傳新版本 API (對應 FR-4.2 資產版本控管)
+# ---------- 更新 create_asset_version：暫存 -> 上傳 MinIO -> 產生縮圖（圖片或影片） ----------
 @app.post("/assets/{asset_id}/versions", response_model=schemas.AssetOut)
 def create_asset_version(
     asset_id: int,
@@ -801,7 +815,7 @@ def create_asset_version(
     # 為了不覆蓋舊檔，我們在檔名加上時間戳記
     timestamp = datetime.now().strftime("%Y%m%d%H%M%S")
     safe_object_name = f"{timestamp}_v{secrets.token_hex(4)}_{file.filename}"
-    temp_path = f"{upload_dir}/{safe_object_name}"
+    temp_path = os.path.join(upload_dir, safe_object_name)
     
     # 1. 儲存到暫存檔
     try:
@@ -818,7 +832,7 @@ def create_asset_version(
     thumb_object_name = f"{os.path.splitext(safe_object_name)[0]}_thumb.jpg"
     temp_thumb_path = os.path.join(upload_dir, f"thumb_{secrets.token_hex(4)}.jpg")
     
-    # 2. 如果是圖片，使用 Pillow 產生縮圖（和之前邏輯一致）
+    # 圖片縮圖
     if file.content_type and file.content_type.startswith("image/"):
         try:
             with Image.open(temp_path) as img:
@@ -928,6 +942,16 @@ def create_asset_version(
         asset.download_url = f"{APP_BASE_URL}/assets/{asset.asset_id}/download"
         asset.thumbnail_url = f"{APP_BASE_URL}/assets/{asset.asset_id}/thumbnail"
 
+        # 產生 presigned URL（供前端直接播放/下載）
+        try:
+            asset.presigned_url = minio_client.presigned_get_object(
+                MINIO_BUCKET_NAME,
+                safe_object_name,
+                expires=timedelta(hours=1)
+            )
+        except Exception:
+            asset.presigned_url = None
+
         return asset
 
     except Exception as e:
@@ -947,7 +971,6 @@ def create_asset_version(
         if os.path.exists(temp_thumb_path):
             os.remove(temp_thumb_path)
   
-    
 # [新增] API 1: 產生分享連結 (FR-5.2)
 @app.post("/assets/{asset_id}/share", response_model=schemas.ShareLinkOut)
 def create_share_link(

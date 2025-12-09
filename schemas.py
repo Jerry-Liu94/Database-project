@@ -37,17 +37,17 @@ class AssetOut(BaseModel):
     filename: str
     file_type: Optional[str] = None
     latest_version_id: Optional[int] = None
-    metadata_info: Optional[MetadataOut] = None
-    
+
     download_url: Optional[str] = None
     thumbnail_url: Optional[str] = None
-    
-    # [魔法發生處] 這裡的變數名稱必須跟 models.py 裡的 relationship 名稱一樣
+    presigned_url: Optional[str] = None
+
     latest_version: Optional[VersionOut] = None
     uploader: Optional[UserOut] = None
 
-    tags: List["TagOut"] = []  # 預設是空清單
-    
+    tags: List["TagOut"] = []
+    metadata_info: Optional[MetadataOut] = None
+
     class Config:
         from_attributes = True
         
@@ -92,7 +92,6 @@ class ApiTokenOut(BaseModel):
     token_id: int
     raw_token: str  # 這是給使用者複製的明碼 (例如 sk_abc123...)
     created_at: datetime
-    
 
 # [新增] 匯出任務的狀態回傳
 class ExportJobOut(BaseModel):
@@ -146,8 +145,6 @@ class CategoryOut(BaseModel):
 
     class Config:
         from_attributes = True
-        
-# schemas.py (加在最下面)
 
 # [新增] 影像處理的請求格式
 class ImageProcessRequest(BaseModel):

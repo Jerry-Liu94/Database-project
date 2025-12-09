@@ -1,5 +1,5 @@
 /* js/asset_detail.js
-   改為使用 /assets/{id} 單筆 API，顯示 metadata，支援影片預覽與下載 */
+   使用 /assets/{id} 單筆 API，優先使用 presigned_url 作為 media src */
 import { API_BASE_URL, api } from './config.js';
 
 // 從網址取得 ID
@@ -17,20 +17,18 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     loadAssetDetail();
-
-    // 綁定 UI 事件（會在 render 後綁定）
 });
 
 // --- API: 載入單一資產詳情 ---
 async function loadAssetDetail() {
     try {
+        // GET 時傳 method 以讓 getHeaders 不加入 Content-Type
         const response = await fetch(`${API_BASE_URL}/assets/${assetId}`, {
             method: 'GET',
-            headers: api.getHeaders()
+            headers: api.getHeaders(false, 'GET')
         });
 
         if (!response.ok) {
-            // 嘗試讀錯誤訊息
             let errText = "資料讀取失敗";
             try { const err = await response.json(); errText = err.detail || errText; } catch(_) {}
             throw new Error(errText);
@@ -38,13 +36,11 @@ async function loadAssetDetail() {
 
         const asset = await response.json();
         renderDetail(asset);
-        setupEventListeners(); // render 完再綁定事件
+        setupEventListeners();
 
     } catch (error) {
         console.error(error);
         alert("載入失敗: " + error.message);
-        // 可考慮導回列表
-        // window.location.href = "index.html";
     }
 }
 
@@ -72,16 +68,14 @@ function renderDetail(asset) {
         tagsDisplay.innerText = tagText;
     }
 
-    // === 預覽區塊 ===
     const previewBox = document.querySelector('.preview-box');
-    previewBox.innerHTML = ''; // 清空
+    previewBox.innerHTML = '';
 
-    // 如果有 latest_version 與 download_url（後端會補 download_url）
-    const mediaUrl = asset.download_url || asset.thumbnail_url || null;
+    // 優先使用 presigned_url (可直接被 <video> / <img> 存取)
+    const mediaUrl = asset.presigned_url || asset.download_url || asset.thumbnail_url || null;
     const mime = asset.file_type || '';
 
     if (mime.startsWith('video/') && mediaUrl) {
-        // 建立 video 標籤，支援自動播放與 range（由後端 streaming 支援）
         const video = document.createElement('video');
         video.controls = true;
         video.playsInline = true;
@@ -89,17 +83,10 @@ function renderDetail(asset) {
         video.style.maxHeight = '600px';
         video.style.borderRadius = '8px';
         video.style.boxShadow = '0 4px 12px rgba(0,0,0,0.1)';
-        video.crossOrigin = 'anonymous'; // 若需要 cross origin
-        // 不要設 autoplay 避免被瀏覽器阻擋，使用者按播放即可
         const source = document.createElement('source');
         source.src = mediaUrl;
         source.type = mime;
         video.appendChild(source);
-
-        // 若後端需要 Authorization header（此專案後端需用 token），瀏覽器直接用 <video src> 不會帶 header。
-        // 已在後端 /assets/{id}/download 支援 streaming (會檢查 token)，
-        // 若你用 token 保護並且 MinIO 不公開，需讓 video element 先取得一個可訪問的短時 presigned URL（後端可提供）。
-        // 目前假設 backend 的 /assets/{id}/download 可用瀏覽器 cookie or bearer token 轉發（若不行，需改成 presigned URL）。
         previewBox.appendChild(video);
 
     } else if (mime.startsWith('image/') && (asset.thumbnail_url || mediaUrl)) {
@@ -114,7 +101,6 @@ function renderDetail(asset) {
         previewBox.appendChild(img);
 
     } else if (mediaUrl) {
-        // 其他檔案：顯示下載按鈕
         const btn = document.createElement('a');
         btn.href = mediaUrl;
         btn.innerText = '下載檔案';
@@ -126,10 +112,8 @@ function renderDetail(asset) {
     }
 }
 
-// --- 事件綁定整合 ---
-// 將部分 UI 綁定從原本分散邏輯聚合到這
+// --- 綁定事件（下載、刪除、分享等） ---
 function setupEventListeners() {
-    // 下載按鈕 (Dropdown)
     const menuOptions = document.querySelectorAll('.menu-option');
     menuOptions.forEach(opt => {
         if (opt.innerText.includes("下載")) {
@@ -137,7 +121,6 @@ function setupEventListeners() {
         }
     });
 
-    // 刪除按鈕
     const deleteBtn = document.getElementById('delete-btn');
     if (deleteBtn) {
         deleteBtn.addEventListener('click', async () => {
@@ -146,7 +129,7 @@ function setupEventListeners() {
                 deleteBtn.innerText = "刪除中...";
                 const response = await fetch(`${API_BASE_URL}/assets/${assetId}`, {
                     method: 'DELETE',
-                    headers: api.getHeaders()
+                    headers: api.getHeaders(false, 'DELETE')
                 });
                 if (!response.ok) {
                     const err = await response.json();
@@ -162,7 +145,6 @@ function setupEventListeners() {
         });
     }
 
-    // 分享連結複製功能
     const copyLinkBtn = document.getElementById('copy-link-btn');
     const shareUrlText = document.getElementById('share-url-text');
     if (copyLinkBtn && shareUrlText) {
@@ -182,7 +164,6 @@ function setupEventListeners() {
         });
     }
 
-    // 右上角選單開關
     const menuTrigger = document.getElementById('menu-trigger');
     const dropdownMenu = document.getElementById('dropdown-menu');
     if(menuTrigger) {
@@ -190,7 +171,6 @@ function setupEventListeners() {
         document.addEventListener('click', (e) => { if (!dropdownMenu.contains(e.target) && e.target !== menuTrigger) dropdownMenu.classList.remove('show'); });
     }
 
-    // 愛心收藏（UI）
     const detailHeartBtn = document.getElementById('detail-heart-btn');
     if (detailHeartBtn) {
         detailHeartBtn.addEventListener('click', () => {
@@ -205,14 +185,7 @@ function setupEventListeners() {
         });
     }
 
-    // 彈窗（分享、編輯、版本上傳）保留原本邏輯
     setupModalLogic();
-}
-
-// --- 其他函式（保留原有輔助函式） ---
-function setupModalLogic() {
-    // (保留原本 implementation 或引入現有的 modal 邏輯)
-    // share/edit/version modal 綁定（與先前相同）
 }
 
 function formatBytes(bytes, decimals = 2) {
@@ -225,7 +198,7 @@ function formatBytes(bytes, decimals = 2) {
 }
 
 function downloadAsset() {
-    fetch(`${API_BASE_URL}/assets/${assetId}/download`, { headers: api.getHeaders() })
+    fetch(`${API_BASE_URL}/assets/${assetId}/download`, { headers: api.getHeaders(false, 'GET') })
     .then(res => {
         if(!res.ok) throw new Error("下載失敗");
         return res.blob();
