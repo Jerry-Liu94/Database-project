@@ -102,7 +102,7 @@ api_key_header = APIKeyHeader(name="X-API-TOKEN", auto_error=False)
 
 
 # 告訴 FastAPI，如果要驗證身分，請去呼叫 "/token" 這個 API
-oauth2_scheme = OAuth2PasswordBearer(tokenUrl="token")
+oauth2_scheme = OAuth2PasswordBearer(tokenUrl="token", auto_error=False)
 
 # ---  AI 模型初始化 ---
 # 第一次啟動時會自動下載模型 (約 100MB)，請耐心等待
