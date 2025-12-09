@@ -9,6 +9,17 @@
     padding: 30px 40px;
 }
 
+.header-title {
+    flex-grow: 1; 
+    color: #ffffff; 
+    font-size: 2rem; 
+    font-weight: 700; 
+    text-align: center;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
 /* 網格容器 (.profile-container) 佈局 */
 .profile-container {
     display: grid;

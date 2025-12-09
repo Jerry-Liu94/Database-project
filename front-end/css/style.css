@@ -17,6 +17,17 @@ html, body {
     background-color: #000;
 }
 
+.header-title {
+    flex-grow: 1; 
+    color: #ffffff; 
+    font-size: 2rem; 
+    font-weight: 700; 
+    text-align: center;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
 body {
     display: flex;
     flex-direction: column;

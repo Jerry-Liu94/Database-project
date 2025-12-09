@@ -11,37 +11,23 @@
     width: 100%; 
 }
 
-/* --- Header 修正 --- */
-header {
-    display: flex; /* 確保是 flex 容器 */
-    align-items: center;
-    justify-content: space-between;
-    /* 假設 Header 的高度和背景色已在 style.css 或其他地方定義 */
-}
-
-/* Header 頂部標題 (.header-title) 樣式 */
+/* --- Audit Log 頁面專屬樣式 --- */
 .header-title {
+    /* 確保其佔據中央空間 */
     flex-grow: 1; 
-    color: #ffffff; 
-    font-size: 2.5rem; 
+    
+    /* 樣式設定 */
+    color: #ffffff; /* 白色文字 */
+    font-size: 2rem; /* 較大的字體 */
     font-weight: 700; 
+    
+    /* 文本對齊：讓標題置於中央 */
     text-align: center;
+    
+    /* 確保其與 Header 的高度一致 */
     display: flex;
     align-items: center;
     justify-content: center;
-}
-
-/* 確保 Logo Area 和 Icons Area 不佔據過多空間 */
-.logo-area, .header-icons, .header-icons a {
-    width: 150px; 
-    flex-shrink: 0;
-    display: flex;
-    align-items: center;
-}
-.header-icons {
-    /* 調整右側圖標的對齊方式，讓它們靠右 */
-    justify-content: flex-end; 
-    gap: 15px;
 }
 
 
