@@ -46,6 +46,12 @@ class User(Base):
     @property
     def is_mfa_enabled(self):
         return self.mfa_secret is not None
+    
+    @property
+    def role_name(self):
+        if self.role:
+            return self.role.role_name
+        return "Unknown"
 
 # 5. 資產 (Asset)
 class Asset(Base):
