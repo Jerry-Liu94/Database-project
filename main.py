@@ -113,6 +113,9 @@ ai_classifier = pipeline("image-classification", model="microsoft/resnet-50")
 
 logger.info("AI 模型載入完成！")
 
+def hash_token_sha256(token: str) -> str:
+    return hashlib.sha256(token.encode()).hexdigest()
+
 def cleanup_files(paths):
     """刪除路徑清單，忽略 None 並在失敗時記錄但不拋出（使用 print 以免新增 logging import）。"""
     for p in paths or []:
@@ -266,43 +269,18 @@ def read_users(db: Session = Depends(get_db)):
 
 # [修改] 支援 JWT 或 API Token 的身分驗證
 def get_current_user(
-    token: str = Depends(oauth2_scheme), 
-    api_key: str = Security(api_key_header), # 這裡會自動去抓 Header: X-API-TOKEN
+    token: str = Depends(oauth2_scheme),
+    api_key: str = Security(api_key_header),
     db: Session = Depends(get_db)
 ):
-    # 情境 A: 使用 API Token (X-API-TOKEN)
+    # 情境 A: API Token (X-API-TOKEN)
     if api_key:
-        # 1. 雖然 Token 是亂碼，但我們不能直接查 (因為 DB 存的是 Hash)
-        # 所以這裡比較特別：我們無法用 SQL 查 Hash，只能遍歷 (效率較差) 或改變策略
-        # [優化策略]: 為了效能，實務上通常 Token 格式是 "user_id.隨機碼"
-        # 這裡為了簡單符合你的 DDL，我們先假設使用者數量不多，用比較笨的方法：
-        # 更好的做法是：使用者傳來 Token，我們先 Hash 它，再去 DB 查 Hash
-        
-        # 假設 api_key 就是明碼，我們先把它 hash 起來
-        # 注意：這裡前提是你的 verify_password 支援直接比對，
-        # 但因為 bcrypt 每次 hash 結果不同，我們無法用 `filter(token_hash=hash(api_key))`
-        
-        # [修正策略]: 既然 DDL 規定存 Hash，那我們驗證時必須取出該使用者的所有 Token 來比對
-        # 但因為我們不知道是哪個 user，這會很慢。
-        # 為了作業順利，我們這裡做一個「小變通」：
-        # 我們產生 Token 時不 Hash，直接存明碼 (雖然 DDL 叫 token_hash)，
-        # 或者我們假設你傳來的 api_key 格式是 "user_id:random_secret"
-        
-        # 讓我們採用最標準做法：API Token 在 DB 應該是可查詢的 (只是不能反推)
-        # 為了配合你的 security.verify_password (bcrypt)，我們必須遍歷...
-        # 🛑 等等，為了不讓程式碼太複雜，我們這裡採用「直接查詢」法。
-        # 請確保 DB 裡的 token_hash 存的是「可以被查詢的字串」(例如 SHA256)，而不是 Bcrypt。
-        
-        # 但為了不改動你現有的 security.py，我們這裡用一個簡單的邏輯：
-        # 假設 api_key 就是 DB 裡存的字串 (不加密了，為了方便與效能)。
-        # 如果你堅持要加密，那我們需要使用者傳 user_id 進來。
-        
-        # [最終簡易版實作]: 直接查 DB (把 token_hash 當作 token 欄位用)
-        token_record = db.query(models.ApiToken).filter(models.ApiToken.token_hash == api_key).first()
+        token_hash = hash_token_sha256(api_key)
+        token_record = db.query(models.ApiToken).filter(models.ApiToken.token_hash == token_hash).first()
         if token_record:
             return token_record.user
-            
-    # 情境 B: 使用 JWT (原本的邏輯)
+
+    # 情境 B: JWT
     if token:
         try:
             payload = jwt.decode(token, security.SECRET_KEY, algorithms=[security.ALGORITHM])
@@ -313,8 +291,7 @@ def get_current_user(
                     return user
         except JWTError:
             pass
-            
-    # 兩者都失敗
+
     raise HTTPException(
         status_code=401,
         detail="無效的憑證 (Token 或 API Key)",
@@ -544,7 +521,8 @@ def download_asset(
     # B: API token (query or header X-API-TOKEN)
     api_token_val = api_key or request.headers.get("X-API-TOKEN")
     if not user and api_token_val:
-        token_record = db.query(models.ApiToken).filter(models.ApiToken.token_hash == api_token_val).first()
+        token_hash = hash_token_sha256(api_token_val)
+        token_record = db.query(models.ApiToken).filter(models.ApiToken.token_hash == token_hash).first()
         if token_record:
             user = token_record.user
 
@@ -1202,40 +1180,33 @@ def access_share_link(token: str, db: Session = Depends(get_db)):
 # [新增] 產生 API Token (FR-7.1)
 @app.post("/users/me/api_tokens", response_model=schemas.ApiTokenOut)
 def create_api_token(
-    current_user: models.User = Depends(get_current_user), # 需要先登入才能產生
+    current_user: models.User = Depends(get_current_user),
     db: Session = Depends(get_db)
 ):
-    # 1. 產生一組安全亂碼 (例如 32 bytes hex)
-    # 為了方便辨識，加個前綴
     raw_token = "sk_" + secrets.token_hex(32)
-    
-    # 2. 存入資料庫
-    # 註：為了上面驗證方便，我們這裡暫時「不 Hash」，直接存入 token_hash 欄位
-    # 如果要嚴格符合資安，應該存 sha256(raw_token)，查詢時也用 sha256 查
+    token_hash = hash_token_sha256(raw_token)
+
     new_token = models.ApiToken(
         user_id=current_user.user_id,
-        token_hash=raw_token # 這裡直接存，方便 `get_current_user` 查詢
+        token_hash=token_hash
     )
-    
     db.add(new_token)
-    
-    # [新增] 寫入稽核日誌
+
     new_log = models.AuditLog(
         user_id=current_user.user_id,
         action_type="CREATE_API_TOKEN"
     )
     db.add(new_log)
-    
+
     db.commit()
     db.refresh(new_token)
-    
-    # 3. 回傳 (包含明碼，讓使用者複製)
+
     return {
         "token_id": new_token.token_id,
-        "raw_token": raw_token,
+        "raw_token": raw_token,   # 只在產生當下回傳
         "created_at": new_token.created_at
     }
-
+    
 # [新增] 刪除/撤銷 API Token
 @app.delete("/users/me/api_tokens/{token_id}")
 def revoke_api_token(
