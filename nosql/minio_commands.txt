@@ -1,0 +1,27 @@
+-- RedAnt System MinIO Operations --
+
+1. 初始化儲存桶 (Create Bucket)
+   Function: make_bucket
+   Command: client.make_bucket("redant-assets")
+
+2. 上傳檔案 (Put Object) - 對應 SQL INSERT
+   Function: fput_object
+   Command: client.fput_object(
+       bucket_name="redant-assets",
+       object_name="20251208_example.jpg",
+       file_path="/tmp/temp_file.jpg",
+       content_type="image/jpeg"
+   )
+
+3. 下載/讀取檔案 (Get Object) - 對應 SQL SELECT
+   Function: get_object
+   Command: response = client.get_object("redant-assets", "20251208_example.jpg")
+   // 回傳的是二進位資料串流 (Stream)
+
+4. 刪除檔案 (Remove Object) - 對應 SQL DELETE
+   Function: remove_object
+   Command: client.remove_object("redant-assets", "20251208_example.jpg")
+
+5. 取得檔案資訊 (Stat Object)
+   Function: stat_object
+   Command: stats = client.stat_object("redant-assets", "20251208_example.jpg")
