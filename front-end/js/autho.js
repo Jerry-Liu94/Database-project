@@ -2,21 +2,20 @@
 import { API_BASE_URL, api } from './config.js';
 
 document.addEventListener('DOMContentLoaded', () => {
-    // 1. 檢查是否登入 (MFA 綁定通常是在登入後進行的設定)
-    api.checkLogin();
+    // 這裡不用 checkLogin，因為這裡就是登入頁面
 
     const form = document.querySelector('.signup-form-final');
-    const input = document.getElementById('auth-key'); // 輸入框
+    const input = document.getElementById('auth-key'); 
     const confirmBtn = document.querySelector('.confirm-button-final');
 
     if (form) {
         form.addEventListener('submit', async (e) => {
             e.preventDefault();
 
-            const code = input.value.trim();
+            const token = input.value.trim();
 
-            if (!code) {
-                alert("請輸入驗證碼");
+            if (!token) {
+                alert("請輸入 Token");
                 return;
             }
 
@@ -24,23 +23,32 @@ document.addEventListener('DOMContentLoaded', () => {
                 confirmBtn.innerText = "驗證中...";
                 confirmBtn.disabled = true;
 
-                // 呼叫後端驗證 API
-                // 注意：根據 main.py，otp_code 是 Query Parameter
-                const response = await fetch(`${API_BASE_URL}/users/me/mfa/verify?otp_code=${code}`, {
-                    method: 'POST',
-                    headers: api.getHeaders()
+                // 1. 嘗試用這個 Token 呼叫後端 API (例如查詢個人資料)
+                // 注意：這裡我們手動帶入 X-API-TOKEN header
+                const response = await fetch(`${API_BASE_URL}/users/me/mfa`, { // 借用一個簡單的 API 來測
+                    method: 'GET',
+                    headers: {
+                        'X-API-TOKEN': token
+                    }
                 });
 
-                const data = await response.json();
-
                 if (!response.ok) {
-                    throw new Error(data.detail || "驗證失敗，請確認代碼是否正確");
+                    throw new Error("無效的 Token");
                 }
 
-                alert("🎉 驗證成功！MFA 已正式啟用。");
+                // 2. 驗證成功！
+                // 我們有兩種選擇：
+                // A. 把它當作一般登入 Token 存起來 (這樣之後的 api.getHeaders 都要改寫支援 API Token)
+                // B. 或者，為了簡單起見，我們這裡只做「跳轉示範」，因為 API Token 通常是用在後端腳本的
                 
-                // 驗證成功後，通常導回個人檔案頁面或首頁
-                window.location.href = "profile.html";
+                // 這裡示範 A 方案的變形：存入 localStorage，但需要修改 config.js 才能全站通用
+                // 為了不改壞現有的 JWT 機制，我們先用一個簡單的 alert 證明登入成功，然後跳轉
+                
+                // 若要全站通用，建議存入另一個 key，並在 config.js 裡優先讀取
+                localStorage.setItem('redant_api_key', token); 
+                
+                alert("🎉 Token 驗證成功！\n(已儲存為 API Key)");
+                window.location.href = "index.html";
 
             } catch (error) {
                 alert("錯誤: " + error.message);

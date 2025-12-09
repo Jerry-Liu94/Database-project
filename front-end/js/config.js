@@ -4,20 +4,31 @@
 export const API_BASE_URL = "https://redantdam.indiechild.xyz"; 
 
 export const api = {
-    // 只有在非 GET 且非檔案上傳時才加 Content-Type，避免預檢 (preflight)
     getHeaders(isFileUpload = false, method = 'GET') {
-        const token = localStorage.getItem('redant_token');
+        const jwtToken = localStorage.getItem('redant_token');
+        const apiKey = localStorage.getItem('redant_api_key'); // <--- 讀取 API Key
+        
         const headers = {};
-        if (token) headers['Authorization'] = `Bearer ${token}`;
+        
+        // 優先使用 JWT，如果沒有才用 API Key
+        if (jwtToken) {
+            headers['Authorization'] = `Bearer ${jwtToken}`;
+        } else if (apiKey) {
+            headers['X-API-TOKEN'] = apiKey; // <--- 帶入 Header
+        }
+
         if (!isFileUpload && method && method.toUpperCase() !== 'GET') {
             headers['Content-Type'] = 'application/json';
         }
         return headers;
     },
-
+    
     checkLogin() {
-        const token = localStorage.getItem('redant_token');
-        if (!token) {
+        const jwtToken = localStorage.getItem('redant_token');
+        const apiKey = localStorage.getItem('redant_api_key');
+        
+        // 只要有其中一種 Token 就算登入
+        if (!jwtToken && !apiKey) {
             alert("請先登入！");
             window.location.href = "login.html";
         }
