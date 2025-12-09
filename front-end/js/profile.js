@@ -27,23 +27,26 @@ async function handleLogout() {
 
 async function loadUserProfile() {
     try {
-        const token = localStorage.getItem('redant_token');
-        const payload = JSON.parse(atob(token.split('.')[1]));
-        const myEmail = payload.sub; 
-
-        const response = await fetch(`${API_BASE_URL}/users/`, {
+        // [修改] 不再自己在前端解碼 Token，而是直接問後端 "我是誰"
+        // 這樣無論是 JWT 還是 API Token (sk-xxx) 都能通
+        const response = await fetch(`${API_BASE_URL}/users/me`, {
             method: 'GET',
             headers: api.getHeaders()
         });
         
         if (!response.ok) throw new Error("無法讀取使用者資料");
         
-        const users = await response.json();
-        const me = users.find(u => u.email === myEmail);
+        // 後端直接回傳 User 物件 (schemas.UserOut)
+        const me = await response.json();
 
-        if (me) renderProfile(me);
+        if (me) {
+            renderProfile(me);
+        }
 
-    } catch (error) { console.error(error); }
+    } catch (error) {
+        console.error(error);
+        alert("載入個人資料失敗: " + error.message);
+    }
 }
 
 function renderProfile(user) {
