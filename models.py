@@ -44,7 +44,7 @@ class User(Base):
     assets_uploaded = relationship("Asset", back_populates="uploader")
     
     @property
-    def is_mfa_enabled(self):
+    def mfa_enabled(self):
         return self.mfa_secret is not None
     
     @property
