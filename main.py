@@ -298,6 +298,12 @@ def get_current_user(
         headers={"WWW-Authenticate": "Bearer"},
     )
 
+# 取得當前登入者的資料 (解決 API Token 無法在前端解析身分的問題)
+@app.get("/users/me", response_model=schemas.UserOut)
+def read_users_me(current_user: models.User = Depends(get_current_user)):
+    return current_user
+
+
 @app.get("/users/me/mfa")
 def check_my_mfa(current_user: models.User = Depends(get_current_user)):
     """

@@ -11,39 +11,48 @@ document.addEventListener('DOMContentLoaded', () => {
 });
 
 async function handleLogout() {
-    const token = localStorage.getItem("redant_token");
-    if (token) {
-        try {
-            await fetch(`${API_BASE_URL}/users/me/logout`, {
-                method: "POST",
-                headers: { "Authorization": `Bearer ${token}` }
-            });
-        } catch (err) { console.warn(err); }
+    try {
+        // 1. 呼叫後端登出 (記錄日誌)
+        // 使用 api.getHeaders() 可以同時支援 JWT 或 API Key 的登出請求
+        await fetch(`${API_BASE_URL}/users/me/logout`, {
+            method: "POST",
+            headers: api.getHeaders() 
+        });
+    } catch (err) { 
+        console.warn("登出 API 呼叫失敗，但仍執行本地登出", err); 
     }
-    localStorage.removeItem("redant_token");
+
+    // 2. ★★★ 清除「所有」類型的 Token ★★★
+    localStorage.removeItem("redant_token");   // 清除 JWT
+    localStorage.removeItem("redant_api_key"); // 清除 API Token (關鍵！)
+
     alert("您已成功登出 👋");
-    window.location.href = "index.html"; 
+    
+    // 3. ★★★ 修改這裡：跳轉回登入頁面 ★★★
+    window.location.href = "login.html"; 
 }
 
 async function loadUserProfile() {
     try {
-        const token = localStorage.getItem('redant_token');
-        const payload = JSON.parse(atob(token.split('.')[1]));
-        const myEmail = payload.sub; 
-
-        const response = await fetch(`${API_BASE_URL}/users/`, {
+        // 這樣無論是 JWT 還是 API Token (sk-xxx) 都能通
+        const response = await fetch(`${API_BASE_URL}/users/me`, {
             method: 'GET',
             headers: api.getHeaders()
         });
         
         if (!response.ok) throw new Error("無法讀取使用者資料");
         
-        const users = await response.json();
-        const me = users.find(u => u.email === myEmail);
+        // 後端直接回傳 User 物件 (schemas.UserOut)
+        const me = await response.json();
 
-        if (me) renderProfile(me);
+        if (me) {
+            renderProfile(me);
+        }
 
-    } catch (error) { console.error(error); }
+    } catch (error) {
+        console.error(error);
+        alert("載入個人資料失敗: " + error.message);
+    }
 }
 
 function renderProfile(user) {
