@@ -68,6 +68,9 @@ app.add_middleware(
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
+    # 新增 expose_headers，讓前端能讀到 Accept-Ranges/Content-Range/Content-Length/Content-Type
+    expose_headers=["Accept-Ranges", "Content-Range", "Content-Length", "Content-Type", "ETag"],
+    max_age=600
 )
 
 @app.get("/")
@@ -487,79 +490,73 @@ async def create_asset(  # <--- 注意：這裡要加 async (為了用 await)
 @app.get("/assets/{asset_id}/download")
 def download_asset(
     asset_id: int, 
-    request: Request, # [新增] 接收請求資訊 (為了拿 Range Header)
-    current_user: models.User = Depends(get_current_user), # 權限檢查
+    request: Request, # 接收請求資訊 (為了拿 Range Header)
+    current_user: models.User = Depends(get_current_user),
     db: Session = Depends(get_db)
 ):
-    # 1. 查詢資產
+    # 1. 查詢資產與最新版本
     asset = db.query(models.Asset).filter(models.Asset.asset_id == asset_id).first()
     if not asset or not asset.latest_version:
         raise HTTPException(status_code=404, detail="檔案不存在")
-        
     version = asset.latest_version
 
-    # 2. 處理 Range Header (影片播放關鍵)
-    range_header = request.headers.get("Range")
-    
+    # 2. 先取得檔案大小（stat_object）
     try:
-        # 如果有 Range Header，告訴 MinIO 我們要哪一段
+        stat = minio_client.stat_object(MINIO_BUCKET_NAME, version.storage_path)
+        file_size = stat.size
+    except Exception as e:
+        logger.error(f"MinIO stat_object error: {e}")
+        raise HTTPException(status_code=500, detail="Storage error")
+
+    content_type = asset.file_type or "application/octet-stream"
+
+    # 3. 解析 Range Header
+    range_header = request.headers.get("Range")
+    try:
         if range_header:
-            # 解析 bytes=0-1024 這種格式
-            # 這裡為了簡化，我們直接把 Range 丟給 MinIO 處理會比較複雜
-            # 我們使用 MinIO 的 get_object 的 offset 和 length 參數
-            
-            # 但最簡單的方法是：讓 MinIO 幫我們產生一個「暫時的直連網址」
-            # 這樣瀏覽器直接跟 MinIO 溝通，MinIO 原生就支援 Range！
-            # 這是效能最好、相容性最高的做法
-            
-            presigned_url = minio_client.presigned_get_object(
-                MINIO_BUCKET_NAME, 
-                version.storage_path, 
-                expires=timedelta(hours=1)
-            )
-            # 重導向到 MinIO 的網址 (記得 MinIO 要能被瀏覽器連到，或是走 Nginx 反代)
-            # 考慮到你 MinIO 鎖在內網，我們還是得用 Python 轉發...
-            
-            # [B計畫] Python 簡易 Range 支援
-            stat = minio_client.stat_object(MINIO_BUCKET_NAME, version.storage_path)
-            file_size = stat.size
-            
-            start, end = 0, file_size - 1
-            if range_header.startswith("bytes="):
-                ranges = range_header.replace("bytes=", "").split("-")
-                start = int(ranges[0]) if ranges[0] else 0
-                end = int(ranges[1]) if ranges[1] else file_size - 1
-            
+            # 解析 bytes=START-END
+            if not range_header.startswith("bytes="):
+                raise HTTPException(status_code=416, detail="Invalid Range")
+            ranges = range_header.replace("bytes=", "").split("-")
+            start = int(ranges[0]) if ranges[0] else 0
+            end = int(ranges[1]) if (len(ranges) > 1 and ranges[1]) else file_size - 1
+            if start >= file_size:
+                raise HTTPException(status_code=416, detail="Range Not Satisfiable")
+            if end >= file_size:
+                end = file_size - 1
             length = end - start + 1
-            
-            data = minio_client.get_object(
-                MINIO_BUCKET_NAME, 
-                version.storage_path, 
-                offset=start, 
+
+            obj = minio_client.get_object(
+                MINIO_BUCKET_NAME,
+                version.storage_path,
+                offset=start,
                 length=length
             )
-            
-            return StreamingResponse(
-                data, 
-                status_code=206, # Partial Content
-                media_type=asset.file_type or "application/octet-stream",
-                headers={
-                    "Content-Range": f"bytes {start}-{end}/{file_size}",
-                    "Accept-Ranges": "bytes",
-                    "Content-Length": str(length),
-                    "Content-Disposition": f"inline; filename={asset.filename}"
-                }
-            )
 
-        # 沒有 Range，直接回傳全部 (圖片或小檔)
-        data = minio_client.get_object(MINIO_BUCKET_NAME, version.storage_path)
-        return StreamingResponse(
-            data, 
-            media_type=asset.file_type or "application/octet-stream",
-            headers={"Content-Disposition": f"inline; filename={asset.filename}"}
-        )
-        
+            headers = {
+                "Content-Range": f"bytes {start}-{end}/{file_size}",
+                "Accept-Ranges": "bytes",
+                "Content-Length": str(length),
+                "Content-Disposition": f'inline; filename="{asset.filename}"',
+                "Content-Type": content_type
+            }
+            return StreamingResponse(obj, status_code=206, headers=headers, media_type=content_type)
+
+        # 4. 沒有 Range -> 回傳整個物件（同樣提供 Accept-Ranges 與 Content-Length）
+        obj = minio_client.get_object(MINIO_BUCKET_NAME, version.storage_path)
+        headers = {
+            "Accept-Ranges": "bytes",
+            "Content-Length": str(file_size),
+            "Content-Disposition": f'inline; filename="{asset.filename}"',
+            "Content-Type": content_type
+        }
+        return StreamingResponse(obj, headers=headers, media_type=content_type)
+
+    except HTTPException:
+        # 把已知的 HTTPException 直接 re-raise
+        raise
     except Exception as e:
+        logger.error(f"下載/流式傳輸失敗: {e}", exc_info=True)
         raise HTTPException(status_code=500, detail=f"讀取失敗: {e}")
     
 @app.post("/token", response_model=schemas.Token)
@@ -698,7 +695,7 @@ def read_asset(
     
     try:
         if asset.latest_version:
-            asset.presigned_url = minio_client.presigned_get_object(
+            presigned = minio_client.presigned_get_object(
                 MINIO_BUCKET_NAME,
                 asset.latest_version.storage_path,
                 expires=timedelta(hours=1)
