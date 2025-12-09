@@ -488,6 +488,7 @@ async def create_asset(  # <--- 注意：這裡要加 async (為了用 await)
 def download_asset(
     asset_id: int,
     request: Request,
+    version_number: Optional[int] = None,
     token: Optional[str] = None,       # 從 query string 接收 JWT（可由前端傳入）
     api_key: Optional[str] = None,     # 從 query string 接收 API token（可選）
     db: Session = Depends(get_db),
@@ -501,7 +502,7 @@ def download_asset(
     """
     # 1. 找資產
     asset = db.query(models.Asset).filter(models.Asset.asset_id == asset_id).first()
-    if not asset or not asset.latest_version:
+    if not asset:
         raise HTTPException(status_code=404, detail="檔案不存在")
 
     # 2. 嘗試取得 user（可接受多種驗證）
@@ -546,6 +547,23 @@ def download_asset(
 
     version = asset.latest_version
 
+    # 決定要拿哪一個版本
+    target_version = None
+    if version_number:
+        # 如果有指定版本，去 Versions 表找
+        target_version = db.query(models.Version).filter(
+            models.Version.asset_id == asset_id, 
+            models.Version.version_number == version_number
+        ).first()
+        if not target_version:
+            raise HTTPException(status_code=404, detail="指定的版本不存在")
+    else:
+        # 沒有指定，就拿最新版
+        target_version = asset.latest_version
+
+    if not target_version:
+        raise HTTPException(status_code=404, detail="此資產沒有任何版本檔案")
+    
     # 4. stat object 取得大小
     try:
         stat = minio_client.stat_object(MINIO_BUCKET_NAME, version.storage_path)
@@ -727,7 +745,8 @@ def read_asset(
         joinedload(models.Asset.tags),
         joinedload(models.Asset.metadata_info),
         joinedload(models.Asset.latest_version),
-        joinedload(models.Asset.uploader)
+        joinedload(models.Asset.uploader),
+        joinedload(models.Asset.versions),
     ).filter(models.Asset.asset_id == asset_id).first()
     if not asset:
         raise HTTPException(status_code=404, detail="找不到資產")

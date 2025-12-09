@@ -1,6 +1,5 @@
 /* js/asset_detail.js
-   完整版（包含：載入單一資產、優先使用後端 download_url 並附帶 token、避免直接使用內網 MinIO presigned URL、
-   modal / 版本上傳 / 影像處理 / 下載 / 刪除 邏輯）
+   完整修正版：使用 version_number 進行版本切換與下載
 */
 import { API_BASE_URL, api } from './config.js';
 
@@ -36,8 +35,6 @@ async function loadAssetDetail() {
         }
 
         const asset = await response.json();
-        // 可視需要在這裏 log asset 做 debug
-        // console.log('asset', asset);
         renderDetail(asset);
         setupEventListeners();
     } catch (error) {
@@ -46,7 +43,7 @@ async function loadAssetDetail() {
     }
 }
 
-// --- Helper: 判斷 URL 是否很可能指向內網 MinIO（避免直接使用 presigned 指向 9000） ---
+// --- Helper: 判斷 URL 是否很可能指向內網 MinIO ---
 function isLikelyMinioUrl(url) {
     if (!url) return false;
     try {
@@ -57,39 +54,31 @@ function isLikelyMinioUrl(url) {
     }
 }
 
-// --- Helper: 判斷是否為 download_url（決定是否要附 token） ---
-function isDownloadUrl(url) {
-    if (!url) return false;
-    try {
-        const u = new URL(url);
-        return u.pathname.includes('/download');
-    } catch (e) {
-        return false;
-    }
-}
-
-// --- Helper: 把 token 加到 URL（若存在） ---
+// --- Helper: 把 token 加到 URL（用於 img/video src 或下載連結） ---
 function appendTokenToUrl(url) {
     try {
         const token = localStorage.getItem('redant_token');
         if (!token) return url;
+        
         const u = new URL(url);
-        u.searchParams.set('token', token);
+        // 如果原本已經有 token 參數就不重複加
+        if (!u.searchParams.has('token')) {
+            u.searchParams.set('token', token);
+        }
         return u.toString();
     } catch (e) {
         return url;
     }
 }
 
-// --- UI: 渲染詳情（完整） ---
+// --- UI: 渲染詳情主入口 ---
 function renderDetail(asset) {
-    // 基本欄位
+    // 1. 基本文字資訊
     const filenameEl = document.getElementById('display-filename');
     const idEl = document.getElementById('display-id');
     if (filenameEl) filenameEl.innerText = asset.filename || '未命名';
     if (idEl) idEl.innerText = `ID: ${asset.asset_id}`;
 
-    // info values
     const uploaderName = asset.uploader ? (asset.uploader.email || asset.uploader.user_name) : "Unknown";
     const fileSize = asset.metadata_info && asset.metadata_info.filesize
         ? formatBytes(asset.metadata_info.filesize)
@@ -103,54 +92,138 @@ function renderDetail(asset) {
         infoValues[2].innerText = uploaderName;
     }
 
-    // tags
+    // Tags
     const tagsDisplay = document.getElementById('display-tags');
     if (tagsDisplay) {
-        const tagText = asset.tags && asset.tags.length > 0 ? `#${asset.tags.map(t => t.tag_name).join(' #')}` : `#${asset.file_type || '一般'}`;
+        const tagText = asset.tags && asset.tags.length > 0 
+            ? `#${asset.tags.map(t => t.tag_name).join(' #')}` 
+            : `#${asset.file_type || '一般'}`;
         tagsDisplay.innerText = tagText;
     }
 
-    // preview 區塊
+    // 2. 渲染版本列表 (使用 version_number)
+    renderVersionList(asset);
+
+    // 3. 初始預覽 (傳入 null 代表顯示最新版)
+    updatePreview(asset, null);
+
+    // 分享連結文字顯示 (最新版)
+    const shareUrlText = document.getElementById('share-url-text');
+    if (shareUrlText && asset.download_url) {
+        shareUrlText.innerText = asset.download_url;
+    }
+}
+
+// --- [關鍵修改] 渲染版本列表 ---
+function renderVersionList(asset) {
+    const listContainer = document.getElementById('version-scroll-list');
+    if (!listContainer) return;
+
+    listContainer.innerHTML = ''; // 清空舊資料
+
+    // 取得版本列表並依照 version_number 倒序排列 (新 -> 舊)
+    const versions = asset.versions || [];
+    versions.sort((a, b) => b.version_number - a.version_number);
+
+    if (versions.length === 0) {
+        // 若無版本資料，顯示預設按鈕
+        const defaultDiv = document.createElement('div');
+        defaultDiv.className = 'version-btn active';
+        defaultDiv.innerHTML = `<span>最新</span><span>Current</span>`;
+        listContainer.appendChild(defaultDiv);
+        return;
+    }
+
+    // 找出目前最新版的號碼 (通常是排序後的第一個，或從 asset.latest_version 拿)
+    const latestVerNum = asset.latest_version ? asset.latest_version.version_number : versions[0].version_number;
+
+    versions.forEach(ver => {
+        const btn = document.createElement('div');
+        // 判斷是否為最新版
+        const isLatest = (ver.version_number === latestVerNum);
+        btn.className = `version-btn ${isLatest ? 'active' : 'inactive'}`;
+        
+        // 顯示日期
+        const dateStr = ver.created_at ? new Date(ver.created_at).toLocaleDateString() : 'Unknown';
+
+        btn.innerHTML = `
+            <span>${dateStr}</span>
+            <span>Version_${ver.version_number}</span>
+        `;
+
+        // 點擊切換事件
+        btn.onclick = () => {
+            // 1. UI 狀態切換
+            document.querySelectorAll('.version-btn').forEach(b => {
+                b.classList.remove('active');
+                b.classList.add('inactive');
+            });
+            btn.classList.remove('inactive');
+            btn.classList.add('active');
+
+            // 2. 更新預覽內容
+            // 如果是點擊最新版，傳 null (讓 updatePreview 使用預設邏輯)
+            // 如果是舊版，傳 version_number
+            updatePreview(asset, isLatest ? null : ver.version_number);
+        };
+
+        listContainer.appendChild(btn);
+    });
+}
+
+// --- [關鍵修改] 更新預覽區域邏輯 ---
+function updatePreview(asset, specificVersionNum) {
     const previewBox = document.querySelector('.preview-box');
     if (!previewBox) return;
     previewBox.innerHTML = '';
 
-    // 選擇 mediaUrl：優先避免指向內網 MinIO 的 presigned_url，若為 download_url 則附 token
-    let mediaUrl = null;
-    if (asset.presigned_url && !isLikelyMinioUrl(asset.presigned_url)) {
-        mediaUrl = asset.presigned_url;
-    } else if (asset.download_url) {
-        mediaUrl = asset.download_url;
-    } else {
-        mediaUrl = asset.thumbnail_url || null;
-    }
-
-    // 若 mediaUrl 是 download URL，附上 token（讓後端能接受並驗證）
-    if (mediaUrl && isDownloadUrl(mediaUrl)) {
-        mediaUrl = appendTokenToUrl(mediaUrl);
-    }
-
     const mime = asset.file_type || '';
+    let targetUrl = '';
 
-    if (mime.startsWith('video/') && mediaUrl) {
+    if (specificVersionNum) {
+        // [情況 A] 指定特定版本 -> 使用 version_number 參數
+        targetUrl = `${API_BASE_URL}/assets/${asset.asset_id}/download?version_number=${specificVersionNum}`;
+    } else {
+        // [情況 B] 顯示最新版本 (預設)
+        // 優先順序：有效的 Presigned URL > Download URL > Thumbnail
+        if (asset.presigned_url && !isLikelyMinioUrl(asset.presigned_url)) {
+            targetUrl = asset.presigned_url;
+        } else if (asset.download_url) {
+            targetUrl = asset.download_url;
+        } else {
+            targetUrl = asset.thumbnail_url;
+        }
+    }
+
+    // 只要是連回我們後端的 API，都要補上 Token
+    if (targetUrl && (targetUrl.includes('/download') || specificVersionNum)) {
+        targetUrl = appendTokenToUrl(targetUrl);
+    }
+
+    if (!targetUrl) {
+        previewBox.innerHTML = `<div class="preview-text">無預覽</div>`;
+        return;
+    }
+
+    // 開始渲染 DOM
+    if (mime.startsWith('video/')) {
         const video = document.createElement('video');
         video.controls = true;
         video.playsInline = true;
         video.style.maxWidth = '100%';
         video.style.maxHeight = '600px';
         video.style.borderRadius = '8px';
-        video.style.boxShadow = '0 4px 12px rgba(0,0,0,0.1)';
 
         const source = document.createElement('source');
-        source.src = mediaUrl;
+        source.src = targetUrl;
         source.type = mime;
         video.appendChild(source);
         previewBox.appendChild(video);
+        video.load(); // 確保切換 src 後重新載入
 
-    } else if (mime.startsWith('image/') && (asset.thumbnail_url || mediaUrl)) {
-        const imgUrl = asset.thumbnail_url || mediaUrl;
+    } else if (mime.startsWith('image/')) {
         const img = document.createElement('img');
-        img.src = imgUrl;
+        img.src = targetUrl;
         img.alt = asset.filename || '';
         img.style.maxWidth = '100%';
         img.style.maxHeight = '600px';
@@ -158,31 +231,24 @@ function renderDetail(asset) {
         img.onerror = function() { this.src='static/image/upload_grey.png'; };
         previewBox.appendChild(img);
 
-    } else if (mediaUrl) {
+    } else {
+        // 其他檔案
         const btn = document.createElement('a');
-        btn.href = mediaUrl;
-        btn.innerText = '下載檔案';
+        btn.href = targetUrl;
+        btn.innerText = specificVersionNum ? `下載此版本 (v${specificVersionNum})` : '下載檔案';
         btn.className = 'btn-action btn-save';
         btn.setAttribute('download', asset.filename || 'download');
         previewBox.appendChild(btn);
-    } else {
-        previewBox.innerHTML = `<div class="preview-text">無預覽</div>`;
-    }
-
-    // 分享連結顯示（若有）
-    const shareUrlText = document.getElementById('share-url-text');
-    if (shareUrlText && asset.download_url) {
-        shareUrlText.innerText = asset.download_url;
     }
 }
 
 // --- 綁定事件（下載、刪除、分享等） ---
 function setupEventListeners() {
-    // 下載按鈕 (Dropdown)
+    // 下載按鈕 (右上角選單的「下載」) -> 下載最新版
     const menuOptions = document.querySelectorAll('.menu-option');
     menuOptions.forEach(opt => {
         if (opt.innerText.includes("下載")) {
-            opt.onclick = downloadAsset;
+            opt.onclick = () => downloadAsset(assetId); 
         }
     });
 
@@ -232,90 +298,103 @@ function setupEventListeners() {
         });
     }
 
-    // 右上角選單開關（dropdown）
+    // 右上角選單 (Dropdown)
     const menuTrigger = document.getElementById('menu-trigger');
     const dropdownMenu = document.getElementById('dropdown-menu');
     if(menuTrigger) {
-        menuTrigger.addEventListener('click', (e) => { e.stopPropagation(); dropdownMenu && dropdownMenu.classList.toggle('show'); });
-        document.addEventListener('click', (e) => { if (dropdownMenu && !dropdownMenu.contains(e.target) && e.target !== menuTrigger) dropdownMenu.classList.remove('show'); });
-    }
-
-    // 愛心收藏（UI 切換）
-    const detailHeartBtn = document.getElementById('detail-heart-btn');
-    if (detailHeartBtn) {
-        detailHeartBtn.addEventListener('click', () => {
-            const isFav = detailHeartBtn.src.includes('fill');
-            if (isFav) {
-                detailHeartBtn.src = 'static/image/heart_black.png';
-                showToast('已取消收藏');
-            } else {
-                detailHeartBtn.src = 'static/image/heart_fill_black.png';
-                showToast('已加入收藏');
+        menuTrigger.addEventListener('click', (e) => { 
+            e.stopPropagation(); 
+            dropdownMenu && dropdownMenu.classList.toggle('show'); 
+        });
+        document.addEventListener('click', (e) => { 
+            if (dropdownMenu && !dropdownMenu.contains(e.target) && e.target !== menuTrigger) {
+                dropdownMenu.classList.remove('show'); 
             }
         });
     }
 
-    // 初始化 modal 與版本上傳邏輯
+    // 愛心收藏
+    const detailHeartBtn = document.getElementById('detail-heart-btn');
+    if (detailHeartBtn) {
+        detailHeartBtn.addEventListener('click', () => {
+            const isFav = detailHeartBtn.src.includes('fill');
+            detailHeartBtn.src = isFav ? 'static/image/heart_black.png' : 'static/image/heart_fill_black.png';
+            showToast(isFav ? '已取消收藏' : '已加入收藏');
+        });
+    }
+
+    // 初始化 Modal
     setupModalLogic();
 }
 
-// --- 完整的 setupModalLogic 實作（包含 版本上傳/分享/編輯/影像處理） ---
+// --- Modal 邏輯 (包含 版本上傳 / 影像處理 / 編輯) ---
 function setupModalLogic() {
     const dropdownMenu = document.getElementById('dropdown-menu');
 
-    // 分享彈窗
+    // 1. 分享
     const shareOption = document.getElementById('share-option');
     const shareModal = document.getElementById('share-modal');
     const closeShareX = document.getElementById('close-share-x');
-
     if (shareOption && shareModal) {
         shareOption.addEventListener('click', () => {
             dropdownMenu && dropdownMenu.classList.remove('show');
             shareModal.style.display = 'flex';
         });
-
-        closeShareX && closeShareX.addEventListener('click', () => {
-            shareModal.style.display = 'none';
-        });
-
-        shareModal.addEventListener('click', (e) => {
-            if (e.target === shareModal) shareModal.style.display = 'none';
-        });
+        closeShareX && closeShareX.addEventListener('click', () => shareModal.style.display = 'none');
+        shareModal.addEventListener('click', (e) => { if (e.target === shareModal) shareModal.style.display = 'none'; });
     }
 
-    // 編輯彈窗
+    // 2. 編輯資訊
     const editOption = document.getElementById('menu-edit-btn');
     const editModal = document.getElementById('edit-modal');
     const closeEditX = document.getElementById('close-edit-x');
     const cancelEditBtn = document.getElementById('cancel-edit-btn');
-
     if (editOption && editModal) {
         editOption.addEventListener('click', () => {
             dropdownMenu && dropdownMenu.classList.remove('show');
-
-            // 填值
-            const displayFilenameEl = document.getElementById('display-filename');
-            const displayIdEl = document.getElementById('display-id');
-            const displayTagsEl = document.getElementById('display-tags');
-            const editFilenameInput = document.getElementById('edit-filename-input');
-            const editIdInput = document.getElementById('edit-id-input');
-            const editTagsInput = document.getElementById('edit-tags-input');
-
-            if (editFilenameInput && displayFilenameEl) editFilenameInput.value = displayFilenameEl.innerText || '';
-            if (editIdInput && displayIdEl) editIdInput.value = (displayIdEl.innerText || '').replace(/^ID:?\s*/i, '');
-            if (editTagsInput && displayTagsEl) editTagsInput.value = displayTagsEl.innerText || '';
+            // 填入當前值
+            const dFile = document.getElementById('display-filename');
+            const dTags = document.getElementById('display-tags');
+            if (dFile) document.getElementById('edit-filename-input').value = dFile.innerText;
+            if (dTags) document.getElementById('edit-tags-input').value = dTags.innerText;
+            document.getElementById('edit-id-input').value = assetId;
 
             editModal.style.display = 'flex';
         });
-
         closeEditX && closeEditX.addEventListener('click', () => editModal.style.display = 'none');
         cancelEditBtn && cancelEditBtn.addEventListener('click', () => editModal.style.display = 'none');
-
-        // 初始化影像處理 UI 與綁定
+        
+        // 綁定影像處理
         setupImageProcessing();
+
+        // 綁定「儲存資訊」按鈕
+        const saveEditBtn = document.getElementById('save-edit-btn');
+        if (saveEditBtn) {
+            saveEditBtn.onclick = async () => {
+                const newName = document.getElementById('edit-filename-input').value;
+                const newTagsStr = document.getElementById('edit-tags-input').value;
+                const tagsArr = newTagsStr.split(/[\s#]+/).filter(x => x);
+
+                try {
+                    saveEditBtn.innerText = "儲存中...";
+                    const res = await fetch(`${API_BASE_URL}/assets/${assetId}`, {
+                        method: 'PATCH',
+                        headers: api.getHeaders(false, 'PATCH'),
+                        body: JSON.stringify({ filename: newName, tags: tagsArr })
+                    });
+                    if (!res.ok) throw new Error("更新失敗");
+                    
+                    alert("更新成功");
+                    window.location.reload();
+                } catch(e) {
+                    alert(e.message);
+                    saveEditBtn.innerText = "儲存資訊";
+                }
+            };
+        }
     }
 
-    // 版本上傳彈窗
+    // 3. 版本上傳
     const addVersionBtn = document.getElementById('add-version-btn');
     const versionModal = document.getElementById('version-modal');
     const closeVersionX = document.getElementById('close-version-x');
@@ -327,7 +406,6 @@ function setupModalLogic() {
 
     if (addVersionBtn && versionModal) {
         addVersionBtn.addEventListener('click', () => { versionModal.style.display = 'flex'; });
-
         closeVersionX && closeVersionX.addEventListener('click', () => { versionModal.style.display = 'none'; });
         cancelVersionBtn && cancelVersionBtn.addEventListener('click', () => { versionModal.style.display = 'none'; });
 
@@ -335,18 +413,17 @@ function setupModalLogic() {
             if (e.target === versionModal) versionModal.style.display = 'none';
         });
 
+        // 拖拉上傳
         if (versionDropZone) {
             versionDropZone.addEventListener('click', () => { if (versionFileInput) versionFileInput.click(); });
-
             versionDropZone.addEventListener('dragover', (e) => { e.preventDefault(); versionDropZone.style.borderColor = '#666'; });
-            versionDropZone.addEventListener('dragleave', (e) => { e.preventDefault(); versionDropZone.style.borderColor = 'rgba(142, 142, 142, 1)'; });
+            versionDropZone.addEventListener('dragleave', (e) => { e.preventDefault(); versionDropZone.style.borderColor = '#8e8e8e'; });
             versionDropZone.addEventListener('drop', (e) => {
                 e.preventDefault();
-                versionDropZone.style.borderColor = 'rgba(142, 142, 142, 1)';
+                versionDropZone.style.borderColor = '#8e8e8e';
                 if (e.dataTransfer.files.length > 0) handleVersionFiles(Array.from(e.dataTransfer.files));
             });
         }
-
         if (versionFileInput) {
             versionFileInput.addEventListener('change', (e) => {
                 if (e.target.files.length > 0) handleVersionFiles(Array.from(e.target.files));
@@ -361,7 +438,11 @@ function setupModalLogic() {
             files.forEach(file => {
                 const item = document.createElement('div');
                 item.className = 'file-list-item';
-                item.innerHTML = `<div class="file-info-left"><img src="static/image/checkmark_grey.png" class="check-icon status-icon"><span class="file-name-text">${file.name}</span></div>`;
+                item.innerHTML = `
+                    <div class="file-info-left">
+                        <img src="static/image/checkmark_grey.png" class="check-icon status-icon">
+                        <span class="file-name-text">${file.name}</span>
+                    </div>`;
                 versionFileList.appendChild(item);
             });
         }
@@ -379,27 +460,24 @@ function setupModalLogic() {
                 saveVersionBtn.disabled = true;
 
                 try {
-                    for (let i = 0; i < files.length; i++) {
-                        const formData = new FormData();
-                        formData.append('file', files[i]);
+                    const formData = new FormData();
+                    formData.append('file', files[0]); // 只取第一個
 
-                        // isFileUpload=true, method='POST'
-                        const res = await fetch(`${API_BASE_URL}/assets/${assetId}/versions`, {
-                            method: 'POST',
-                            headers: api.getHeaders(true, 'POST'),
-                            body: formData
-                        });
+                    const res = await fetch(`${API_BASE_URL}/assets/${assetId}/versions`, {
+                        method: 'POST',
+                        headers: api.getHeaders(true, 'POST'),
+                        body: formData
+                    });
 
-                        if (!res.ok) {
-                            let errMsg = "上傳失敗";
-                            try { const e = await res.json(); errMsg = e.detail || errMsg; } catch(_) {}
-                            throw new Error(errMsg);
-                        }
+                    if (!res.ok) {
+                        let errMsg = "上傳失敗";
+                        try { const e = await res.json(); errMsg = e.detail || errMsg; } catch(_) {}
+                        throw new Error(errMsg);
                     }
 
-                    alert("上傳成功！");
+                    alert("新版本上傳成功！");
                     versionModal.style.display = 'none';
-                    setTimeout(() => window.location.reload(), 800);
+                    window.location.reload(); 
 
                 } catch (error) {
                     alert("錯誤: " + error.message);
@@ -411,15 +489,11 @@ function setupModalLogic() {
         }
     }
 
-    // 點擊 overlay 即關閉（備援）
-    const overlays = document.querySelectorAll('.modal-overlay');
-    overlays.forEach(ov => {
-        ov.addEventListener('click', (e) => {
-            if (e.target === ov) ov.style.display = 'none';
-        });
+    document.querySelectorAll('.modal-overlay').forEach(ov => {
+        ov.addEventListener('click', (e) => { if (e.target === ov) ov.style.display = 'none'; });
     });
 
-    // 內部：影像處理綁定
+    // 內部函式：影像處理
     function setupImageProcessing() {
         const processSelect = document.getElementById('img-process-select');
         const processBtn = document.getElementById('btn-process-image');
@@ -430,10 +504,9 @@ function setupModalLogic() {
             document.querySelectorAll('.process-params').forEach(el => el.style.display = 'none');
             processBtn.disabled = !op;
             processBtn.style.backgroundColor = op ? "#333" : "#ccc";
-            processBtn.style.color = op ? "#fff" : "#666";
-
-            if (op === 'rotate') document.getElementById('process-rotate-params') && (document.getElementById('process-rotate-params').style.display = 'block');
-            if (op === 'resize') document.getElementById('process-resize-params') && (document.getElementById('process-resize-params').style.display = 'block');
+            
+            if (op === 'rotate') document.getElementById('process-rotate-params').style.display = 'block';
+            if (op === 'resize') document.getElementById('process-resize-params').style.display = 'block';
         });
 
         processBtn.addEventListener('click', async () => {
@@ -456,24 +529,21 @@ function setupModalLogic() {
                     headers: api.getHeaders(false, 'POST'),
                     body: JSON.stringify(requestBody)
                 });
-
                 if (!res.ok) {
                     let errText = "影像處理失敗";
                     try { const jj = await res.json(); errText = jj.detail || errText; } catch(_) {}
                     throw new Error(errText);
                 }
-
-                showToast("影像處理成功！");
+                showToast("影像處理成功！新版本已建立");
                 setTimeout(() => window.location.reload(), 1500);
-
             } catch (err) {
                 alert(err.message);
                 processBtn.innerText = "執行影像處理";
                 processBtn.disabled = false;
             }
         });
-    } // end setupImageProcessing
-} // end setupModalLogic
+    }
+}
 
 // --- 輔助函式 ---
 function formatBytes(bytes, decimals = 2) {
@@ -485,22 +555,16 @@ function formatBytes(bytes, decimals = 2) {
     return `${parseFloat((bytes / Math.pow(k, i)).toFixed(dm))} ${sizes[i]}`;
 }
 
-function downloadAsset() {
-    fetch(`${API_BASE_URL}/assets/${assetId}/download`, { headers: api.getHeaders(false, 'GET') })
-    .then(res => {
-        if(!res.ok) throw new Error("下載失敗");
-        return res.blob();
-    })
-    .then(blob => {
-        const url = window.URL.createObjectURL(blob);
-        const a = document.createElement('a');
-        a.href = url;
-        a.download = document.getElementById('display-filename').innerText || 'download';
-        document.body.appendChild(a);
-        a.click();
-        window.URL.revokeObjectURL(url);
-    })
-    .catch(err => alert(err.message));
+function downloadAsset(id) {
+    // 下載最新版本
+    const url = appendTokenToUrl(`${API_BASE_URL}/assets/${id}/download`);
+    
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = document.getElementById('display-filename').innerText || 'download';
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
 }
 
 function showToast(msg) {
