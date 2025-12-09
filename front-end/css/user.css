@@ -13,8 +13,10 @@
 
 /* --- Header 修正 --- */
 header {
-    /* 確保 Header 內的元素能正確分佈 */
+    display: flex; /* 確保是 flex 容器 */
+    align-items: center;
     justify-content: space-between;
+    /* 假設 Header 的高度和背景色已在 style.css 或其他地方定義 */
 }
 
 /* Header 頂部標題 (.header-title) 樣式 */
@@ -30,13 +32,20 @@ header {
 }
 
 /* 確保 Logo Area 和 Icons Area 不佔據過多空間 */
-.logo-area, .header-icons {
+.logo-area, .header-icons, .header-icons a {
     width: 150px; 
     flex-shrink: 0;
+    display: flex;
+    align-items: center;
+}
+.header-icons {
+    /* 調整右側圖標的對齊方式，讓它們靠右 */
+    justify-content: flex-end; 
+    gap: 15px;
 }
 
 
-/* --- 篩選器列 (Filter Bar) 佈局 --- */
+/* --- 篩選器列 (Filter Bar) 佈局 (無搜尋框) --- */
 .filter-bar {
     display: flex;
     align-items: center;
@@ -46,14 +55,13 @@ header {
     flex-shrink: 0; 
     margin-bottom: 30px;
     
-    /* 修正排版：確保按鈕靠右 */
     justify-content: flex-start;
     gap: 15px;
 }
 
 /* 【新增】空間推進器 (.space-pusher) 樣式 */
 .space-pusher {
-    flex-grow: 1; /* 佔據所有可用空間 */
+    flex-grow: 1; 
     min-width: 20px;
 }
 
@@ -62,13 +70,8 @@ header {
     display: flex;
     align-items: center;
     flex-shrink: 0;
-    gap: 20px; /* 確保兩個按鈕之間有間距 */
+    gap: 20px; 
 }
-
-/* (原有的搜索輸入框相關樣式，假設已移除，此處保留供參考，但實際應刪除) */
-/* .input-search-group { ... } */
-/* .filter-input.single-search-input { ... } */
-/* .icon-search-btn { ... } */
 
 /* 新增使用者按鈕 (.add-user-btn) 樣式 */
 .add-user-btn {
@@ -83,7 +86,7 @@ header {
     transition: background-color 0.2s, transform 0.1s;
     height: 48px;
     box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
-    margin: 0; /* 修正：依賴 action-buttons-group 的 gap */
+    margin: 0; 
 }
 /* 新增使用者按鈕 Hover 效果 */
 .add-user-btn:hover {
@@ -106,7 +109,7 @@ header {
     transition: background-color 0.2s, transform 0.1s;
     height: 48px;
     box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
-    margin: 0; /* 修正：依賴 action-buttons-group 的 gap */
+    margin: 0; 
 }
 /* 稽核日誌按鈕 Hover 效果 */
 .audit-log-btn:hover {
@@ -137,39 +140,35 @@ header {
 .audit-table {
     width: 100%;
     border-collapse: collapse; 
-    table-layout: fixed; /* ★ 關鍵：確保寬度百分比生效 ★ */
+    table-layout: fixed; 
     font-size: 1.3rem;
     color: #333;
     background-color: transparent; 
 }
 
 /* --- 表格欄位寬度調整 (五欄位優化) --- */
-
 /* 調整欄位寬度分配 (總和為 100%) */
 .audit-table thead th:nth-child(1), /* ID */
 .audit-table tbody td:nth-child(1) {
     width: 10%; 
 }
-
 .audit-table thead th:nth-child(2), /* 姓名 */
 .audit-table tbody td:nth-child(2) {
     width: 20%; 
 }
-
 .audit-table thead th:nth-child(3), /* 角色 */
 .audit-table tbody td:nth-child(3) {
     width: 20%; 
 }
-
-.audit-table thead th:nth-child(4), /* 狀態 */
+.audit-table thead th:nth-child(4), /* 帳號 (原狀態欄位) */
 .audit-table tbody td:nth-child(4) {
-    width: 35%; /* 狀態/Email 欄位通常需要較大的寬度 */
+    width: 35%; 
 }
-
 .audit-table thead th:nth-child(5), /* 操作 */
 .audit-table tbody td:nth-child(5) {
-    width: 15%; /* 操作欄位佔用最小寬度 */
+    width: 15%; 
 }
+
 
 /* 表格頭部 (thead) 樣式 */
 .audit-table thead {
@@ -208,7 +207,6 @@ header {
 .audit-table tbody tr:nth-child(even) {
     background-color: #f7f7f7; 
 }
-
 /* 行 Hover 效果 */
 .audit-table tbody tr:hover {
     background-color: #e6f7ff; 
@@ -241,7 +239,7 @@ header {
     vertical-align: middle;
 }
 
-/* --- 操作按鈕圖標樣式 (.action-icons) --- */
+/* --- 操作按鈕圖標樣式 (修復垃圾桶顯示) --- */
 .action-icons {
     display: flex;
     gap: 10px; 
@@ -250,6 +248,7 @@ header {
 }
 
 .action-icon {
+    /* 圓形按鈕基礎樣式 */
     width: 30px;
     height: 30px;
     padding: 0;
@@ -262,13 +261,17 @@ header {
     align-items: center;
     box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
 }
+
+/* 圖片圖標樣式，確保圖片在圓形按鈕內正確縮放 */
 .action-icon .icon-img {
     width: 18px; 
     height: 18px;
     object-fit: contain;
 }
 
+
 .delete-btn {
+    /* 確保垃圾桶圖標按鈕有背景色 */
     background-color: #ffcccc; 
 }
 .delete-btn:hover {
@@ -282,5 +285,146 @@ header {
     background-color: #b2dfdb;
 }
 
-/* --- 彈窗樣式 (省略，假設已完整) --- */
-/* ... */
+/* --- 彈窗核心樣式 (Modal Overlay) --- */
+.modal-overlay {
+    position: fixed; 
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background-color: rgba(0, 0, 0, 0.6); /* 深色遮罩 */
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    z-index: 1000; /* 確保在最上層 */
+    transition: opacity 0.3s ease;
+}
+
+/* 隱藏狀態 */
+.modal-overlay.hidden {
+    display: none;
+    opacity: 0;
+}
+
+/* --- 彈窗內容容器 (Modal Content) --- */
+.modal-content {
+    background-color: #ffffff;
+    padding: 30px;
+    border-radius: 15px;
+    box-shadow: 0 5px 20px rgba(0, 0, 0, 0.4);
+    width: 400px; /* 寬度 */
+    max-width: 90%;
+    display: flex;
+    flex-direction: column;
+    gap: 15px;
+}
+
+/* 彈窗標題 */
+.modal-title {
+    font-size: 1.5rem;
+    font-weight: 700;
+    color: rgba(7, 35, 125, 1);
+    margin-bottom: 10px;
+    text-align: center;
+}
+
+/* --- 表單組 (.form-group) --- */
+.form-group {
+    display: flex;
+    flex-direction: column;
+    gap: 5px;
+}
+.form-group label {
+    font-weight: 700;
+    color: #333;
+    font-size: 0.95rem;
+}
+
+/* 彈窗輸入框 (Input/Select) 樣式 */
+.modal-content input[type="text"],
+.modal-content input[type="email"],
+.modal-content input[type="password"] {
+    padding: 10px 15px;
+    border: 1px solid #ccc;
+    border-radius: 8px;
+    font-size: 1rem;
+    outline: none;
+}
+
+/* 彈窗角色下拉選單 (.role-select-modal) 樣式 */
+.role-select-modal {
+    width: 100%; 
+    height: 38px;
+    padding: 8px 15px; 
+    border: 1px solid #ccc;
+    border-radius: 8px; 
+    font-size: 1rem;
+    font-weight: 500;
+    color: #333;
+    background-color: #ffffff;
+    -webkit-appearance: none; 
+    -moz-appearance: none;
+    appearance: none;
+    background-image: url('../static/image/down_gray.png'); 
+    background-repeat: no-repeat;
+    background-position: right 10px center; 
+    background-size: 14px; 
+    padding-right: 30px; 
+    cursor: pointer;
+}
+
+
+/* --- 彈窗操作按鈕 (.modal-actions) --- */
+.modal-actions {
+    display: flex;
+    justify-content: center; /* 讓按鈕置中 */
+    gap: 15px;
+    margin-top: 20px;
+}
+
+.confirm-btn, .cancel-btn {
+    font-size: 1rem;
+    font-weight: 700;
+    padding: 10px 25px;
+    border: none;
+    border-radius: 8px; 
+    cursor: pointer;
+    transition: background-color 0.2s;
+}
+
+/* 確認按鈕 (淺藍色/深藍文字) */
+.confirm-btn {
+    background-color: #bbdefb; 
+    color: rgba(7, 35, 125, 1);
+}
+.confirm-btn:hover {
+    background-color: #90caf9; 
+}
+
+/* 取消按鈕 (淺灰色/中性色) */
+.cancel-btn {
+    background-color: #e0e0e0; 
+    color: #333;
+}
+.cancel-btn:hover {
+    background-color: #ccc;
+}
+
+/* --- 刪除確認彈窗 (Small Content) --- */
+.modal-content.small-content {
+    width: 320px; 
+    padding: 25px; 
+    text-align: center; 
+}
+.modal-content.small-content .modal-title {
+    font-size: 1.1rem;
+    margin-bottom: 20px;
+}
+.modal-actions.confirm-actions {
+    justify-content: center;
+    gap: 15px;
+}
+/* 刪除確認按鈕樣式 (使用 modal-confirm-btn/modal-cancel-btn 覆蓋) */
+.modal-confirm-btn, .modal-cancel-btn {
+    flex-grow: 1;
+}

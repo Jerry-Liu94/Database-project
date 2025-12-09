@@ -46,22 +46,7 @@
                         </tr>
                     </thead>
                     <tbody>
-
-                        
-                        <tr class="data-row"><td></td><td></td><td></td><td></td><td></td><td></td></tr>
-                        <tr class="data-row"><td></td><td></td><td></td><td></td><td></td><td></td></tr>
-                        <tr class="data-row"><td></td><td></td><td></td><td></td><td></td><td></td></tr>
-                        <tr class="data-row"><td></td><td></td><td></td><td></td><td></td><td></td></tr>
-                        <tr class="data-row"><td></td><td></td><td></td><td></td><td></td><td></td></tr>
-                        <tr class="data-row"><td></td><td></td><td></td><td></td><td></td><td></td></tr>
-                        <tr class="data-row"><td></td><td></td><td></td><td></td><td></td><td></td></tr>
-                        <tr class="data-row"><td></td><td></td><td></td><td></td><td></td><td></td></tr>
-                        <tr class="data-row"><td></td><td></td><td></td><td></td><td></td><td></td></tr>
-                        <tr class="data-row"><td></td><td></td><td></td><td></td><td></td><td></td></tr>
-                        <tr class="data-row"><td></td><td></td><td></td><td></td><td></td><td></td></tr>
-                        <tr class="data-row"><td></td><td></td><td></td><td></td><td></td><td></td></tr>
-                        <tr class="data-row"><td></td><td></td><td></td><td></td><td></td><td></td></tr>
-                    </tbody>
+                        </tbody>
                 </table>
             </div>
         </div>
@@ -69,7 +54,7 @@
         
     </main>
 
-    <div id="user-modal" class="modal-overlay hidden">
+<div id="user-modal" class="modal-overlay hidden">
     <div class="modal-content">
         <h3 class="modal-title">新增使用者</h3>
         
@@ -103,25 +88,20 @@
             <button class="cancel-btn" id="modal-cancel-add">取消</button>
         </div>
     </div>
-        
-        <div class="modal-actions">
-            <button class="confirm-btn">確認</button>
-            </div>
-    </div>
-    </div>
-
-    <div id="confirm-modal" class="modal-overlay hidden">
+</div>
+    
+<div id="confirm-modal" class="modal-overlay hidden">
     <div class="modal-content small-content">
-        <h3 class="modal-title">確定停用此帳號？</h3>
+        <h3 class="modal-title">確定刪除此帳號？</h3>
         
         <div class="modal-actions confirm-actions">
             <button class="confirm-btn modal-confirm-btn">確認</button> 
             <button class="cancel-btn modal-cancel-btn">取消</button>
         </div>
     </div>
-    </div>
+</div>
 
-    <script>
+<script>
         document.addEventListener('DOMContentLoaded', () => {
             // 獲取元素
             const addUserBtn = document.querySelector('.add-user-btn');
@@ -189,6 +169,7 @@
 
         });
     </script>
-    <script type="module" src="js/user_management.js"></script>
+
+<script type="module" src="js/user_management.js"></script>
 </body>
 </html>
