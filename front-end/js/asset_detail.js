@@ -47,15 +47,29 @@ async function loadAssetDetail() {
 // --- Helper: 把 token 加到 URL（用於 img/video src 或下載連結） ---
 function appendTokenToUrl(url) {
     try {
-        const token = localStorage.getItem('redant_token');
-        if (!token) return url;
-        
         const u = new URL(url);
-        // 如果原本已經有 token 參數就不重複加
-        if (!u.searchParams.has('token')) {
-            u.searchParams.set('token', token);
+
+        // 1. 優先檢查 JWT Token (Email 登入)
+        const token = localStorage.getItem('redant_token');
+        if (token) {
+            if (!u.searchParams.has('token')) {
+                u.searchParams.set('token', token);
+            }
+            return u.toString();
         }
-        return u.toString();
+
+        // 2. 如果沒有 JWT，檢查 API Key (Token 登入)
+        // 注意：這要看你 autho.js 是存成 'redant_api_key' 還是什麼
+        const apiKey = localStorage.getItem('redant_api_key'); 
+        if (apiKey) {
+            if (!u.searchParams.has('api_key')) {
+                // 後端 download_asset 支援 ?api_key=sk_...
+                u.searchParams.set('api_key', apiKey);
+            }
+            return u.toString();
+        }
+
+        return url;
     } catch (e) {
         return url;
     }
@@ -179,7 +193,6 @@ function updatePreview(asset, specificVersionNum) {
     targetUrl = appendTokenToUrl(targetUrl);
     
     // 4. [關鍵修正] 加上時間戳記 (Cache Busting)
-    // 這行程式碼強迫瀏覽器認為這是一個全新的網址，必須重新下載，解決「灰階/彩色」不切換的問題
     const separator = targetUrl.includes('?') ? '&' : '?';
     targetUrl = `${targetUrl}${separator}_t=${new Date().getTime()}`;
 
@@ -192,6 +205,7 @@ function updatePreview(asset, specificVersionNum) {
 
     // 5. 渲染 DOM
     if (mime.startsWith('video/')) {
+        // --- 影片區塊 ---
         const video = document.createElement('video');
         video.controls = true;
         video.playsInline = true;
@@ -210,22 +224,28 @@ function updatePreview(asset, specificVersionNum) {
         video.load(); 
 
     } else if (mime.startsWith('image/')) {
+        // --- 圖片區塊 (這裡是修正重點) ---
         const img = document.createElement('img');
-        img.src = targetUrl;
+        
         img.alt = asset.filename || '';
         img.style.maxWidth = '100%';
         img.style.maxHeight = '600px';
         img.style.objectFit = 'contain';
         
+        // 先綁定錯誤處理
         img.onerror = function() { 
             console.error("圖片載入失敗:", this.src);
             this.style.objectFit = "none";
-            this.src='static/image/upload_grey.png'; 
+            this.src = 'static/image/upload_grey.png'; 
         };
+
+        // 最後才給網址
+        img.src = targetUrl;
+        
         previewBox.appendChild(img);
 
     } else {
-        // 下載按鈕 (如果是其他檔案)
+        // --- 其他檔案區塊 ---
         const btn = document.createElement('a');
         btn.href = targetUrl;
         btn.innerHTML = `<div style="display:flex; flex-direction:column; align-items:center;">
@@ -497,7 +517,9 @@ function setupModalLogic() {
             const op = e.target.value;
             document.querySelectorAll('.process-params').forEach(el => el.style.display = 'none');
             processBtn.disabled = !op;
-            processBtn.style.backgroundColor = op ? "#333" : "#ccc";
+
+            processBtn.style.backgroundColor = op ? "#333" : "#ccc"; 
+            processBtn.style.color = op ? "#fff" : "#000"; 
             
             if (op === 'rotate') document.getElementById('process-rotate-params').style.display = 'block';
             if (op === 'resize') document.getElementById('process-resize-params').style.display = 'block';
