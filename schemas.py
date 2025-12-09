@@ -23,12 +23,21 @@ class UserOut(BaseModel):
     class Config:
         from_attributes = True
 
+class MetadataOut(BaseModel):
+    filesize: Optional[int] = None
+    resolution: Optional[str] = None
+    duration: Optional[str] = None
+    encoding_format: Optional[str] = None
+    class Config:
+        from_attributes = True
+
 # 3. 定義 Asset (資產) 要顯示什麼，包含上面的 Version 和 User
 class AssetOut(BaseModel):
     asset_id: int
     filename: str
     file_type: Optional[str] = None
     latest_version_id: Optional[int] = None
+    metadata_info: Optional[MetadataOut] = None
     
     download_url: Optional[str] = None
     thumbnail_url: Optional[str] = None
