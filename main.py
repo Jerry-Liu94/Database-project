@@ -95,6 +95,8 @@ minio_client = Minio(
     secret_key=MINIO_SECRET_KEY,
     secure=False 
 )
+
+USE_PRESIGNED = os.getenv("MINIO_USE_PRESIGNED", "false").lower() in ("1", "true", "yes")
 # 定義 API Token 應該放在 Header 的哪個欄位 (例如 X-API-TOKEN)
 api_key_header = APIKeyHeader(name="X-API-TOKEN", auto_error=False)
 
@@ -692,19 +694,21 @@ def read_asset(
         raise HTTPException(status_code=403, detail="權限不足")
     asset.download_url = f"{APP_BASE_URL}/assets/{asset.asset_id}/download"
     asset.thumbnail_url = f"{APP_BASE_URL}/assets/{asset.asset_id}/thumbnail"
-    
+ 
     try:
-        if asset.latest_version:
+        if asset.latest_version and USE_PRESIGNED:
             presigned = minio_client.presigned_get_object(
                 MINIO_BUCKET_NAME,
                 asset.latest_version.storage_path,
                 expires=timedelta(hours=1)
             )
             asset.presigned_url = presigned
+        else:
+            asset.presigned_url = None
     except Exception as e:
-        logger.info(f"取得 presigned URL 失敗: {e}")
+        logger.info(f"取得 presigned URL 失敗或被停用: {e}")
         asset.presigned_url = None
-    
+         
     return asset
 
 # [新增] 刪除資產 API (同步刪除 DB 與 MinIO 檔案)

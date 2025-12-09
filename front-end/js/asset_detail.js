@@ -1,6 +1,6 @@
 /* js/asset_detail.js
-   完整版：使用 /assets/{id} 單筆 API，支援 presigned_url 作為 media src，
-   並包含完整的 modal/版本上傳/影像處理/下載/刪除邏輯。
+   完整版：使用 /assets/{id} 單筆 API，優先使用後端代理 download_url（避免直接連內網 MinIO）。
+   包含 modal/版本上傳/影像處理/下載/刪除邏輯與防護判斷。
 */
 import { API_BASE_URL, api } from './config.js';
 
@@ -45,6 +45,18 @@ async function loadAssetDetail() {
     }
 }
 
+// Helper: 判斷 URL 是否很可能指向內網 MinIO（避免直接使用）
+function isLikelyMinioUrl(url) {
+    if (!url) return false;
+    try {
+        const u = new URL(url);
+        // 常見 MinIO port 或 hostname 包含 'minio'
+        return (u.port && (u.port === "9000" || u.port === "9001")) || u.hostname.includes("minio");
+    } catch (e) {
+        return false;
+    }
+}
+
 // --- UI: 渲染詳情 ---
 function renderDetail(asset) {
     // 基本欄位
@@ -79,8 +91,16 @@ function renderDetail(asset) {
     if (!previewBox) return;
     previewBox.innerHTML = '';
 
-    // 優先使用 presigned_url (可以被 <video> / <img> 直接存取)
-    const mediaUrl = asset.presigned_url || asset.download_url || asset.thumbnail_url || null;
+    // 優先選擇 mediaUrl：避免直接使用疑似內網 MinIO 的 presigned_url
+    let mediaUrl = null;
+    if (asset.presigned_url && !isLikelyMinioUrl(asset.presigned_url)) {
+        mediaUrl = asset.presigned_url;
+    } else if (asset.download_url) {
+        mediaUrl = asset.download_url;
+    } else {
+        mediaUrl = asset.thumbnail_url || null;
+    }
+
     const mime = asset.file_type || '';
 
     if (mime.startsWith('video/') && mediaUrl) {
@@ -91,7 +111,6 @@ function renderDetail(asset) {
         video.style.maxHeight = '600px';
         video.style.borderRadius = '8px';
         video.style.boxShadow = '0 4px 12px rgba(0,0,0,0.1)';
-        // 若需 autoplay: video.autoplay = true; video.muted = true; （但瀏覽器可能阻擋）
         const source = document.createElement('source');
         source.src = mediaUrl;
         source.type = mime;
