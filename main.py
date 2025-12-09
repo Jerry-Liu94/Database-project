@@ -264,18 +264,6 @@ def read_users(db: Session = Depends(get_db)):
     users = db.query(models.User).all()
     return users
 
-@app.get("/users/me/mfa")
-def check_my_mfa(current_user: models.User = Depends(get_current_user)):
-    """
-    回傳 { "mfa_enabled": true/false }
-    需要驗證 (get_current_user)，回傳使用者 mfa_secret 是否存在。
-    """
-    try:
-        enabled = bool(current_user.mfa_secret)
-    except Exception:
-        enabled = False
-    return {"mfa_enabled": enabled}
-
 # [修改] 支援 JWT 或 API Token 的身分驗證
 def get_current_user(
     token: str = Depends(oauth2_scheme), 
@@ -332,6 +320,18 @@ def get_current_user(
         detail="無效的憑證 (Token 或 API Key)",
         headers={"WWW-Authenticate": "Bearer"},
     )
+
+@app.get("/users/me/mfa")
+def check_my_mfa(current_user: models.User = Depends(get_current_user)):
+    """
+    回傳 { "mfa_enabled": true/false }
+    需要驗證 (get_current_user)，回傳使用者 mfa_secret 是否存在。
+    """
+    try:
+        enabled = bool(current_user.mfa_secret)
+    except Exception:
+        enabled = False
+    return {"mfa_enabled": enabled}
 
 # [新增] 權限檢查依賴 (Dependency)
 def require_permission(resource: str, action: str):
