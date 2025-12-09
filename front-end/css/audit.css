@@ -191,7 +191,7 @@
     overflow-x: hidden;
 }
 
-/* 表格本體 (.audit-table) 樣式 */
+/* --- 表格本體 (.audit-table) 樣式 --- */
 .audit-table {
     width: 100%;
     border-collapse: collapse; 
@@ -260,12 +260,12 @@
 
 .audit-table thead th:nth-child(3), /* 時間 (Timestamp) */
 .audit-table tbody td:nth-child(3) {
-    width: 35%; 
+    width: 30%; 
 }
 
 .audit-table thead th:nth-child(4), /* User ID (可當作隱藏或小型欄位) */
 .audit-table tbody td:nth-child(4) {
-    width: 15%; 
+    width: 20%; 
 }
 
 /* --- 分頁列 (Pagination Bar) 樣式 --- */

@@ -262,6 +262,34 @@
     flex-shrink: 0;
 }
 
+/* 1. 讓 API Token 行轉為垂直堆疊 */
+.setting-row.api-row {
+    flex-direction: column;
+    align-items: flex-start; /* 讓所有內容靠左對齊 */
+}
+
+/* 2. 讓 API Token 的值在標籤下方且佔滿寬度 */
+.setting-row.api-row .api-token-display {
+    width: 100%;
+    margin-top: 10px; /* 給標籤和 Token 之間一點間隔 */
+}
+
+/* 3. Token 內容的換行和寬度控制 */
+.api-token-display span {
+    /* **【關鍵】** 讓無空格的長字串在容器邊界處換行 */
+    word-break: break-all;
+    overflow-wrap: break-word;
+    flex-grow: 1;
+    flex-shrink: 1; 
+    max-width: 100%; /* 確保其最大寬度不會超出父容器 */
+}
+
+/* 4. 確保複製圖標仍在正確位置 */
+.api-token-display .copy-icon {
+    flex-shrink: 0; 
+    margin-top: 2px;
+}
+
 /* 密碼編輯和 Token 複製圖示樣式 */
 .password-display .edit-icon,
 .api-token-display .copy-icon {

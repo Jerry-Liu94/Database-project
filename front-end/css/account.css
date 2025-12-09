@@ -104,13 +104,13 @@ body, html {
 
 /* 標籤 (label) 樣式 (寬度及間距調整) */
 .form-group-final label {
-    font-size: 24px; 
+    font-size: 20px; 
     font-weight: bold;
     color: #333;
     
     width: 80px; 
     
-    text-align: right; 
+    text-align: right; /* 帳號/密碼標籤是靠右對齊的 */
     
     margin-right: 30px; 
     padding: 0;
@@ -135,6 +135,7 @@ body, html {
     font-size: 14px;
     text-align: center;
 }
+
 /* 確認按鈕 (.confirm-button-final) 樣式 */
 .confirm-button-final {
     width: 100px;
@@ -163,18 +164,48 @@ body, html {
 
 /* --- 登入頁面專屬樣式 --- */
 
-/* 輔助連結和記住我區塊 (.login-links) 樣式 (寬度調整至 350px) */
+/* 【MFA 驗證碼欄位修正：強制文字左對齊 & 調整寬度】 */
+#mfa-group label {
+    /* 保持 font-size: 24px 以符合帳號/密碼標籤 */
+    font-size: 24px; 
+    
+    /* 關鍵：讓 MFA 標籤文字靠左 */
+    text-align: left; 
+    
+    /* 擴大寬度 */
+    width: 120px; /* 擴大到 120px 容納長文字 */
+    
+    /* 保持間距 */
+    margin-right: 30px; 
+    
+    /* 🚨 關鍵調整：將標籤容器向右推 40px，讓它的文字內容與上方標籤文字左側對齊 */
+    /* 這是補償上方標籤文字在 80px 容器內右對齊時的留白 */
+    margin-left: 40px; 
+}
+
+/* 確保 MFA 輸入框的寬度縮短以適應加長的標籤 */
+#mfa-group input {
+    /* 最終計算出的寬度：120px */
+    width: 120px;
+}
+
+/* 輔助連結和記住我區塊 (.login-links) 樣式 (最終修正：避免換行並精準右對齊) */
 .login-links {
-    width: 350px; 
+    /* 確保寬度足夠容納連結文字，且 margin-left 確保右側對齊 */
+    width: 190px; 
+    
     display: flex;
-    justify-content: flex-end;
+    justify-content: flex-end; /* 讓連結靠右對齊 */
     
     font-size: 20px; 
-    
     margin-bottom: 30px; 
     color: #555;
     
-    padding-right: 0px; 
+    /* 重新計算 margin-left：120px，確保右側與輸入框切齊 */
+    margin-left: 120px; 
+    
+    align-self: flex-start;
+    padding: 0;
 }
 
 /* 輔助連結 (a) 樣式 */
@@ -182,6 +213,13 @@ body, html {
     color: #555;
     text-decoration: none;
     margin-right: 15px; 
+    /* 確保連結文字不被壓縮換行 */
+    white-space: nowrap; 
+}
+
+/* 確保最右側的連結沒有多餘邊距 */
+.login-links a:last-child {
+    margin-right: 0;
 }
 
 /* 記住我 checkbox 樣式 */
