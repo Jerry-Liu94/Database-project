@@ -199,3 +199,6 @@ class PasswordResetToken(Base):
 
     user = relationship("User")
     
+@property
+def is_mfa_enabled(self):
+    return self.mfa_secret is not None
