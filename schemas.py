@@ -19,6 +19,7 @@ class UserOut(BaseModel):
     user_name: str
     role_id : int
     # 這裡不寫 password_hash，這樣回傳時就會自動過濾掉
+    mfa_enabled: bool = False
     
     class Config:
         from_attributes = True

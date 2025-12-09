@@ -42,6 +42,10 @@ class User(Base):
 
     role = relationship("Role", back_populates="users")
     assets_uploaded = relationship("Asset", back_populates="uploader")
+    
+    @property
+    def is_mfa_enabled(self):
+        return self.mfa_secret is not None
 
 # 5. 資產 (Asset)
 class Asset(Base):
@@ -134,8 +138,6 @@ class ApiToken(Base):
     created_at = Column(TIMESTAMP, server_default=func.now())
 
     user = relationship("User")
-    
-# models.py (加在最下面)
 
 # 12. 匯出任務表 (Export Job)
 class ExportJob(Base):
