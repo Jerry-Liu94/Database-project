@@ -2072,6 +2072,98 @@ def process_image_asset(
         db.rollback()
         raise HTTPException(status_code=500, detail=f"資料庫寫入失敗: {str(e)}")
     
+@app.patch("/assets/{asset_id}")
+def update_asset(
+    asset_id: int,
+    payload: dict = Body(...),
+    current_user: models.User = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    """
+    PATCH /assets/{asset_id}
+    可接受 JSON body:
+    {
+      "filename": "newname.jpg",
+      "tags": ["tag1", "tag2"]
+    }
+    只有 Admin 或 上傳者本人可以修改。
+    """
+    asset = db.query(models.Asset).filter(models.Asset.asset_id == asset_id).first()
+    if not asset:
+        raise HTTPException(status_code=404, detail="找不到資產")
+
+    # 權限檢查：Admin 或 資產上傳者
+    if current_user.role_id != 1 and asset.uploaded_by_user_id != current_user.user_id:
+        raise HTTPException(status_code=403, detail="權限不足")
+
+    try:
+        updated_fields = {}
+        # 更新檔名
+        if 'filename' in payload and isinstance(payload['filename'], str):
+            new_name = payload['filename'].strip()
+            if new_name:
+                asset.filename = new_name
+                updated_fields['filename'] = new_name
+
+        # 更新 tags（可選）
+        tag_names = payload.get('tags')
+        if tag_names is not None and isinstance(tag_names, list):
+            # 先清除該 asset 原本的關聯（若你不想清除可改成增量）
+            # 這裡採「覆寫」的方式：刪除原有 AssetTag，再建立新的
+            try:
+                db.query(models.AssetTag).filter(models.AssetTag.asset_id == asset.asset_id).delete(synchronize_session=False)
+            except Exception as e:
+                logger.warning(f"清除舊標籤失敗: {e}")
+
+            clean_names = []
+            for tn in tag_names:
+                if not tn: 
+                    continue
+                t = str(tn).strip()
+                if not t:
+                    continue
+                # 移除前後的井號
+                if t.startswith('#'):
+                    t = t[1:].strip()
+                if not t:
+                    continue
+                clean_names.append(t)
+
+            created_tags = []
+            for tn in clean_names:
+                tag = db.query(models.Tag).filter(models.Tag.tag_name == tn).first()
+                if not tag:
+                    tag = models.Tag(tag_name=tn, is_ai_suggested=False)
+                    db.add(tag)
+                    db.flush()
+                # 建立關聯
+                link = models.AssetTag(asset_id=asset.asset_id, tag_id=tag.tag_id)
+                db.add(link)
+                created_tags.append(tn)
+            updated_fields['tags'] = created_tags
+
+        # 寫稽核日誌
+        try:
+            db.add(models.AuditLog(user_id=current_user.user_id, asset_id=asset.asset_id, action_type="UPDATE_ASSET_METADATA"))
+        except Exception:
+            db.rollback()
+
+        db.commit()
+        db.refresh(asset)
+
+        # 回傳簡短結果給前端
+        return {
+            "asset_id": asset.asset_id,
+            "filename": asset.filename,
+            "tags": updated_fields.get('tags', None),
+            "message": "更新成功"
+        }
+
+    except Exception as e:
+        db.rollback()
+        logger.error(f"更新資產失敗: {e}", exc_info=True)
+        raise HTTPException(status_code=500, detail="更新失敗")
+    
 # [修改] 寄信工具函式
 def send_reset_email(to_email: str, reset_link: str):
     subject = "【RedAnt】密碼重設請求"
