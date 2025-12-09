@@ -1,4 +1,4 @@
-﻿from fastapi import FastAPI, Depends, HTTPException, File, UploadFile, Security, BackgroundTasks, Form, Request, Response
+﻿from fastapi import FastAPI, Depends, HTTPException, File, UploadFile, Security, BackgroundTasks, Form, Request, Response, Body
 from fastapi.security import OAuth2PasswordBearer, OAuth2PasswordRequestForm, APIKeyHeader
 from fastapi.responses import FileResponse, StreamingResponse
 from fastapi.middleware.cors import CORSMiddleware
@@ -1254,7 +1254,60 @@ def export_audit_logs(
         headers={"Content-Disposition": f"attachment; filename={filename}"}
     )
     
- 
+@app.post("/admin/users/", response_model=schemas.UserOut)
+def admin_create_user(
+    user: schemas.AdminUserCreate,
+    current_user: models.User = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    # 僅 Admin
+    if current_user.role_id != 1:
+        raise HTTPException(status_code=403, detail="僅限管理員")
+
+    # 僅允許 1 或 2
+    if user.role_id not in (1, 2):
+        raise HTTPException(status_code=400, detail="role_id 僅能為 1 或 2")
+
+    # Email 不得重複
+    existing = db.query(models.User).filter(models.User.email == user.email).first()
+    if existing:
+        raise HTTPException(status_code=400, detail="Email 已被註冊")
+
+    hashed_pwd = security.get_password_hash(user.password)
+    new_user = models.User(
+        email=user.email,
+        user_name=user.user_name,
+        password_hash=hashed_pwd,
+        role_id=user.role_id
+    )
+    db.add(new_user)
+    db.commit()
+    db.refresh(new_user)
+    return new_user
+
+
+@app.patch("/admin/users/{user_id}/role", response_model=schemas.UserOut)
+def admin_update_user_role(
+    user_id: int,
+    payload: schemas.RoleUpdate,
+    current_user: models.User = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    # 僅 Admin
+    if current_user.role_id != 1:
+        raise HTTPException(status_code=403, detail="僅限管理員")
+
+    if payload.role_id not in (1, 2):
+        raise HTTPException(status_code=400, detail="role_id 僅能為 1 或 2")
+
+    user = db.query(models.User).filter(models.User.user_id == user_id).first()
+    if not user:
+        raise HTTPException(status_code=404, detail="使用者不存在")
+
+    user.role_id = payload.role_id
+    db.commit()
+    db.refresh(user)
+    return user
     
 # [修正版] API: 批次上傳 (FR-2.2)
 @app.post("/assets/batch", response_model=List[schemas.AssetOut])

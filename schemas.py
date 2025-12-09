@@ -57,6 +57,15 @@ class UserCreate(BaseModel):
     password: str
     user_name: str
     
+class AdminUserCreate(BaseModel):
+    user_name: str
+    email: str
+    password: str
+    role_id: int  # 1=Admin, 2=User
+
+class RoleUpdate(BaseModel):
+    role_id: int
+
 # [新增] 建立分享連結的請求格式
 class ShareLinkCreate(BaseModel):
     expires_in_minutes: int = 60       # 預設 60 分鐘後過期
