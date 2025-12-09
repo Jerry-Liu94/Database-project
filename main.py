@@ -851,7 +851,81 @@ def create_user(user: schemas.UserCreate, db: Session = Depends(get_db)):
     db.refresh(new_user)
     return new_user
 
-# main.py (加在最下面)
+# Admin 刪除使用者（含刪除該使用者的所有資產與 MinIO 檔案）
+@app.delete("/admin/users/{user_id}", summary="Admin: 刪除使用者並清除其資產 (Admin only)")
+def admin_delete_user(
+    user_id: int,
+    current_user: models.User = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    # 僅限 Admin 可呼叫
+    if current_user.role_id != 1:
+        raise HTTPException(status_code=403, detail="僅限管理員")
+
+    user = db.query(models.User).filter(models.User.user_id == user_id).first()
+    if not user:
+        raise HTTPException(status_code=404, detail="使用者不存在")
+
+    try:
+        # 1) 抓出該使用者的資產（包含版本）
+        assets = db.query(models.Asset).filter(models.Asset.uploaded_by_user_id == user.user_id).options(joinedload(models.Asset.versions)).all()
+
+        # 2) 刪除 MinIO 的物件（每個版本及對應縮圖）
+        for a in assets:
+            for v in a.versions or []:
+                try:
+                    minio_client.remove_object(MINIO_BUCKET_NAME, v.storage_path)
+                    logger.info(f"MinIO: 已刪除物件 {v.storage_path}")
+                except Exception as e:
+                    logger.warning(f"MinIO 刪除失敗 ({v.storage_path}): {e}")
+                # 嘗試刪除縮圖
+                try:
+                    thumb = f"{os.path.splitext(v.storage_path)[0]}_thumb.jpg"
+                    minio_client.remove_object(MINIO_BUCKET_NAME, thumb)
+                except Exception:
+                    # 不重要的錯誤，記錄即可
+                    pass
+
+        # 3) 刪除使用者相關的 DB 記錄（tokens, reset tokens, audit logs 等）
+        try:
+            db.query(models.ApiToken).filter(models.ApiToken.user_id == user.user_id).delete(synchronize_session=False)
+            db.query(models.PasswordResetToken).filter(models.PasswordResetToken.user_id == user.user_id).delete(synchronize_session=False)
+            db.query(models.AuditLog).filter(models.AuditLog.user_id == user.user_id).delete(synchronize_session=False)
+            # 如有其他需要清除的表（ShareLink/ShareAsset/ExportJob 等），可一併加入
+        except Exception as e:
+            logger.warning(f"刪除使用者相關 DB 記錄時發生問題: {e}")
+
+        # 4) 若有需要解除外鍵引用，可先清除（視你的 models cascade 設定）
+        # 例如：若 user.latest_version_id 有關聯，先解除
+        try:
+            user.latest_version_id = None
+            db.commit()
+        except Exception:
+            db.rollback()
+
+        # 5) 刪除 user record（若 models 設 cascade，會一併刪除關聯）
+        try:
+            db.delete(user)
+            db.commit()
+        except Exception as e:
+            db.rollback()
+            logger.error(f"刪除使用者 DB 失敗: {e}", exc_info=True)
+            raise HTTPException(status_code=500, detail="刪除使用者失敗 (DB)")
+
+        # 6) 記錄稽核
+        try:
+            log = models.AuditLog(user_id=current_user.user_id, action_type=f"ADMIN_DELETE_USER_{user_id}")
+            db.add(log)
+            db.commit()
+        except Exception:
+            db.rollback()
+
+        return {"message": f"使用者 {user_id} 已刪除"}
+
+    except Exception as e:
+        db.rollback()
+        logger.error(f"Admin delete user failed: {e}", exc_info=True)
+        raise HTTPException(status_code=500, detail=f"刪除失敗: {e}")
 
 # ---------- 更新 create_asset_version：暫存 -> 上傳 MinIO -> 產生縮圖（圖片或影片） ----------
 @app.post("/assets/{asset_id}/versions", response_model=schemas.AssetOut)
