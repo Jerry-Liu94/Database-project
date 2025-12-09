@@ -1,5 +1,7 @@
 /* js/asset_detail.js
-   使用 /assets/{id} 單筆 API，優先使用 presigned_url 作為 media src */
+   完整版：使用 /assets/{id} 單筆 API，支援 presigned_url 作為 media src，
+   並包含完整的 modal/版本上傳/影像處理/下載/刪除邏輯。
+*/
 import { API_BASE_URL, api } from './config.js';
 
 // 從網址取得 ID
@@ -36,8 +38,7 @@ async function loadAssetDetail() {
 
         const asset = await response.json();
         renderDetail(asset);
-        setupEventListeners();
-
+        setupEventListeners(); // render 後綁定事件
     } catch (error) {
         console.error(error);
         alert("載入失敗: " + error.message);
@@ -46,10 +47,14 @@ async function loadAssetDetail() {
 
 // --- UI: 渲染詳情 ---
 function renderDetail(asset) {
-    document.getElementById('display-filename').innerText = asset.filename;
-    document.getElementById('display-id').innerText = `ID: ${asset.asset_id}`;
+    // 基本欄位
+    const filenameEl = document.getElementById('display-filename');
+    const idEl = document.getElementById('display-id');
+    if (filenameEl) filenameEl.innerText = asset.filename || '未命名';
+    if (idEl) idEl.innerText = `ID: ${asset.asset_id}`;
 
-    const uploaderName = asset.uploader ? asset.uploader.email : "Unknown";
+    // info values
+    const uploaderName = asset.uploader ? (asset.uploader.email || asset.uploader.user_name) : "Unknown";
     const fileSize = asset.metadata_info && asset.metadata_info.filesize
         ? formatBytes(asset.metadata_info.filesize)
         : "--";
@@ -62,16 +67,19 @@ function renderDetail(asset) {
         infoValues[2].innerText = uploaderName;
     }
 
+    // tags
     const tagsDisplay = document.getElementById('display-tags');
     if (tagsDisplay) {
         const tagText = asset.tags && asset.tags.length > 0 ? `#${asset.tags.map(t => t.tag_name).join(' #')}` : `#${asset.file_type || '一般'}`;
         tagsDisplay.innerText = tagText;
     }
 
+    // preview 區塊
     const previewBox = document.querySelector('.preview-box');
+    if (!previewBox) return;
     previewBox.innerHTML = '';
 
-    // 優先使用 presigned_url (可直接被 <video> / <img> 存取)
+    // 優先使用 presigned_url (可以被 <video> / <img> 直接存取)
     const mediaUrl = asset.presigned_url || asset.download_url || asset.thumbnail_url || null;
     const mime = asset.file_type || '';
 
@@ -83,6 +91,7 @@ function renderDetail(asset) {
         video.style.maxHeight = '600px';
         video.style.borderRadius = '8px';
         video.style.boxShadow = '0 4px 12px rgba(0,0,0,0.1)';
+        // 若需 autoplay: video.autoplay = true; video.muted = true; （但瀏覽器可能阻擋）
         const source = document.createElement('source');
         source.src = mediaUrl;
         source.type = mime;
@@ -93,7 +102,7 @@ function renderDetail(asset) {
         const imgUrl = asset.thumbnail_url || mediaUrl;
         const img = document.createElement('img');
         img.src = imgUrl;
-        img.alt = asset.filename;
+        img.alt = asset.filename || '';
         img.style.maxWidth = '100%';
         img.style.maxHeight = '600px';
         img.style.objectFit = 'contain';
@@ -101,6 +110,7 @@ function renderDetail(asset) {
         previewBox.appendChild(img);
 
     } else if (mediaUrl) {
+        // 其他檔案：提供下載按鈕
         const btn = document.createElement('a');
         btn.href = mediaUrl;
         btn.innerText = '下載檔案';
@@ -114,6 +124,7 @@ function renderDetail(asset) {
 
 // --- 綁定事件（下載、刪除、分享等） ---
 function setupEventListeners() {
+    // 下載按鈕 (Dropdown)
     const menuOptions = document.querySelectorAll('.menu-option');
     menuOptions.forEach(opt => {
         if (opt.innerText.includes("下載")) {
@@ -121,6 +132,7 @@ function setupEventListeners() {
         }
     });
 
+    // 刪除按鈕
     const deleteBtn = document.getElementById('delete-btn');
     if (deleteBtn) {
         deleteBtn.addEventListener('click', async () => {
@@ -132,8 +144,9 @@ function setupEventListeners() {
                     headers: api.getHeaders(false, 'DELETE')
                 });
                 if (!response.ok) {
-                    const err = await response.json();
-                    throw new Error(err.detail || "刪除失敗");
+                    let errText = "刪除失敗";
+                    try { const e = await response.json(); errText = e.detail || errText; } catch(_) {}
+                    throw new Error(errText);
                 }
                 alert("🗑️ 資產已成功刪除！");
                 window.location.href = "index.html";
@@ -145,6 +158,7 @@ function setupEventListeners() {
         });
     }
 
+    // 分享複製連結
     const copyLinkBtn = document.getElementById('copy-link-btn');
     const shareUrlText = document.getElementById('share-url-text');
     if (copyLinkBtn && shareUrlText) {
@@ -164,13 +178,15 @@ function setupEventListeners() {
         });
     }
 
+    // 右上角選單開關（dropdown）
     const menuTrigger = document.getElementById('menu-trigger');
     const dropdownMenu = document.getElementById('dropdown-menu');
     if(menuTrigger) {
-        menuTrigger.addEventListener('click', (e) => { e.stopPropagation(); dropdownMenu.classList.toggle('show'); });
-        document.addEventListener('click', (e) => { if (!dropdownMenu.contains(e.target) && e.target !== menuTrigger) dropdownMenu.classList.remove('show'); });
+        menuTrigger.addEventListener('click', (e) => { e.stopPropagation(); dropdownMenu && dropdownMenu.classList.toggle('show'); });
+        document.addEventListener('click', (e) => { if (dropdownMenu && !dropdownMenu.contains(e.target) && e.target !== menuTrigger) dropdownMenu.classList.remove('show'); });
     }
 
+    // 愛心收藏（UI 切換）
     const detailHeartBtn = document.getElementById('detail-heart-btn');
     if (detailHeartBtn) {
         detailHeartBtn.addEventListener('click', () => {
@@ -185,9 +201,227 @@ function setupEventListeners() {
         });
     }
 
+    // 初始化 modal 與版本上傳邏輯
     setupModalLogic();
 }
 
+// --- 完整的 setupModalLogic 實作（包含版本上傳、分享、編輯、影像處理） ---
+function setupModalLogic() {
+    const dropdownMenu = document.getElementById('dropdown-menu');
+
+    // 分享彈窗
+    const shareOption = document.getElementById('share-option');
+    const shareModal = document.getElementById('share-modal');
+    const closeShareX = document.getElementById('close-share-x');
+
+    if (shareOption && shareModal) {
+        shareOption.addEventListener('click', () => {
+            dropdownMenu && dropdownMenu.classList.remove('show');
+            shareModal.style.display = 'flex';
+        });
+
+        closeShareX && closeShareX.addEventListener('click', () => {
+            shareModal.style.display = 'none';
+        });
+
+        shareModal.addEventListener('click', (e) => {
+            if (e.target === shareModal) shareModal.style.display = 'none';
+        });
+    }
+
+    // 編輯彈窗
+    const editOption = document.getElementById('menu-edit-btn');
+    const editModal = document.getElementById('edit-modal');
+    const closeEditX = document.getElementById('close-edit-x');
+    const cancelEditBtn = document.getElementById('cancel-edit-btn');
+
+    if (editOption && editModal) {
+        editOption.addEventListener('click', () => {
+            dropdownMenu && dropdownMenu.classList.remove('show');
+
+            // 填值
+            const displayFilenameEl = document.getElementById('display-filename');
+            const displayIdEl = document.getElementById('display-id');
+            const displayTagsEl = document.getElementById('display-tags');
+            const editFilenameInput = document.getElementById('edit-filename-input');
+            const editIdInput = document.getElementById('edit-id-input');
+            const editTagsInput = document.getElementById('edit-tags-input');
+
+            if (editFilenameInput && displayFilenameEl) editFilenameInput.value = displayFilenameEl.innerText || '';
+            if (editIdInput && displayIdEl) editIdInput.value = (displayIdEl.innerText || '').replace(/^ID:?\s*/i, '');
+            if (editTagsInput && displayTagsEl) editTagsInput.value = displayTagsEl.innerText || '';
+
+            editModal.style.display = 'flex';
+        });
+
+        closeEditX && closeEditX.addEventListener('click', () => editModal.style.display = 'none');
+        cancelEditBtn && cancelEditBtn.addEventListener('click', () => editModal.style.display = 'none');
+
+        // 初始化影像處理 UI 與綁定
+        setupImageProcessing();
+    }
+
+    // 版本上傳彈窗
+    const addVersionBtn = document.getElementById('add-version-btn');
+    const versionModal = document.getElementById('version-modal');
+    const closeVersionX = document.getElementById('close-version-x');
+    const cancelVersionBtn = document.getElementById('cancel-version-btn');
+    const versionDropZone = document.getElementById('version-drop-zone');
+    const versionEmptyState = document.getElementById('version-empty-state');
+    const versionFileList = document.getElementById('version-file-list');
+    const versionFileInput = document.getElementById('version-file-input');
+
+    if (addVersionBtn && versionModal) {
+        addVersionBtn.addEventListener('click', () => { versionModal.style.display = 'flex'; });
+
+        closeVersionX && closeVersionX.addEventListener('click', () => { versionModal.style.display = 'none'; });
+        cancelVersionBtn && cancelVersionBtn.addEventListener('click', () => { versionModal.style.display = 'none'; });
+
+        versionModal.addEventListener('click', (e) => {
+            if (e.target === versionModal) versionModal.style.display = 'none';
+        });
+
+        if (versionDropZone) {
+            versionDropZone.addEventListener('click', () => { if (versionFileInput) versionFileInput.click(); });
+
+            versionDropZone.addEventListener('dragover', (e) => { e.preventDefault(); versionDropZone.style.borderColor = '#666'; });
+            versionDropZone.addEventListener('dragleave', (e) => { e.preventDefault(); versionDropZone.style.borderColor = 'rgba(142, 142, 142, 1)'; });
+            versionDropZone.addEventListener('drop', (e) => {
+                e.preventDefault();
+                versionDropZone.style.borderColor = 'rgba(142, 142, 142, 1)';
+                if (e.dataTransfer.files.length > 0) handleVersionFiles(Array.from(e.dataTransfer.files));
+            });
+        }
+
+        if (versionFileInput) {
+            versionFileInput.addEventListener('change', (e) => {
+                if (e.target.files.length > 0) handleVersionFiles(Array.from(e.target.files));
+            });
+        }
+
+        function handleVersionFiles(files) {
+            if (!versionFileList || !versionEmptyState) return;
+            versionEmptyState.style.display = 'none';
+            versionFileList.style.display = 'block';
+            versionFileList.innerHTML = '';
+            files.forEach(file => {
+                const item = document.createElement('div');
+                item.className = 'file-list-item';
+                item.innerHTML = `<div class="file-info-left"><img src="static/image/checkmark_grey.png" class="check-icon status-icon"><span class="file-name-text">${file.name}</span></div>`;
+                versionFileList.appendChild(item);
+            });
+        }
+
+        const saveVersionBtn = document.getElementById('save-version-btn');
+        if (saveVersionBtn) {
+            saveVersionBtn.addEventListener('click', async () => {
+                const files = versionFileInput ? versionFileInput.files : null;
+                if (!files || files.length === 0) {
+                    alert("請先選擇檔案");
+                    return;
+                }
+
+                saveVersionBtn.innerText = "上傳中...";
+                saveVersionBtn.disabled = true;
+
+                try {
+                    for (let i = 0; i < files.length; i++) {
+                        const formData = new FormData();
+                        formData.append('file', files[i]);
+
+                        // isFileUpload=true, method='POST'
+                        const res = await fetch(`${API_BASE_URL}/assets/${assetId}/versions`, {
+                            method: 'POST',
+                            headers: api.getHeaders(true, 'POST'),
+                            body: formData
+                        });
+
+                        if (!res.ok) {
+                            let errMsg = "上傳失敗";
+                            try { const e = await res.json(); errMsg = e.detail || errMsg; } catch(_) {}
+                            throw new Error(errMsg);
+                        }
+                    }
+
+                    alert("上傳成功！");
+                    versionModal.style.display = 'none';
+                    setTimeout(() => window.location.reload(), 800);
+
+                } catch (error) {
+                    alert("錯誤: " + error.message);
+                } finally {
+                    saveVersionBtn.innerText = "上傳";
+                    saveVersionBtn.disabled = false;
+                }
+            });
+        }
+    }
+
+    // 點擊 overlay 即關閉（備援）
+    const overlays = document.querySelectorAll('.modal-overlay');
+    overlays.forEach(ov => {
+        ov.addEventListener('click', (e) => {
+            if (e.target === ov) ov.style.display = 'none';
+        });
+    });
+
+    // 內部：影像處理綁定
+    function setupImageProcessing() {
+        const processSelect = document.getElementById('img-process-select');
+        const processBtn = document.getElementById('btn-process-image');
+        if (!processSelect || !processBtn) return;
+
+        processSelect.addEventListener('change', (e) => {
+            const op = e.target.value;
+            document.querySelectorAll('.process-params').forEach(el => el.style.display = 'none');
+            processBtn.disabled = !op;
+            processBtn.style.backgroundColor = op ? "#333" : "#ccc";
+            processBtn.style.color = op ? "#fff" : "#666";
+
+            if (op === 'rotate') document.getElementById('process-rotate-params') && (document.getElementById('process-rotate-params').style.display = 'block');
+            if (op === 'resize') document.getElementById('process-resize-params') && (document.getElementById('process-resize-params').style.display = 'block');
+        });
+
+        processBtn.addEventListener('click', async () => {
+            const operation = processSelect.value;
+            const requestBody = { operation: operation, params: {} };
+
+            if (operation === 'rotate') {
+                requestBody.params.angle = parseInt(document.getElementById('rotate-angle').value);
+            } else if (operation === 'resize') {
+                requestBody.params.width = parseInt(document.getElementById('resize-width').value);
+                requestBody.params.height = parseInt(document.getElementById('resize-height').value);
+            }
+
+            processBtn.innerText = "處理中...";
+            processBtn.disabled = true;
+
+            try {
+                const res = await fetch(`${API_BASE_URL}/assets/${assetId}/process`, {
+                    method: 'POST',
+                    headers: api.getHeaders(false, 'POST'),
+                    body: JSON.stringify(requestBody)
+                });
+
+                if (!res.ok) {
+                    let errText = "影像處理失敗";
+                    try { const jj = await res.json(); errText = jj.detail || errText; } catch(_) {}
+                    throw new Error(errText);
+                }
+
+                showToast("影像處理成功！");
+                setTimeout(() => window.location.reload(), 1500);
+
+            } catch (err) {
+                alert(err.message);
+                processBtn.innerText = "執行影像處理";
+                processBtn.disabled = false;
+            }
+        });
+    } // end setupImageProcessing
+} // end setupModalLogic
+
+// --- 輔助函式 ---
 function formatBytes(bytes, decimals = 2) {
     if (!+bytes) return '0 Bytes';
     const k = 1024;
