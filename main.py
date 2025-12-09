@@ -267,11 +267,6 @@ def read_users(db: Session = Depends(get_db)):
     users = db.query(models.User).all()
     return users
 
-# 取得當前登入者的資料 (解決 API Token 無法在前端解析身分的問題)
-@app.get("/users/me", response_model=schemas.UserOut)
-def read_users_me(current_user: models.User = Depends(get_current_user)):
-    return current_user
-
 # [修改] 支援 JWT 或 API Token 的身分驗證
 def get_current_user(
     token: str = Depends(oauth2_scheme),
@@ -302,6 +297,12 @@ def get_current_user(
         detail="無效的憑證 (Token 或 API Key)",
         headers={"WWW-Authenticate": "Bearer"},
     )
+
+# 取得當前登入者的資料 (解決 API Token 無法在前端解析身分的問題)
+@app.get("/users/me", response_model=schemas.UserOut)
+def read_users_me(current_user: models.User = Depends(get_current_user)):
+    return current_user
+
 
 @app.get("/users/me/mfa")
 def check_my_mfa(current_user: models.User = Depends(get_current_user)):
