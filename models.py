@@ -198,7 +198,3 @@ class PasswordResetToken(Base):
     expires_at = Column(TIMESTAMP, nullable=False)
 
     user = relationship("User")
-    
-@property
-def is_mfa_enabled(self):
-    return self.mfa_secret is not None
