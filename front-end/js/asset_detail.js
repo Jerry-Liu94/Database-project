@@ -1,14 +1,14 @@
 /* js/asset_detail.js
-   完整版：使用 /assets/{id} 單筆 API，優先使用後端代理 download_url（避免直接連內網 MinIO）。
-   包含 modal/版本上傳/影像處理/下載/刪除邏輯與防護判斷。
+   完整版（包含：載入單一資產、優先使用後端 download_url 並附帶 token、避免直接使用內網 MinIO presigned URL、
+   modal / 版本上傳 / 影像處理 / 下載 / 刪除 邏輯）
 */
 import { API_BASE_URL, api } from './config.js';
 
-// 從網址取得 ID
+// 取得 assetId
 const urlParams = new URLSearchParams(window.location.search);
 const assetId = urlParams.get('id');
 
-// --- 初始化 ---
+// 初始化
 document.addEventListener('DOMContentLoaded', () => {
     api.checkLogin();
 
@@ -24,7 +24,6 @@ document.addEventListener('DOMContentLoaded', () => {
 // --- API: 載入單一資產詳情 ---
 async function loadAssetDetail() {
     try {
-        // GET 時傳 method 以讓 getHeaders 不加入 Content-Type
         const response = await fetch(`${API_BASE_URL}/assets/${assetId}`, {
             method: 'GET',
             headers: api.getHeaders(false, 'GET')
@@ -37,27 +36,52 @@ async function loadAssetDetail() {
         }
 
         const asset = await response.json();
+        // 可視需要在這裏 log asset 做 debug
+        // console.log('asset', asset);
         renderDetail(asset);
-        setupEventListeners(); // render 後綁定事件
+        setupEventListeners();
     } catch (error) {
         console.error(error);
         alert("載入失敗: " + error.message);
     }
 }
 
-// Helper: 判斷 URL 是否很可能指向內網 MinIO（避免直接使用）
+// --- Helper: 判斷 URL 是否很可能指向內網 MinIO（避免直接使用 presigned 指向 9000） ---
 function isLikelyMinioUrl(url) {
     if (!url) return false;
     try {
         const u = new URL(url);
-        // 常見 MinIO port 或 hostname 包含 'minio'
         return (u.port && (u.port === "9000" || u.port === "9001")) || u.hostname.includes("minio");
     } catch (e) {
         return false;
     }
 }
 
-// --- UI: 渲染詳情 ---
+// --- Helper: 判斷是否為 download_url（決定是否要附 token） ---
+function isDownloadUrl(url) {
+    if (!url) return false;
+    try {
+        const u = new URL(url);
+        return u.pathname.includes('/download');
+    } catch (e) {
+        return false;
+    }
+}
+
+// --- Helper: 把 token 加到 URL（若存在） ---
+function appendTokenToUrl(url) {
+    try {
+        const token = localStorage.getItem('redant_token');
+        if (!token) return url;
+        const u = new URL(url);
+        u.searchParams.set('token', token);
+        return u.toString();
+    } catch (e) {
+        return url;
+    }
+}
+
+// --- UI: 渲染詳情（完整） ---
 function renderDetail(asset) {
     // 基本欄位
     const filenameEl = document.getElementById('display-filename');
@@ -91,7 +115,7 @@ function renderDetail(asset) {
     if (!previewBox) return;
     previewBox.innerHTML = '';
 
-    // 優先選擇 mediaUrl：避免直接使用疑似內網 MinIO 的 presigned_url
+    // 選擇 mediaUrl：優先避免指向內網 MinIO 的 presigned_url，若為 download_url 則附 token
     let mediaUrl = null;
     if (asset.presigned_url && !isLikelyMinioUrl(asset.presigned_url)) {
         mediaUrl = asset.presigned_url;
@@ -99,6 +123,11 @@ function renderDetail(asset) {
         mediaUrl = asset.download_url;
     } else {
         mediaUrl = asset.thumbnail_url || null;
+    }
+
+    // 若 mediaUrl 是 download URL，附上 token（讓後端能接受並驗證）
+    if (mediaUrl && isDownloadUrl(mediaUrl)) {
+        mediaUrl = appendTokenToUrl(mediaUrl);
     }
 
     const mime = asset.file_type || '';
@@ -111,6 +140,7 @@ function renderDetail(asset) {
         video.style.maxHeight = '600px';
         video.style.borderRadius = '8px';
         video.style.boxShadow = '0 4px 12px rgba(0,0,0,0.1)';
+
         const source = document.createElement('source');
         source.src = mediaUrl;
         source.type = mime;
@@ -129,7 +159,6 @@ function renderDetail(asset) {
         previewBox.appendChild(img);
 
     } else if (mediaUrl) {
-        // 其他檔案：提供下載按鈕
         const btn = document.createElement('a');
         btn.href = mediaUrl;
         btn.innerText = '下載檔案';
@@ -138,6 +167,12 @@ function renderDetail(asset) {
         previewBox.appendChild(btn);
     } else {
         previewBox.innerHTML = `<div class="preview-text">無預覽</div>`;
+    }
+
+    // 分享連結顯示（若有）
+    const shareUrlText = document.getElementById('share-url-text');
+    if (shareUrlText && asset.download_url) {
+        shareUrlText.innerText = asset.download_url;
     }
 }
 
@@ -224,7 +259,7 @@ function setupEventListeners() {
     setupModalLogic();
 }
 
-// --- 完整的 setupModalLogic 實作（包含版本上傳、分享、編輯、影像處理） ---
+// --- 完整的 setupModalLogic 實作（包含 版本上傳/分享/編輯/影像處理） ---
 function setupModalLogic() {
     const dropdownMenu = document.getElementById('dropdown-menu');
 

@@ -1,4 +1,4 @@
-﻿from fastapi import FastAPI, Depends, HTTPException, File, UploadFile, Security, BackgroundTasks, Form, Request, Response, Body
+﻿from fastapi import FastAPI, Depends, HTTPException, File, UploadFile, Security, BackgroundTasks, Form, Request, Response, Body, Header
 from fastapi.security import OAuth2PasswordBearer, OAuth2PasswordRequestForm, APIKeyHeader
 from fastapi.responses import FileResponse, StreamingResponse
 from fastapi.middleware.cors import CORSMiddleware
@@ -491,18 +491,66 @@ async def create_asset(  # <--- 注意：這裡要加 async (為了用 await)
 # ==========================================
 @app.get("/assets/{asset_id}/download")
 def download_asset(
-    asset_id: int, 
-    request: Request, # 接收請求資訊 (為了拿 Range Header)
-    current_user: models.User = Depends(get_current_user),
-    db: Session = Depends(get_db)
+    asset_id: int,
+    request: Request,
+    token: Optional[str] = None,       # 從 query string 接收 JWT（可由前端傳入）
+    api_key: Optional[str] = None,     # 從 query string 接收 API token（可選）
+    db: Session = Depends(get_db),
 ):
-    # 1. 查詢資產與最新版本
+    """
+    支援 Range 且接受三種授權來源（按優先順序）：
+      1) query token (JWT) -> decode 後找 user
+      2) query api_key 或 header X-API-TOKEN -> ApiToken lookup
+      3) Authorization: Bearer header (若有)
+    這樣可以讓 <video src="/assets/{id}/download?token=..."> 正常播放並支援 Range。
+    """
+    # 1. 找資產
     asset = db.query(models.Asset).filter(models.Asset.asset_id == asset_id).first()
     if not asset or not asset.latest_version:
         raise HTTPException(status_code=404, detail="檔案不存在")
+
+    # 2. 嘗試取得 user（可接受多種驗證）
+    user = None
+
+    # A: query token (JWT)
+    jwt_token = token
+    if not jwt_token:
+        # 也嘗試從 Authorization header 取得
+        auth = request.headers.get("Authorization")
+        if auth and auth.lower().startswith("bearer "):
+            jwt_token = auth.split(None, 1)[1]
+
+    if jwt_token:
+        try:
+            payload = jwt.decode(jwt_token, security.SECRET_KEY, algorithms=[security.ALGORITHM])
+            email: str = payload.get("sub")
+            if email:
+                user = db.query(models.User).filter(models.User.email == email).first()
+        except Exception:
+            user = None
+
+    # B: API token (query or header X-API-TOKEN)
+    api_token_val = api_key or request.headers.get("X-API-TOKEN")
+    if not user and api_token_val:
+        token_record = db.query(models.ApiToken).filter(models.ApiToken.token_hash == api_token_val).first()
+        if token_record:
+            user = token_record.user
+
+    # 若沒有任何授權，回 401（保持原本行為）
+    if not user:
+        raise HTTPException(
+            status_code=401,
+            detail="無效的憑證 (Token 或 API Key)",
+            headers={"WWW-Authenticate": "Bearer"},
+        )
+
+    # 3. 權限檢查：Admin or uploader
+    if user.role_id != 1 and asset.uploaded_by_user_id != user.user_id:
+        raise HTTPException(status_code=403, detail="權限不足")
+
     version = asset.latest_version
 
-    # 2. 先取得檔案大小（stat_object）
+    # 4. stat object 取得大小
     try:
         stat = minio_client.stat_object(MINIO_BUCKET_NAME, version.storage_path)
         file_size = stat.size
@@ -512,11 +560,10 @@ def download_asset(
 
     content_type = asset.file_type or "application/octet-stream"
 
-    # 3. 解析 Range Header
+    # 5. 解析 Range header
     range_header = request.headers.get("Range")
     try:
         if range_header:
-            # 解析 bytes=START-END
             if not range_header.startswith("bytes="):
                 raise HTTPException(status_code=416, detail="Invalid Range")
             ranges = range_header.replace("bytes=", "").split("-")
@@ -544,7 +591,7 @@ def download_asset(
             }
             return StreamingResponse(obj, status_code=206, headers=headers, media_type=content_type)
 
-        # 4. 沒有 Range -> 回傳整個物件（同樣提供 Accept-Ranges 與 Content-Length）
+        # 沒有 Range -> 回全檔，仍提供 Accept-Ranges
         obj = minio_client.get_object(MINIO_BUCKET_NAME, version.storage_path)
         headers = {
             "Accept-Ranges": "bytes",
@@ -555,7 +602,6 @@ def download_asset(
         return StreamingResponse(obj, headers=headers, media_type=content_type)
 
     except HTTPException:
-        # 把已知的 HTTPException 直接 re-raise
         raise
     except Exception as e:
         logger.error(f"下載/流式傳輸失敗: {e}", exc_info=True)
