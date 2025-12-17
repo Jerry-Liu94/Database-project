@@ -1,0 +1,49 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>檔案分享 - RedAnt DAM</title>
+    <link rel="stylesheet" href="css/style.css">
+    <style>
+        /* 分享頁面專用樣式 */
+        body.share-page { background-color: #f0f2f5; display: flex; align-items: center; justify-content: center; }
+        .share-container { width: 100%; max-width: 900px; background: white; border-radius: 16px; box-shadow: 0 10px 30px rgba(0,0,0,0.1); overflow: hidden; display: flex; flex-direction: column; height: 90vh; max-height: 800px; }
+        .share-header { padding: 20px 30px; border-bottom: 1px solid #eee; display: flex; justify-content: space-between; align-items: center; background-color: rgba(7, 35, 125, 1); color: white; }
+        .share-content { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 30px; background-color: #333; overflow: hidden; }
+        .share-preview { max-width: 100%; max-height: 100%; object-fit: contain; box-shadow: 0 5px 15px rgba(0,0,0,0.5); }
+        .share-info { padding: 20px 30px; background-color: white; display: flex; justify-content: space-between; align-items: center; }
+        .file-meta h2 { margin: 0 0 5px 0; font-size: 1.4rem; color: #333; }
+        .file-meta p { margin: 0; color: #666; font-size: 0.9rem; }
+        .error-box { text-align: center; color: #666; padding: 50px; }
+    </style>
+</head>
+<body class="share-page">
+
+    <div class="share-container" id="main-container" style="display: none;">
+        <div class="share-header">
+            <div style="font-weight: 700; font-size: 1.2rem;">RedAnt 檔案分享</div>
+            </div>
+
+        <div class="share-content" id="preview-area">
+            </div>
+
+        <div class="share-info">
+            <div class="file-meta">
+                <h2 id="file-name">載入中...</h2>
+                <p><span id="file-size">-- MB</span> • <span id="file-date">--</span></p>
+            </div>
+            <a id="download-btn" href="#" class="btn-action btn-save" style="text-decoration: none; display: flex; align-items: center;">
+                下載檔案
+            </a>
+        </div>
+    </div>
+
+    <div class="error-box" id="error-message" style="display: none;">
+        <h2>⚠️ 連結無效</h2>
+        <p>此分享連結可能已過期或不存在。</p>
+    </div>
+
+    <script type="module" src="js/share_view.js"></script>
+</body>
+</html>
