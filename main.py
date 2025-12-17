@@ -1145,15 +1145,13 @@ def create_share_link(
         "token": token,
         "expires_at": expires_at,
         "permission_type": new_link.permission_type,
-        "full_url": f"http://127.0.0.1:8000/share/{token}"
+        "full_url": f"{APP_BASE_URL}/share/{token}"
     }
 
-# [新增] API 2: 公開存取分享連結 (不需要登入!)
 @app.get("/share/{token}")
 def access_share_link(token: str, db: Session = Depends(get_db)):
     # 1. 找連結
     share_link = db.query(models.ShareLink).filter(models.ShareLink.token == token).first()
-    
     if not share_link:
         raise HTTPException(status_code=404, detail="連結無效或不存在")
 
@@ -1161,32 +1159,37 @@ def access_share_link(token: str, db: Session = Depends(get_db)):
     if share_link.expires_at < datetime.utcnow():
         raise HTTPException(status_code=410, detail="此連結已過期")
 
-    # 3. 找出對應的資產 (假設一個連結只對應一個資產)
-    # 雖然 DB 設計是多對多，但為了簡化，我們先抓第一筆
+    # 3. 找資產
     share_asset_record = db.query(models.ShareAsset).filter(models.ShareAsset.link_id == share_link.link_id).first()
-    
     if not share_asset_record:
         raise HTTPException(status_code=404, detail="連結未關聯任何資產")
-        
-    asset = share_asset_record.asset
-    
-    # 4. 確保資產有實體檔案
-    if not asset.latest_version:
-         raise HTTPException(status_code=404, detail="檔案遺失")
-         
-    version = asset.latest_version
-    
-    # 5. 根據權限決定行為
-    # 如果是 'downloadable' -> attachment (下載)
-    # 如果是 'readonly' -> inline (預覽)
-    disposition = "attachment" if share_link.permission_type == "downloadable" else "inline"
 
-    return FileResponse(
-        path=version.storage_path,
-        filename=asset.filename,
-        media_type=asset.file_type,
-        content_disposition_type=disposition
-    )
+    asset = share_asset_record.asset
+    if not asset.latest_version:
+        raise HTTPException(status_code=404, detail="檔案遺失")
+
+    # 4. 從 MinIO 取得資產檔案
+    try:
+        file_path = asset.latest_version.storage_path
+
+        # 使用 MinIO 獲取文件
+        obj = minio_client.get_object(MINIO_BUCKET_NAME, file_path)
+        content_type = asset.file_type or "application/octet-stream"
+
+        # 根據權限類型配置回傳行為
+        disposition = "attachment" if share_link.permission_type == "downloadable" else "inline"
+        return StreamingResponse(
+            obj,
+            media_type=content_type,
+            headers={
+                "Content-Disposition": f'{disposition}; filename="{asset.filename}"',
+                "Cache-Control": "no-cache",
+            },
+        )
+
+    except Exception as e:
+        logger.error(f"MinIO 讀取失敗: {e}")
+        raise HTTPException(status_code=500, detail="檔案讀取失敗")
     
 # [新增] 產生 API Token (FR-7.1)
 @app.post("/users/me/api_tokens", response_model=schemas.ApiTokenOut)
@@ -1281,7 +1284,7 @@ def get_export_job(
     download_url = None
     if job.status == "completed":
         # 產生下載連結
-        download_url = f"http://127.0.0.1:8000/export/{job_id}/download"
+        download_url = f"{APP_BASE_URL}/export/{job_id}/download"
 
     return {
         "job_id": job.job_id,
