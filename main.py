@@ -814,6 +814,7 @@ def delete_asset(
         logger.error(f"資料庫刪除失敗: {e}", exc_info=True)
         raise HTTPException(status_code=500, detail=f"資料庫刪除失敗: {str(e)}")
 
+
 # [新增] 註冊新帳號 API (對應 FR-1.1)
 @app.post("/users/", response_model=schemas.UserOut)
 def create_user(user: schemas.UserCreate, db: Session = Depends(get_db)):
@@ -2323,58 +2324,3 @@ def reset_password_page(token: str):
     """
     
     return html_content
-# [新增] 公開 API: 透過 Token 取得資產資訊 (預覽用)
-@app.get("/share/{token}/info")
-def get_shared_asset_info(token: str, db: Session = Depends(get_db)):
-    # 1. 檢查連結是否存在且未過期
-    share_link = db.query(models.ShareLink).filter(models.ShareLink.token == token).first()
-    
-    if not share_link:
-        raise HTTPException(status_code=404, detail="連結無效或不存在")
-        
-    if share_link.expires_at and share_link.expires_at < datetime.utcnow():
-        raise HTTPException(status_code=403, detail="連結已過期")
-
-    # 2. 抓取關聯的第一個資產 (目前假設一個連結對應一個資產)
-    if not share_link.shared_assets:
-        raise HTTPException(status_code=404, detail="此連結未包含任何資產")
-        
-    asset = share_link.shared_assets[0].asset # 取得 Asset 物件
-    
-    # 3. 取得最新版本資訊
-    latest_ver = asset.latest_version
-    
-    # 4. 回傳前端需要的資訊
-    return {
-        "filename": asset.filename,
-        "file_type": asset.file_type,
-        "filesize": asset.metadata_info.filesize if asset.metadata_info else 0,
-        "created_at": latest_ver.created_at if latest_ver else None,
-        # 這裡回傳一個專用的下載連結，不需要 Header 驗證
-        "download_link": f"{APP_BASE_URL}/share/{token}/download" 
-    }
-
-# [新增] 公開 API: 透過 Token 下載/預覽檔案 (串流)
-@app.get("/share/{token}/download")
-def download_shared_asset(token: str, db: Session = Depends(get_db)):
-    # 1. 驗證連結
-    share_link = db.query(models.ShareLink).filter(models.ShareLink.token == token).first()
-    if not share_link or (share_link.expires_at and share_link.expires_at < datetime.utcnow()):
-        raise HTTPException(status_code=403, detail="連結無效或過期")
-
-    asset = share_link.shared_assets[0].asset
-    version = asset.latest_version
-    
-    if not version:
-        raise HTTPException(status_code=404, detail="檔案版本遺失")
-
-    # 2. 從 MinIO 取得檔案
-    try:
-        response = minio_client.get_object(MINIO_BUCKET_NAME, version.storage_path)
-        return StreamingResponse(
-            response, 
-            media_type=asset.file_type or "application/octet-stream",
-            headers={"Content-Disposition": f"inline; filename*=utf-8''{asset.filename}"}
-        )
-    except Exception as e:
-        raise HTTPException(status_code=500, detail="檔案讀取失敗")
