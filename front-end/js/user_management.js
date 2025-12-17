@@ -89,10 +89,11 @@ function renderUserTable(users) {
                 const result = await response.json();
 
                 if (!response.ok) {
-                    // 如果後端回傳的是物件 (例如 Pydantic 的錯誤清單)，我們把它轉成字串讀出來
+                    const result = await response.json();
+                    // 判斷回傳的是不是物件，如果是就轉成字串，不然就直接顯示文字
                     const errorMsg = typeof result.detail === 'object' 
                         ? JSON.stringify(result.detail) 
-                        : (result.detail || "更新失敗");
+                        : (result.detail || "新增失敗");
                     
                     throw new Error(errorMsg);
                 }
@@ -216,16 +217,19 @@ function setupAddUserModal() {
             confirmBtn.disabled = true;
 
             try {
-                const response = await fetch(`${API_BASE_URL}/admin/users/`, {
-                    method: 'POST',
-                    headers: api.getHeaders(),
-                    body: JSON.stringify({
-                        user_name: name,
-                        email: email,
-                        password: password,
-                        role_id: parseInt(roleId)
-                    })
-                });
+                const headers = api.getHeaders();
+                    headers['Content-Type'] = 'application/json'; // ★★★ 補上這一行 ★★★
+
+                    const response = await fetch(`${API_BASE_URL}/admin/users/`, {
+                        method: 'POST',
+                        headers: headers, // 使用新的 headers 變數
+                        body: JSON.stringify({
+                            user_name: name,
+                            email: email,
+                            password: password,
+                            role_id: parseInt(roleId)
+                        })
+                    });
 
                 if (!response.ok) {
                     const err = await response.json();
