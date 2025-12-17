@@ -1145,7 +1145,7 @@ def create_share_link(
         "token": token,
         "expires_at": expires_at,
         "permission_type": new_link.permission_type,
-        "full_url": f"http://127.0.0.1:8000/share/{token}"
+        "full_url": f"{APP_BASE_URL}/share/{token}"
     }
 
 # [新增] API 2: 公開存取分享連結 (不需要登入!)
@@ -1281,7 +1281,7 @@ def get_export_job(
     download_url = None
     if job.status == "completed":
         # 產生下載連結
-        download_url = f"http://127.0.0.1:8000/export/{job_id}/download"
+        download_url = f"{APP_BASE_URL}/export/{job_id}/download"
 
     return {
         "job_id": job.job_id,
