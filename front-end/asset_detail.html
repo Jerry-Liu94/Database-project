@@ -77,16 +77,33 @@
     <div class="modal-overlay" id="share-modal">
         <div class="modal-box-common share-modal-box">
             <span class="close-modal-x" id="close-share-x">&times;</span>
+            
+            <div class="edit-title" style="margin-top: 0;">建立分享連結</div>
+
+            <div class="share-controls-row" style="margin-bottom: 15px; flex-wrap: wrap; gap: 10px;">
+                <div style="display: flex; flex-direction: column; gap: 5px;">
+                    <span class="control-label">權限</span>
+                    <select class="control-pill" id="share-permission">
+                        <option value="readonly">僅供檢視 (線上預覽)</option>
+                        <option value="downloadable">可下載 (原始檔)</option>
+                    </select>
+                </div>
+
+                <div style="display: flex; flex-direction: column; gap: 5px;">
+                    <span class="control-label">到期日</span>
+                    <input type="date" class="control-pill" id="share-date">
+                </div>
+                
+                <div style="display: flex; align-items: flex-end;">
+                    <button class="btn-action btn-save" id="btn-gen-share" style="height: 38px;">產生連結</button>
+                </div>
+            </div>
+
             <div class="share-link-row">
-                <div class="url-box" id="share-url-text">https://esn.acne.dark.com</div>
-                <img src="static/image/copy_grey.png" alt="Copy Link" class="link-icon-img" id="copy-link-btn">
+                <div class="url-box" id="share-url-text" style="color: #888;">設定上方條件後，點擊產生...</div>
+                <img src="static/image/copy_grey.png" alt="Copy Link" class="link-icon-img" id="copy-link-btn" style="cursor: pointer;">
             </div>
-            <div class="share-controls-row">
-                <span class="control-label">權限</span>
-                <select class="control-pill permission-select"><option>僅供檢視</option><option>可編輯</option></select>
-                <span class="control-label" style="margin-left: 20px;">到期日</span>
-                <input type="date" class="control-pill date-input">
-            </div>
+            
         </div>
     </div>
 

@@ -1,5 +1,5 @@
 /* js/asset_detail.js
-   完整修正版：解決瀏覽器快取問題 (Cache Busting)
+   完整修正版：包含正確的分享連結產生邏輯與瀏覽器快取處理
 */
 import { API_BASE_URL, api } from './config.js';
 
@@ -23,7 +23,7 @@ document.addEventListener('DOMContentLoaded', () => {
 // --- API: 載入單一資產詳情 ---
 async function loadAssetDetail() {
     try {
-        // 這裡也可以加個時間戳記，避免 metadata 被快取
+        // 加上時間戳記，避免 metadata 被快取
         const response = await fetch(`${API_BASE_URL}/assets/${assetId}?_t=${new Date().getTime()}`, {
             method: 'GET',
             headers: api.getHeaders(false, 'GET')
@@ -59,11 +59,9 @@ function appendTokenToUrl(url) {
         }
 
         // 2. 如果沒有 JWT，檢查 API Key (Token 登入)
-        // 注意：這要看你 autho.js 是存成 'redant_api_key' 還是什麼
         const apiKey = localStorage.getItem('redant_api_key'); 
         if (apiKey) {
             if (!u.searchParams.has('api_key')) {
-                // 後端 download_asset 支援 ?api_key=sk_...
                 u.searchParams.set('api_key', apiKey);
             }
             return u.toString();
@@ -111,11 +109,8 @@ function renderDetail(asset) {
     // 3. 初始預覽 (傳入 null 代表顯示最新版)
     updatePreview(asset, null);
 
-    // 分享連結文字顯示 (最新版)
-    const shareUrlText = document.getElementById('share-url-text');
-    if (shareUrlText && asset.download_url) {
-        shareUrlText.innerText = asset.download_url;
-    }
+    // [修正] 移除原本這裡自動填入 download_url 的程式碼
+    // 因為分享連結現在需要透過 API 動態產生
 }
 
 // --- 渲染版本列表 ---
@@ -170,7 +165,7 @@ function renderVersionList(asset) {
     });
 }
 
-// --- [核心修正] 更新預覽區域邏輯 ---
+// --- 更新預覽區域邏輯 ---
 function updatePreview(asset, specificVersionNum) {
     const previewBox = document.querySelector('.preview-box');
     if (!previewBox) return;
@@ -192,11 +187,11 @@ function updatePreview(asset, specificVersionNum) {
     // 3. 補上 Token
     targetUrl = appendTokenToUrl(targetUrl);
     
-    // 4. [關鍵修正] 加上時間戳記 (Cache Busting)
+    // 4. 加上時間戳記 (Cache Busting)
     const separator = targetUrl.includes('?') ? '&' : '?';
     targetUrl = `${targetUrl}${separator}_t=${new Date().getTime()}`;
 
-    console.log("Loading Preview URL:", targetUrl);
+    // console.log("Loading Preview URL:", targetUrl);
 
     if (!targetUrl) {
         previewBox.innerHTML = `<div class="preview-text">無預覽</div>`;
@@ -224,7 +219,7 @@ function updatePreview(asset, specificVersionNum) {
         video.load(); 
 
     } else if (mime.startsWith('image/')) {
-        // --- 圖片區塊 (這裡是修正重點) ---
+        // --- 圖片區塊 ---
         const img = document.createElement('img');
         
         img.alt = asset.filename || '';
@@ -232,16 +227,13 @@ function updatePreview(asset, specificVersionNum) {
         img.style.maxHeight = '600px';
         img.style.objectFit = 'contain';
         
-        // 先綁定錯誤處理
         img.onerror = function() { 
-            console.error("圖片載入失敗:", this.src);
+            // console.error("圖片載入失敗:", this.src);
             this.style.objectFit = "none";
             this.src = 'static/image/upload_grey.png'; 
         };
 
-        // 最後才給網址
         img.src = targetUrl;
-        
         previewBox.appendChild(img);
 
     } else {
@@ -296,16 +288,17 @@ function setupEventListeners() {
         });
     }
 
-    // 複製連結
+    // 複製連結 (這部分保留，用來複製產生後的網址)
     const copyLinkBtn = document.getElementById('copy-link-btn');
     const shareUrlText = document.getElementById('share-url-text');
     if (copyLinkBtn && shareUrlText) {
         copyLinkBtn.addEventListener('click', () => {
             const text = shareUrlText.innerText;
+            if (!text || text.includes("請設定")) return; // 如果是提示文字就不複製
+
             if (navigator.clipboard && navigator.clipboard.writeText) {
                 navigator.clipboard.writeText(text).then(() => showToast("連結已複製！"));
             } else {
-                // Fallback
                 const textarea = document.createElement("textarea");
                 textarea.value = text;
                 document.body.appendChild(textarea);
@@ -350,20 +343,104 @@ function setupEventListeners() {
 function setupModalLogic() {
     const dropdownMenu = document.getElementById('dropdown-menu');
 
-    // 1. 分享
+    // ==========================================
+    // 1. 分享 Modal 邏輯 (修正版)
+    // ==========================================
     const shareOption = document.getElementById('share-option');
     const shareModal = document.getElementById('share-modal');
     const closeShareX = document.getElementById('close-share-x');
+    const btnGenShare = document.getElementById('btn-gen-share'); // 新增的按鈕
+    const shareUrlText = document.getElementById('share-url-text'); // 顯示網址的框
+    const shareDateInput = document.getElementById('share-date');
+
     if (shareOption && shareModal) {
         shareOption.addEventListener('click', () => {
             dropdownMenu && dropdownMenu.classList.remove('show');
             shareModal.style.display = 'flex';
+            
+            // 初始化：清空網址框，設定預設日期 (明天)
+            if (shareUrlText) {
+                shareUrlText.innerText = "請設定條件並點擊「產生連結」";
+                shareUrlText.style.color = "#888";
+            }
+            
+            const tomorrow = new Date();
+            tomorrow.setDate(tomorrow.getDate() + 1);
+            if(shareDateInput) {
+                shareDateInput.value = tomorrow.toISOString().split('T')[0];
+            }
         });
+
         closeShareX && closeShareX.addEventListener('click', () => shareModal.style.display = 'none');
         shareModal.addEventListener('click', (e) => { if (e.target === shareModal) shareModal.style.display = 'none'; });
+
+        // --- 點擊「產生連結」呼叫後端 API ---
+        if (btnGenShare) {
+            btnGenShare.onclick = async () => {
+                const permissionEl = document.getElementById('share-permission');
+                const permission = permissionEl ? permissionEl.value : 'readonly';
+                const dateVal = shareDateInput ? shareDateInput.value : null;
+
+                if (!dateVal) {
+                    alert("請選擇到期日");
+                    return;
+                }
+
+                // 計算分鐘數
+                const now = new Date();
+                const endDate = new Date(dateVal);
+                endDate.setHours(23, 59, 59, 999); // 設定為當天最後一秒
+
+                const diffMs = endDate - now;
+                const diffMinutes = Math.floor(diffMs / 1000 / 60);
+
+                if (diffMinutes <= 0) {
+                    alert("到期日必須晚於現在時間");
+                    return;
+                }
+
+                try {
+                    btnGenShare.innerText = "產生中...";
+                    btnGenShare.disabled = true;
+
+                    // 呼叫 API
+                    const res = await fetch(`${API_BASE_URL}/assets/${assetId}/share`, {
+                        method: 'POST',
+                        headers: api.getHeaders(false, 'POST'),
+                        body: JSON.stringify({
+                            expires_in_minutes: diffMinutes,
+                            permission_type: permission
+                        })
+                    });
+
+                    if (!res.ok) {
+                        let errMsg = "產生連結失敗";
+                        try { const json = await res.json(); errMsg = json.detail || errMsg; } catch(_) {}
+                        throw new Error(errMsg);
+                    }
+
+                    const data = await res.json();
+                    
+                    // --- 成功：顯示後端回傳的 full_url ---
+                    if (shareUrlText) {
+                        shareUrlText.innerText = data.full_url; 
+                        shareUrlText.style.color = "#333"; // 變回深色字
+                    }
+                    
+                } catch (err) {
+                    console.error(err);
+                    alert("錯誤：" + err.message);
+                } finally {
+                    btnGenShare.innerText = "產生連結";
+                    btnGenShare.disabled = false;
+                }
+            };
+        }
     }
 
-    // 2. 編輯
+    // ==========================================
+    // 2. 編輯 Modal 邏輯
+    // ==========================================
     const editOption = document.getElementById('menu-edit-btn');
     const editModal = document.getElementById('edit-modal');
     const closeEditX = document.getElementById('close-edit-x');
@@ -410,7 +487,9 @@ function setupModalLogic() {
         }
     }
 
-    // 3. 版本上傳
+    // ==========================================
+    // 3. 版本上傳 Modal 邏輯
+    // ==========================================
     const addVersionBtn = document.getElementById('add-version-btn');
     const versionModal = document.getElementById('version-modal');
     const closeVersionX = document.getElementById('close-version-x');
