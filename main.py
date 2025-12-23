@@ -1,4 +1,7 @@
-﻿from fastapi import FastAPI, Depends, HTTPException, File, UploadFile, Security, BackgroundTasks, Form, Request, Response, Body, Header
+﻿from dotenv import load_dotenv
+load_dotenv()  # 載入 .env 檔案中的環境變數
+
+from fastapi import FastAPI, Depends, HTTPException, File, UploadFile, Security, BackgroundTasks, Form, Request, Response, Body, Header
 from fastapi.security import OAuth2PasswordBearer, OAuth2PasswordRequestForm, APIKeyHeader
 from fastapi.responses import FileResponse, StreamingResponse
 from fastapi.middleware.cors import CORSMiddleware
